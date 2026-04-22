@@ -27,6 +27,9 @@ frontend/.env
 frontend/.env.*
 !frontend/.env.example
 
+# Claude Code local directory
+.claude/
+
 # Backend runtime output
 uploads/
 
