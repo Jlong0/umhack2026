@@ -1,0 +1,14 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# Environment
+.env
+
+# Firebase secret key
+serviceAccountKey.json
+
+# OS / IDE
+.DS_Store
+.idea/
