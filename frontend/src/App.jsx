@@ -1,12 +1,23 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
-import UploadPage from "./pages/UploadPage.jsx";
+import { Navigate, Route, Routes } from "react-router-dom";
+import AppLayout from "@/components/AppLayout";
+import ConfirmPage from "@/pages/ConfirmPage";
+import Dashboard from "@/pages/Dashboard";
+import UploadPage from "@/pages/UploadPage";
+import WorkerProfilePage from "@/pages/WorkerProfilePage";
 
 function App() {
-  return <UploadPage />;
+  return (
+    <Routes>
+      <Route element={<AppLayout />}>
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/ingestion" element={<UploadPage />} />
+        <Route path="/worker-visualizer" element={<WorkerProfilePage />} />
+        <Route path="/tool-handoff" element={<ConfirmPage />} />
+      </Route>
+      <Route path="/" element={<Navigate to="/ingestion" replace />} />
+      <Route path="*" element={<Navigate to="/ingestion" replace />} />
+    </Routes>
+  );
 }
 
-export default App
+export default App;
