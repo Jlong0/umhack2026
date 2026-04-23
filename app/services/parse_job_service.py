@@ -38,10 +38,13 @@ def process_parse_job(job_id: str, document_id: str):
         # temporary fake result until GLM is wired in
         parsed_result = {
             "fields": {
-                "name": {"value": "Ali", "confidence": 0.96},
+                "full_name": {"value": "Ali", "confidence": 0.96},
                 "passport_number": {"value": "A123456", "confidence": 0.98},
                 "nationality": {"value": "Bangladesh", "confidence": 0.93},
-                "permit_expiry_date": {"value": "2026-12-31", "confidence": 0.62}
+                "sector": {"value": "manufacturing", "confidence": 0.0},
+                "permit_class": {"value": "PLKS", "confidence": 0.0},
+                "passport_expiry_date": {"value": None, "confidence": 0.0},
+                "permit_expiry_date": {"value": None, "confidence": 0.0},
             }
         }
 
