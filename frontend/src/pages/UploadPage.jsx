@@ -5,7 +5,7 @@ import FileUpload from "@/components/FileUpload";
 import ParsedForm from "@/components/ParsedForm";
 import { useToast } from "@/components/ui/toast";
 import { useParseJobPolling } from "@/hooks/useParseJobPolling";
-import { ApiError, confirmDocument, uploadDocument } from "@/services/api";
+import { ApiError, confirmDocument, startComplianceWorkflow, uploadDocument } from "@/services/api";
 import { useWorkerStore } from "@/store/useWorkerStore";
 
 function normalizeInitialValues(parsedFields) {
@@ -124,19 +124,28 @@ export default function UploadPage() {
       const response = await confirmDocument(documentId, formValues);
       setWorkerId(response.worker_id);
 
+      // Start backend workflow immediately so the visualizer has live state to show.
+      await startComplianceWorkflow(response.worker_id, {
+        ...formValues,
+        worker_id: response.worker_id,
+        full_name: formValues.full_name || formValues.name || "Unknown Worker",
+        name: formValues.name || formValues.full_name || "Unknown Worker",
+        nationality: formValues.nationality || "Unknown",
+      });
+
       toast({
         title: "Worker profile created",
-        description: "Obligations generated. Opening LangGraph visualizer...",
+        description: "Obligations generated and workflow started. Opening workflow visualizer...",
         variant: "success",
       });
 
-      navigate("/worker-visualizer");
+      navigate(`/workflows/${response.worker_id}`);
     } catch (error) {
       if (error instanceof ApiError && error.status === 500) {
         toast({
           title: "Error",
           description:
-            "Error: Schema mismatch on obligation generation. Please check backend LangGraph alignment.",
+            "Failed to start workflow after confirmation. Check backend logs for workflow initialization error.",
           variant: "destructive",
           duration: 7000,
         });
