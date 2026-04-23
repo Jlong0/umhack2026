@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 USE_MOCK = os.getenv("USE_MOCK_FIREBASE", "false").lower() == "true"
+FIREBASE_STORAGE_BUCKET = os.getenv("FIREBASE_STORAGE_BUCKET", "umhack-493907.firebasestorage.app")
 
 
 def _resolve_credentials_path() -> Path:
@@ -44,7 +45,7 @@ else:
         firebase_admin.initialize_app(
             credential=cred,
             options={
-                "storageBucket": "umhack2026.firebasestorage.app"
+                "storageBucket": FIREBASE_STORAGE_BUCKET
             }
         )
 

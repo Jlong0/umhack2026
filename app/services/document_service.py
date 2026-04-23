@@ -1,5 +1,3 @@
-import os
-import logging
 from uuid import uuid4
 from datetime import datetime, timezone
 from app.firebase_config import db, bucket
@@ -7,40 +5,21 @@ from app.services.worker_service import create_worker
 from app.services.task_service import create_tasks_from_obligations
 from app.services.compliance_reasoning_service import generate_compliance_obligations
 
-UPLOAD_DIR = "uploads"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
-logger = logging.getLogger(__name__)
-
 
 async def save_uploaded_document(file, worker_id=None, document_type=None):
     ext = file.filename.split(".")[-1]
     filename = f"{uuid4()}.{ext}"
     storage_path = f"documents/{filename}"
-    local_path = os.path.join(UPLOAD_DIR, filename)
 
     contents = await file.read()
 
-    storage_backend = "gcs"
-    try:
-        blob = bucket.blob(storage_path)
-        blob.upload_from_string(contents, content_type=file.content_type)
-    except Exception as exc:
-        # Dev fallback when cloud bucket IAM is not configured.
-        storage_backend = "local"
-        storage_path = None
-        with open(local_path, "wb") as f:
-            f.write(contents)
-        logger.warning(
-            "Falling back to local upload storage due to cloud upload error: %s",
-            exc,
-        )
+    blob = bucket.blob(storage_path)
+    blob.upload_from_string(contents, content_type=file.content_type)
 
     doc_data = {
         "filename": file.filename,
         "stored_filename": filename,
         "storage_path": storage_path,
-        "local_path": local_path if storage_backend == "local" else None,
-        "storage_backend": storage_backend,
         "content_type": file.content_type,
         "worker_id": worker_id,
         "document_type": document_type,

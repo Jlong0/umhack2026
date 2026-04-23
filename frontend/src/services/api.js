@@ -1,6 +1,6 @@
 import { normalizeTasksResponse } from "@/services/taskAdapter";
 
-const DEFAULT_API_BASE_URL = "http://127.0.0.1:8000";
+const DEFAULT_API_BASE_URL = "http://127.0.0.1:8001";
 
 export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE_URL).replace(/\/+$/, "");
 
@@ -92,3 +92,102 @@ export async function patchWorkerTask(workerId, taskId, payload) {
 	});
 }
 
+// Agent Workflow APIs
+export async function startComplianceWorkflow(workerId, workerData) {
+	return apiRequest("/agents/workflows/start", {
+		method: "POST",
+		body: JSON.stringify({ worker_id: workerId, worker_data: workerData }),
+	});
+}
+
+export async function getWorkflowStatus(workerId) {
+	return apiRequest(`/agents/workflows/${workerId}/status`, { method: "GET" });
+}
+
+export async function resumeWorkflow(workerId, userDecision, additionalData = null) {
+	return apiRequest(`/agents/workflows/${workerId}/resume`, {
+		method: "POST",
+		body: JSON.stringify({ user_decision: userDecision, additional_data: additionalData }),
+	});
+}
+
+export async function getComplianceGraph(workerId) {
+	return apiRequest(`/agents/workflows/${workerId}/graph`, { method: "GET" });
+}
+
+export async function listAllWorkflows() {
+	return apiRequest("/agents/workflows", { method: "GET" });
+}
+
+// Alert APIs
+export async function scanAllWorkers() {
+	return apiRequest("/alerts/scan", { method: "GET" });
+}
+
+export async function getWorkerAlerts(workerId) {
+	return apiRequest(`/alerts/worker/${workerId}`, { method: "GET" });
+}
+
+export async function getCriticalAlerts() {
+	return apiRequest("/alerts/critical", { method: "GET" });
+}
+
+export async function getExpiringPermits(days = 30) {
+	return apiRequest(`/alerts/expiring?days=${days}`, { method: "GET" });
+}
+
+export async function getAlertDashboard() {
+	return apiRequest("/alerts/dashboard", { method: "GET" });
+}
+
+// HITL APIs
+export async function listPendingInterrupts() {
+	return apiRequest("/hitl/interrupts", { method: "GET" });
+}
+
+export async function getInterruptDetails(workerId) {
+	return apiRequest(`/hitl/interrupts/${workerId}`, { method: "GET" });
+}
+
+export async function resolveInterrupt(workerId, decision, notes = null, modifiedData = null) {
+	return apiRequest(`/hitl/interrupts/${workerId}/resolve`, {
+		method: "POST",
+		body: JSON.stringify({ decision, notes, modified_data: modifiedData }),
+	});
+}
+
+export async function getInterruptStatistics() {
+	return apiRequest("/hitl/interrupts/stats", { method: "GET" });
+}
+
+// Simulator APIs
+export async function simulateMTLMLevy(sector, currentForeignCount, currentLocalCount, newForeignWorkers = 0) {
+	return apiRequest("/simulator/mtlm-levy", {
+		method: "POST",
+		body: JSON.stringify({
+			sector,
+			current_foreign_count: currentForeignCount,
+			current_local_count: currentLocalCount,
+			new_foreign_workers: newForeignWorkers,
+		}),
+	});
+}
+
+export async function simulateEPSalary(category, currentSalaryRM, renewalDate) {
+	return apiRequest("/simulator/ep-salary", {
+		method: "POST",
+		body: JSON.stringify({
+			category,
+			current_salary_rm: currentSalaryRM,
+			renewal_date: renewalDate,
+		}),
+	});
+}
+
+export async function getMTLMTierStructure() {
+	return apiRequest("/simulator/mtlm-tiers", { method: "GET" });
+}
+
+export async function getEPSalaryThresholds() {
+	return apiRequest("/simulator/ep-salary-thresholds", { method: "GET" });
+}

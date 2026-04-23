@@ -73,9 +73,9 @@ Your Firebase configuration is already in place via `serviceAccountkey.json`. En
 python run.py
 ```
 
-The server will start at: `http://127.0.0.1:8000`
+The server will start at: `http://127.0.0.1:8001`
 
-API Documentation available at: `http://127.0.0.1:8000/docs`
+API Documentation available at: `http://127.0.0.1:8001/docs`
 
 ---
 

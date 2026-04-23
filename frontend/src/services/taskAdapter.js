@@ -104,20 +104,8 @@ function parseFineExposure(rawTask, toolPayload, taskType) {
   return /fine|levy/i.test(String(taskType)) ? 0 : null;
 }
 
-function fallbackToolPayload(taskType, rawTask) {
-  if (rawTask.tool_payload || rawTask.toolPayload) {
-    return rawTask.tool_payload ?? rawTask.toolPayload;
-  }
-
-  if (!/fine|levy|calculate/i.test(String(taskType))) {
-    return null;
-  }
-
-  return {
-    days_overstayed: 45,
-    fine: "RM 1000",
-    regulation: "Immigration Act 1959/63",
-  };
+function getToolPayload(rawTask) {
+  return rawTask.tool_payload ?? rawTask.toolPayload ?? null;
 }
 
 export function normalizeTask(rawTask, index, workerId) {
@@ -132,7 +120,7 @@ export function normalizeTask(rawTask, index, workerId) {
   const dependsOn = toArray(rawTask.depends_on ?? rawTask.dependsOn);
   const requiresApproval = Boolean(rawTask.requires_approval ?? rawTask.requiresApproval);
   const status = normalizeStatus(rawTask.status, requiresApproval);
-  const toolPayload = fallbackToolPayload(taskType, rawTask);
+  const toolPayload = getToolPayload(rawTask);
 
   return {
     id: String(rawTask.id ?? rawTask.task_id ?? `task-${index + 1}`),

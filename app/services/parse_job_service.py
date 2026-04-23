@@ -44,7 +44,6 @@ async def process_parse_job(job_id: str, document_id: str):
         doc_data = doc_ref.get().to_dict()
 
         storage_path = doc_data.get("storage_path")
-        local_path = doc_data.get("local_path")
         document_type = doc_data.get("document_type", "unknown")
         content_type = doc_data.get("content_type", "image/jpeg")
 
@@ -52,7 +51,6 @@ async def process_parse_job(job_id: str, document_id: str):
         parse_result = await document_triage_service.triage_and_parse(
             document_id=document_id,
             storage_path=storage_path,
-            local_path=local_path,
             document_type=document_type,
             content_type=content_type
         )

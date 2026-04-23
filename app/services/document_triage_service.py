@@ -1,10 +1,9 @@
 """
 Enhanced document triage and parsing pipeline with L0/L1/L2 routing.
 """
-from typing import Dict, Optional
+from typing import Dict
 from datetime import datetime
 import base64
-from pathlib import Path
 from app.services.glm_service import glm_service
 from app.firebase_config import bucket
 
@@ -23,8 +22,7 @@ class DocumentTriageService:
     async def triage_and_parse(
         self,
         document_id: str,
-        storage_path: Optional[str],
-        local_path: Optional[str],
+        storage_path: str,
         document_type: str,
         content_type: str
     ) -> Dict:
@@ -35,22 +33,11 @@ class DocumentTriageService:
         triage_level = self._determine_triage_level(document_type, content_type)
 
         if triage_level == "L0":
-            return await self._parse_digital_document(document_id, storage_path, local_path)
+            return await self._parse_digital_document(document_id, storage_path)
         elif triage_level == "L1":
-            return await self._parse_with_ocr(document_id, storage_path, local_path, document_type)
+            return await self._parse_with_ocr(document_id, storage_path, document_type)
         else:  # L2
-            return await self._parse_with_glm4v(document_id, storage_path, local_path, document_type)
-
-    def _load_document_bytes(self, storage_path: Optional[str], local_path: Optional[str]) -> bytes:
-        """Load bytes from cloud storage first, then local fallback."""
-        if storage_path and bucket is not None:
-            blob = bucket.blob(storage_path)
-            return blob.download_as_bytes()
-
-        if local_path:
-            return Path(local_path).read_bytes()
-
-        raise FileNotFoundError("Document binary not found in storage_path or local_path")
+            return await self._parse_with_glm4v(document_id, storage_path, document_type)
 
     def _determine_triage_level(self, document_type: str, content_type: str) -> str:
         """
@@ -67,17 +54,13 @@ class DocumentTriageService:
         # L2: Everything else (handwritten, multi-language, complex layouts)
         return "L2"
 
-    async def _parse_digital_document(
-        self,
-        document_id: str,
-        storage_path: Optional[str],
-        local_path: Optional[str]
-    ) -> Dict:
+    async def _parse_digital_document(self, document_id: str, storage_path: str) -> Dict:
         """
         L0: Parse digital documents (JSON format).
         """
         try:
-            content = self._load_document_bytes(storage_path, local_path).decode("utf-8")
+            blob = bucket.blob(storage_path)
+            content = blob.download_as_text()
 
             import json
             data = json.loads(content)
@@ -103,8 +86,7 @@ class DocumentTriageService:
     async def _parse_with_ocr(
         self,
         document_id: str,
-        storage_path: Optional[str],
-        local_path: Optional[str],
+        storage_path: str,
         document_type: str
     ) -> Dict:
         """
@@ -113,11 +95,12 @@ class DocumentTriageService:
         """
         try:
             # Download image
-            image_bytes = self._load_document_bytes(storage_path, local_path)
+            blob = bucket.blob(storage_path)
+            image_bytes = blob.download_as_bytes()
 
             # OCR processing (placeholder - would use pytesseract)
             # For now, route to GLM-4V
-            return await self._parse_with_glm4v(document_id, storage_path, local_path, document_type)
+            return await self._parse_with_glm4v(document_id, storage_path, document_type)
 
         except Exception as e:
             return {
@@ -130,8 +113,7 @@ class DocumentTriageService:
     async def _parse_with_glm4v(
         self,
         document_id: str,
-        storage_path: Optional[str],
-        local_path: Optional[str],
+        storage_path: str,
         document_type: str
     ) -> Dict:
         """
@@ -139,8 +121,11 @@ class DocumentTriageService:
         Handles complex documents, handwriting, multiple languages.
         """
         try:
+            # Get signed URL for GLM-4V
+            blob = bucket.blob(storage_path)
+
             # Download and convert to base64 for GLM-4V
-            image_bytes = self._load_document_bytes(storage_path, local_path)
+            image_bytes = blob.download_as_bytes()
             base64_image = base64.b64encode(image_bytes).decode('utf-8')
             image_url = f"data:image/jpeg;base64,{base64_image}"
 

@@ -1,4 +1,4 @@
-import { Activity, LayoutDashboard, Upload, Wrench, Workflow } from "lucide-react";
+import { Activity, LayoutDashboard, Upload, Wrench, Workflow, AlertCircle, Users, Calculator } from "lucide-react";
 import { createElement } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -14,6 +14,26 @@ const NAV_ITEMS = [
     to: "/ingestion",
     label: "Document Ingestion",
     icon: Upload,
+  },
+  {
+    to: "/workflows",
+    label: "Agent Workflows",
+    icon: Workflow,
+  },
+  {
+    to: "/alerts",
+    label: "Compliance Alerts",
+    icon: AlertCircle,
+  },
+  {
+    to: "/hitl",
+    label: "HITL Interrupts",
+    icon: Users,
+  },
+  {
+    to: "/simulator",
+    label: "What-If Simulator",
+    icon: Calculator,
   },
   {
     to: "/worker-visualizer",

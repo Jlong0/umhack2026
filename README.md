@@ -46,4 +46,4 @@ npm install
 npm run dev:full
 ```
 
-Frontend runs on `http://localhost:5173` (or next free port), backend on `http://127.0.0.1:8000`.
+Frontend runs on `http://localhost:5173` (or next free port), backend on `http://127.0.0.1:8001`.

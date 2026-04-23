@@ -230,7 +230,7 @@ export default function WorkerProfilePage() {
               <ShieldCheck className="h-4 w-4 text-green-400" />
               <h3 className="text-sm font-semibold">GLM-5 Rumination Terminal</h3>
             </div>
-            <span className="font-mono text-[11px] text-slate-400">streaming mock</span>
+            <span className="font-mono text-[11px] text-slate-400">streaming</span>
           </header>
 
           <div className="space-y-2 px-4 py-4 font-mono text-xs leading-relaxed">

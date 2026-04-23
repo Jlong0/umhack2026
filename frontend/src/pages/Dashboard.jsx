@@ -1,9 +1,11 @@
-import { AlertTriangle, ShieldAlert, Timer, Workflow } from "lucide-react";
-import { createElement, useMemo } from "react";
+import { AlertTriangle, ShieldAlert, Timer, Workflow, TrendingUp, Users, AlertCircle } from "lucide-react";
+import { createElement, useMemo, useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import TaskList from "@/components/TaskList";
 import { useWorkerTasksPolling } from "@/hooks/useWorkerTasksPolling";
 import { isStatusActive, isStatusAwaitingApproval, isStatusBlocked } from "@/services/taskAdapter";
 import { useWorkerStore } from "@/store/useWorkerStore";
+import { getAlertDashboard, listAllWorkflows, listPendingInterrupts } from "@/services/api";
 
 function asCurrency(value) {
   return new Intl.NumberFormat("en-MY", {
@@ -13,7 +15,7 @@ function asCurrency(value) {
   }).format(value || 0);
 }
 
-function HealthCard({ icon: Icon, label, value, tone = "slate" }) {
+function HealthCard({ icon: Icon, label, value, tone = "slate", onClick }) {
   const iconNode = createElement(Icon, { className: "h-4 w-4" });
 
   const toneClass = {
@@ -21,10 +23,15 @@ function HealthCard({ icon: Icon, label, value, tone = "slate" }) {
     indigo: "text-indigo-800",
     rose: "text-rose-800",
     amber: "text-amber-800",
+    green: "text-green-800",
+    orange: "text-orange-800",
   }[tone];
 
   return (
-    <article className="permit-surface p-5">
+    <article
+      className={`permit-surface p-5 ${onClick ? "cursor-pointer hover:shadow-lg transition-shadow" : ""}`}
+      onClick={onClick}
+    >
       <p className="text-xs uppercase tracking-wide text-slate-500">{label}</p>
       <div className="mt-3 flex items-center gap-3">
         <div className="rounded-lg bg-slate-100 p-2 text-slate-700">
@@ -37,14 +44,40 @@ function HealthCard({ icon: Icon, label, value, tone = "slate" }) {
 }
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const workerId = useWorkerStore((state) => state.workerId);
   const taskSource = useWorkerStore((state) => state.taskSource);
   const storeTasks = useWorkerStore((state) => state.tasks);
+
+  const [alertDashboard, setAlertDashboard] = useState(null);
+  const [workflows, setWorkflows] = useState([]);
+  const [pendingInterrupts, setPendingInterrupts] = useState(0);
 
   const { lastUpdatedAt } = useWorkerTasksPolling(workerId, {
     enabled: Boolean(workerId),
     intervalMs: 6500,
   });
+
+  useEffect(() => {
+    loadDashboardData();
+    const interval = setInterval(loadDashboardData, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
+  async function loadDashboardData() {
+    try {
+      const [alertData, workflowData, interruptData] = await Promise.all([
+        getAlertDashboard().catch(() => null),
+        listAllWorkflows().catch(() => ({ workflows: [] })),
+        listPendingInterrupts().catch(() => ({ total: 0 })),
+      ]);
+      setAlertDashboard(alertData);
+      setWorkflows(workflowData.workflows || []);
+      setPendingInterrupts(interruptData.total || 0);
+    } catch (err) {
+      console.error("Failed to load dashboard data:", err);
+    }
+  }
 
   const tasks = storeTasks;
 
@@ -76,14 +109,62 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       <section className="permit-surface px-5 py-4 sm:px-6">
-        <h2 className="text-xl font-semibold">Executive Dashboard & Task Tracking</h2>
+        <h2 className="text-xl font-semibold">Executive Dashboard & System Overview</h2>
         <p className="mt-1 text-sm text-slate-600">
-          Live dependency health for the active worker workflow.
+          Real-time compliance monitoring, agent workflows, and task tracking.
         </p>
         <p className="mt-2 text-xs text-slate-500">
           Source: {taskSource} | Last refresh: {lastUpdatedAt ? new Date(lastUpdatedAt).toLocaleTimeString() : "Not yet polled"}
         </p>
       </section>
+
+      <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <HealthCard
+          icon={Workflow}
+          label="Active Workflows"
+          value={workflows.length}
+          tone="indigo"
+          onClick={() => navigate("/workflows")}
+        />
+        <HealthCard
+          icon={AlertCircle}
+          label="Critical Alerts"
+          value={alertDashboard?.summary?.expired_permits || 0}
+          tone="rose"
+          onClick={() => navigate("/alerts")}
+        />
+        <HealthCard
+          icon={Users}
+          label="HITL Interrupts"
+          value={pendingInterrupts}
+          tone="amber"
+          onClick={() => navigate("/hitl")}
+        />
+        <HealthCard
+          icon={TrendingUp}
+          label="Health Score"
+          value={alertDashboard?.health_score ? `${alertDashboard.health_score}%` : "N/A"}
+          tone="green"
+          onClick={() => navigate("/alerts")}
+        />
+      </section>
+
+      {alertDashboard && (
+        <section className="grid gap-4 md:grid-cols-3">
+          <div className="permit-surface p-5">
+            <p className="text-xs uppercase tracking-wide text-slate-500">Total Workers</p>
+            <p className="mt-2 text-2xl font-semibold text-slate-900">{alertDashboard.summary.total_workers}</p>
+          </div>
+          <div className="permit-surface p-5">
+            <p className="text-xs uppercase tracking-wide text-slate-500">Expiring (30 days)</p>
+            <p className="mt-2 text-2xl font-semibold text-orange-800">{alertDashboard.summary.expiring_30_days}</p>
+          </div>
+          <div className="permit-surface p-5">
+            <p className="text-xs uppercase tracking-wide text-slate-500">Compliance Deadlocks</p>
+            <p className="mt-2 text-2xl font-semibold text-rose-800">{alertDashboard.summary.compliance_deadlocks}</p>
+          </div>
+        </section>
+      )}
 
       <section className="grid gap-4 md:grid-cols-3">
         <HealthCard icon={Workflow} label="Active LangGraph Runs" value={metrics.activeRuns} tone="indigo" />
