@@ -1,7 +1,58 @@
+# ── Core Framework ────────────────────────────────────────
 fastapi
-uvicorn
-sqlalchemy
-psycopg2-binary
+uvicorn[standard]
 python-dotenv
-firebase-admin
 python-multipart
+pydantic>=2.0.0
+pydantic-settings
+
+# ── Firebase / Firestore / Storage ────────────────────────
+firebase-admin
+google-cloud-firestore    # Async Firestore client
+google-cloud-storage      # Firebase Storage operations
+
+# ── Queue & Cache (CRITICAL — was missing) ────────────────
+celery[redis]
+redis[asyncio]            # aioredis compatible
+flower                    # Celery monitoring dashboard (optional but useful)
+
+# ── LangGraph & LangChain ─────────────────────────────────
+langgraph>=0.2.0
+langgraph-checkpoint      # State persistence / checkpointing
+langchain>=0.3.0
+langchain-core>=0.3.0
+langchain-community>=0.3.0
+langchain-openai          # GLM uses OpenAI-compatible interface
+
+# ── GLM Integration (Z.AI) ────────────────────────────────
+zhipuai>=2.0.0
+openai                    # OpenAI-compatible shim for GLM API calls
+
+# ── Gemini Integration (Temporary for testing) ────────────
+google-generativeai       # Gemini API with key rotation for testing/optimization
+
+# ── Observability & Tracing ───────────────────────────────
+opentelemetry-api
+opentelemetry-sdk
+opentelemetry-instrumentation-fastapi
+arize-phoenix>=4.0.0
+arize-phoenix-otel
+
+# ── Document Processing ───────────────────────────────────
+pdfplumber                # Replaces pypdf2 (actively maintained, better extraction)
+pillow
+pytesseract
+pdf2image
+python-magic              # File type detection before routing to GLM vs OCR
+
+# ── HTTP & Async ──────────────────────────────────────────
+httpx
+aiofiles
+anyio
+
+# ── Utilities ─────────────────────────────────────────────
+python-dateutil
+pytz
+uuid6                     # Better UUID generation for document IDs
+orjson                    # Faster JSON serialization (important for Firestore payloads)
+tenacity                  # Retry logic for API calls (GLM, Firestore)

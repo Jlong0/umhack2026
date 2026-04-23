@@ -1,4 +1,13 @@
-from app.services.glm_service import call_glm
+from app.services.glm_service import glm_service
+
 def generate_compliance_obligations(worker_data: dict):
-    result = call_glm(worker_data)
-    return result["obligations"]
+    # Mock implementation - replace with actual GLM reasoning logic
+    return {
+        "obligations": [
+            "Valid passport with 12+ months validity",
+            "FOMEMA medical clearance",
+            "Valid work permit (PLKS/EP)",
+            "Compliant accommodation (Act 446)"
+        ],
+        "status": "pending_verification"
+    }
