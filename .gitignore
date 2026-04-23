@@ -37,6 +37,8 @@ uploads/
 serviceAccountKey.json
 secrets/*.json
 *.firebase.json
+app/services/gemini_key_rotation_service.py
+app/services/*gemini*key*.py
 
 # Logs
 *.log
