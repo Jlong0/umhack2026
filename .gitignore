@@ -1,4 +1,9 @@
-skills/
+skills/*
+!skills/vercel-labs-agent-skills/
+!skills/frontend-design/
+!skills/uxuiprinciples-agent-skills/
+!skills/api-design-principles/
+!skills/security-auditor/
 node_modules/
 __pycache__/
 secrets/
