@@ -1,1 +1,4 @@
 skills/
+node_modules/
+__pycache__/
+secrets/
