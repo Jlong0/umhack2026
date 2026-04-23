@@ -2,7 +2,6 @@ import { AlertTriangle, ShieldAlert, Timer, Workflow } from "lucide-react";
 import { createElement, useMemo } from "react";
 import TaskList from "@/components/TaskList";
 import { useWorkerTasksPolling } from "@/hooks/useWorkerTasksPolling";
-import { getFallbackTasks } from "@/services/mockData";
 import { isStatusActive, isStatusAwaitingApproval, isStatusBlocked } from "@/services/taskAdapter";
 import { useWorkerStore } from "@/store/useWorkerStore";
 
@@ -47,13 +46,7 @@ export default function Dashboard() {
     intervalMs: 6500,
   });
 
-  const tasks = useMemo(() => {
-    if (storeTasks.length) {
-      return storeTasks;
-    }
-
-    return getFallbackTasks(workerId || "demo-worker-001");
-  }, [storeTasks, workerId]);
+  const tasks = storeTasks;
 
   const metrics = useMemo(() => {
     const activeRuns = tasks.filter((task) => isStatusActive(task.status)).length;

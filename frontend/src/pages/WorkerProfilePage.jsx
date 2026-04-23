@@ -4,7 +4,6 @@ import ReactFlow, { Background, Controls, MarkerType, MiniMap } from "reactflow"
 import "reactflow/dist/style.css";
 import { useWorkerTasksPolling } from "@/hooks/useWorkerTasksPolling";
 import { cn } from "@/lib/utils";
-import { getFallbackRumination, getFallbackTasks } from "@/services/mockData";
 import { isStatusActive, isStatusBlocked, statusLabel } from "@/services/taskAdapter";
 import { useWorkerStore } from "@/store/useWorkerStore";
 
@@ -133,13 +132,7 @@ export default function WorkerProfilePage() {
     intervalMs: 5500,
   });
 
-  const tasks = useMemo(() => {
-    if (storeTasks.length) {
-      return storeTasks;
-    }
-
-    return getFallbackTasks(workerId || "demo-worker-001");
-  }, [storeTasks, workerId]);
+  const tasks = storeTasks;
 
   const graph = useMemo(() => buildFlow(tasks), [tasks]);
 
@@ -152,7 +145,7 @@ export default function WorkerProfilePage() {
 
   useEffect(() => {
     if (!activeTask) {
-      setRuminationLines(getFallbackRumination());
+      setRuminationLines(["> Waiting for active task..."]);
       activeTaskRef.current = null;
       return;
     }

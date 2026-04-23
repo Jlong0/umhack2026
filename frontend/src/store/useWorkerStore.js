@@ -1,5 +1,4 @@
 import { create } from "zustand";
-import { getFallbackRumination, getFallbackTasks } from "@/services/mockData";
 import { normalizeTasksResponse } from "@/services/taskAdapter";
 
 const DEFAULT_MOCK_WORKER_ID = "demo-worker-001";
@@ -12,9 +11,9 @@ export const useWorkerStore = create((set) => ({
   parseStep: "Awaiting document upload.",
   parsedFields: {},
   documentPreviewUrl: null,
-  tasks: getFallbackTasks(DEFAULT_MOCK_WORKER_ID),
-  taskSource: "mock",
-  ruminationLines: getFallbackRumination(),
+  tasks: [],
+  taskSource: "api",
+  ruminationLines: ["> Waiting for active task..."],
 
   setWorkerId: (workerId) => set({ workerId }),
 

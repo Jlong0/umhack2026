@@ -5,7 +5,6 @@ import { useToast } from "@/components/ui/toast";
 import { useWorkerTasksPolling } from "@/hooks/useWorkerTasksPolling";
 import { cn } from "@/lib/utils";
 import { patchWorkerTask } from "@/services/api";
-import { DEFAULT_MYEG_PAYLOAD, getFallbackTasks } from "@/services/mockData";
 import { areDependenciesCompleted, isStatusAwaitingApproval } from "@/services/taskAdapter";
 import { useWorkerStore } from "@/store/useWorkerStore";
 
@@ -88,13 +87,7 @@ export default function ConfirmPage() {
     intervalMs: 6000,
   });
 
-  const tasks = useMemo(() => {
-    if (storeTasks.length) {
-      return storeTasks;
-    }
-
-    return getFallbackTasks(workerId || "demo-worker-001");
-  }, [storeTasks, workerId]);
+  const tasks = storeTasks;
 
   const approvalTask = useMemo(
     () =>
@@ -118,7 +111,12 @@ export default function ConfirmPage() {
   );
 
   const showMyEgPayload = Boolean(myEgTask) && myEgReady;
-  const myEgPayload = myEgTask?.toolPayload || DEFAULT_MYEG_PAYLOAD;
+  const myEgPayload = myEgTask?.toolPayload || {
+    levy_amount: "RM 590",
+    processing_fee: "RM 35",
+    worker_id: workerId || "demo-worker-001",
+    channel: "MyEG",
+  };
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isApproving, setIsApproving] = useState(false);

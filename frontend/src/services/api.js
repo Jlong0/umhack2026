@@ -1,4 +1,3 @@
-import { getFallbackTasks } from "@/services/mockData";
 import { normalizeTasksResponse } from "@/services/taskAdapter";
 
 const DEFAULT_API_BASE_URL = "http://127.0.0.1:8000";
@@ -77,28 +76,13 @@ export async function confirmDocument(documentId, payload) {
 	});
 }
 
-export async function getWorkerTasks(workerId, options = {}) {
-	const { allowMockFallback = true } = options;
-
-	try {
-		const data = await apiRequest(`/workers/${workerId}/tasks`, { method: "GET" });
-		return {
-			workerId: data?.worker_id ?? workerId,
-			tasks: normalizeTasksResponse(data, workerId),
-			source: "api",
-		};
-	} catch (error) {
-		if (!allowMockFallback) {
-			throw error;
-		}
-
-		return {
-			workerId,
-			tasks: getFallbackTasks(workerId),
-			source: "mock",
-			error,
-		};
-	}
+export async function getWorkerTasks(workerId) {
+	const data = await apiRequest(`/workers/${workerId}/tasks`, { method: "GET" });
+	return {
+		workerId: data?.worker_id ?? workerId,
+		tasks: normalizeTasksResponse(data, workerId),
+		source: "api",
+	};
 }
 
 export async function patchWorkerTask(workerId, taskId, payload) {
