@@ -180,7 +180,7 @@ def create_initial_worker_state(worker_data: dict) -> WorkerComplianceState:
         passport_expiry_date=worker_data.get("passport_expiry_date"),
         last_fomema_date=worker_data.get("last_fomema_date"),
         compliance_status=ComplianceStatus.ONBOARDING,
-        current_gate=None,
+        current_gate=worker_data.get("current_gate"),
         days_to_expiry=None,
         documents_uploaded=[],
         documents_validated=False,

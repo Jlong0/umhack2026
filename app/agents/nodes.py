@@ -2,8 +2,11 @@
 Agent node implementations for LangGraph compliance workflow.
 Each node represents a specialist agent with specific responsibilities.
 """
+import asyncio
 from datetime import datetime
-from app.agents.state import WorkerComplianceState, AgentType, ComplianceStatus
+from app.agents.state import WorkerComplianceState, AgentType, ComplianceStatus, RegulatoryGate
+from app.firebase_config import db
+from app.services.realtime_service import realtime_dashboard_manager
 from app.tools.compliance_tools import (
     calculate_mtlm_levy,
     calculate_compounding_fines,
@@ -14,6 +17,70 @@ from app.tools.compliance_tools import (
 )
 
 
+def post_agent_writeback(state: WorkerComplianceState, findings: dict) -> None:
+    """
+    Persist key findings after node execution.
+    - writes alerts/findings into worker task subcollection
+    - updates compliance_state aggregate
+    """
+    worker_id = state.get("worker_id")
+    if not worker_id:
+        return
+
+    now = datetime.now().isoformat()
+
+    # Write concise findings as tasks.
+    alerts = findings.get("alerts", []) or []
+    tasks_ref = db.collection("workers").document(worker_id).collection("tasks")
+    for alert in alerts:
+        tasks_ref.add(
+            {
+                "type": "alert",
+                "task_type": (alert.get("type") or "ALERT").upper(),
+                "task_name": alert.get("message") or "Compliance alert",
+                "status": "pending",
+                "priority": "critical" if alert.get("severity") == "critical" else "high",
+                "payload": alert,
+                "created_at": now,
+            }
+        )
+
+    compliance_ref = db.collection("compliance_state").document(worker_id)
+    compliance_ref.set(
+        {
+            "worker_id": worker_id,
+            "compliance_status": str(state.get("compliance_status")),
+            "deadlock_detected": bool(state.get("deadlock_detected")),
+            "outstanding_fines_rm": state.get("outstanding_fines_rm") or 0,
+            "flags": [alert.get("type") for alert in alerts if alert.get("type")],
+            "health_score": max(
+                0,
+                100
+                - (20 if state.get("deadlock_detected") else 0)
+                - (10 * len(alerts)),
+            ),
+            "updated_at": now,
+        },
+        merge=True,
+    )
+
+    try:
+        loop = asyncio.get_running_loop()
+        loop.create_task(
+            realtime_dashboard_manager.broadcast_json(
+                {
+                    "event": "dashboard_refresh",
+                    "worker_id": worker_id,
+                    "compliance_status": str(state.get("compliance_status")),
+                    "updated_at": now,
+                }
+            )
+        )
+    except RuntimeError:
+        # No running loop, skip push notification.
+        pass
+
+
 def supervisor_node(state: WorkerComplianceState) -> WorkerComplianceState:
     """
     Agent Supervisor - orchestrates the workflow and decides next actions.
@@ -22,7 +89,15 @@ def supervisor_node(state: WorkerComplianceState) -> WorkerComplianceState:
     observations.append(f"[Supervisor] Evaluating worker {state['worker_id']} - Status: {state['compliance_status']}")
 
     # Determine next action based on current state
-    if not state.get("documents_validated"):
+    current_gate = state.get("current_gate")
+
+    if current_gate in {RegulatoryGate.GATE_1_JTKSM, RegulatoryGate.GATE_1_JTKSM.value}:
+        next_action = "company_audit"
+    elif current_gate in {RegulatoryGate.GATE_2_KDN, RegulatoryGate.GATE_2_KDN.value}:
+        next_action = "vdr_filing"
+    elif current_gate in {RegulatoryGate.GATE_3_JIM, RegulatoryGate.GATE_3_JIM.value}:
+        next_action = "plks_monitor"
+    elif not state.get("documents_validated"):
         next_action = "audit_documents"
     elif state.get("compliance_status") == ComplianceStatus.ONBOARDING:
         next_action = "calculate_strategy"
@@ -129,7 +204,7 @@ def auditor_node(state: WorkerComplianceState) -> WorkerComplianceState:
                 "data": fine_calc
             })
 
-            return {
+            updated_state = {
                 **state,
                 "current_agent": AgentType.AUDITOR,
                 "agent_observations": observations,
@@ -144,10 +219,12 @@ def auditor_node(state: WorkerComplianceState) -> WorkerComplianceState:
                 "hitl_reason": "permit_expired_requires_immediate_action",
                 "hitl_data": fine_calc
             }
+            post_agent_writeback(updated_state, {"alerts": alerts})
+            return updated_state
 
     observations.append("[Auditor] Document audit complete")
 
-    return {
+    updated_state = {
         **state,
         "current_agent": AgentType.AUDITOR,
         "agent_observations": observations,
@@ -157,6 +234,8 @@ def auditor_node(state: WorkerComplianceState) -> WorkerComplianceState:
         "missing_documents": missing_docs,
         "next_action": "calculate_strategy"
     }
+    post_agent_writeback(updated_state, {"alerts": alerts})
+    return updated_state
 
 
 def strategist_node(state: WorkerComplianceState) -> WorkerComplianceState:
@@ -246,7 +325,7 @@ def strategist_node(state: WorkerComplianceState) -> WorkerComplianceState:
                 "data": deadlock_check
             })
 
-            return {
+            updated_state = {
                 **state,
                 "current_agent": AgentType.STRATEGIST,
                 "agent_observations": observations,
@@ -260,10 +339,12 @@ def strategist_node(state: WorkerComplianceState) -> WorkerComplianceState:
                 "hitl_reason": "compliance_deadlock_detected",
                 "hitl_data": deadlock_check
             }
+            post_agent_writeback(updated_state, {"alerts": alerts})
+            return updated_state
 
     observations.append("[Strategist] Strategy calculation complete")
 
-    return {
+    updated_state = {
         **state,
         "current_agent": AgentType.STRATEGIST,
         "agent_observations": observations,
@@ -274,6 +355,8 @@ def strategist_node(state: WorkerComplianceState) -> WorkerComplianceState:
         "next_action": None,
         "workflow_complete": True
     }
+    post_agent_writeback(updated_state, {"alerts": alerts})
+    return updated_state
 
 
 def filing_node(state: WorkerComplianceState) -> WorkerComplianceState:
@@ -296,7 +379,7 @@ def filing_node(state: WorkerComplianceState) -> WorkerComplianceState:
 
     observations.append("[Filing] Filing payload prepared - ready for MyEG/FWCMS submission")
 
-    return {
+    updated_state = {
         **state,
         "current_agent": AgentType.FILING,
         "agent_observations": observations,
@@ -304,6 +387,8 @@ def filing_node(state: WorkerComplianceState) -> WorkerComplianceState:
         "next_action": None,
         "workflow_complete": True
     }
+    post_agent_writeback(updated_state, {"alerts": state.get("alerts", [])})
+    return updated_state
 
 
 def hitl_interrupt_node(state: WorkerComplianceState) -> WorkerComplianceState:
@@ -316,9 +401,145 @@ def hitl_interrupt_node(state: WorkerComplianceState) -> WorkerComplianceState:
     # This node simply marks the state as requiring human input
     # The workflow will pause here until the user provides input via API
 
-    return {
+    updated_state = {
         **state,
         "current_agent": AgentType.SUPERVISOR,
         "agent_observations": observations,
         "next_action": "hitl_review"
     }
+    post_agent_writeback(updated_state, {"alerts": state.get("alerts", [])})
+    return updated_state
+
+
+def company_audit_node(state: WorkerComplianceState) -> WorkerComplianceState:
+    observations = state.get("agent_observations", [])
+    alerts = state.get("alerts", [])
+
+    worker_id = state.get("worker_id")
+    worker_doc = db.collection("workers").document(worker_id).get() if worker_id else None
+    worker_data = worker_doc.to_dict() if worker_doc and worker_doc.exists else {}
+
+    company_id = worker_data.get("company_id") or state.get("employer_id")
+    blockers = []
+
+    if not company_id:
+        blockers.append("missing_company_id")
+    else:
+        company_doc = db.collection("companies").document(company_id).get()
+        if not company_doc.exists:
+            blockers.append("company_not_found")
+        else:
+            company = company_doc.to_dict()
+            if company.get("jtksm_60k_status") != "approved":
+                blockers.append("jtksm_60k_not_approved")
+            if not company.get("act_446_expiry_date"):
+                blockers.append("act_446_expiry_missing")
+
+    if blockers:
+        alerts.append(
+            {
+                "type": "jtksm_gate_blocked",
+                "severity": "high",
+                "message": "Company gate blockers found",
+                "blockers": blockers,
+            }
+        )
+        observations.append(f"[CompanyAudit] Blockers: {', '.join(blockers)}")
+    else:
+        observations.append("[CompanyAudit] JTKSM gate approved")
+
+    updated_state = {
+        **state,
+        "current_agent": AgentType.AUDITOR,
+        "agent_observations": observations,
+        "alerts": alerts,
+        "next_action": "calculate_strategy",
+    }
+    post_agent_writeback(updated_state, {"alerts": alerts})
+    return updated_state
+
+
+def vdr_filing_node(state: WorkerComplianceState) -> WorkerComplianceState:
+    observations = state.get("agent_observations", [])
+    alerts = state.get("alerts", [])
+    worker_id = state.get("worker_id")
+
+    blockers = []
+    vdr_docs = db.collection("vdr_applications").where("worker_id", "==", worker_id).stream()
+    vdr_doc = next(vdr_docs, None)
+    if not vdr_doc:
+        blockers.append("vdr_application_missing")
+    else:
+        vdr = vdr_doc.to_dict()
+        if vdr.get("biomedical_status") != "fit":
+            blockers.append("biomedical_not_fit")
+        if not vdr.get("passport_scan_url"):
+            blockers.append("passport_scan_missing")
+        if not vdr.get("passport_photo_url"):
+            blockers.append("passport_photo_missing")
+
+    if blockers:
+        alerts.append(
+            {
+                "type": "vdr_filing_blocked",
+                "severity": "high",
+                "message": "VDR filing prerequisites not met",
+                "blockers": blockers,
+            }
+        )
+        observations.append(f"[VDRFiling] Blockers: {', '.join(blockers)}")
+    else:
+        observations.append("[VDRFiling] VDR filing prerequisites met")
+
+    updated_state = {
+        **state,
+        "current_agent": AgentType.FILING,
+        "agent_observations": observations,
+        "alerts": alerts,
+        "next_action": "prepare_filing",
+    }
+    post_agent_writeback(updated_state, {"alerts": alerts})
+    return updated_state
+
+
+def plks_monitor_node(state: WorkerComplianceState) -> WorkerComplianceState:
+    observations = state.get("agent_observations", [])
+    alerts = state.get("alerts", [])
+    worker_id = state.get("worker_id")
+
+    blockers = []
+    plks_docs = db.collection("plks_applications").where("worker_id", "==", worker_id).stream()
+    plks_doc = next(plks_docs, None)
+    if not plks_doc:
+        blockers.append("plks_application_missing")
+    else:
+        plks = plks_doc.to_dict()
+        if not plks.get("fomema_registration_date"):
+            blockers.append("fomema_not_registered")
+        if plks.get("fomema_result") == "unfit":
+            blockers.append("fomema_unfit_repatriation_required")
+        if plks.get("fomema_result") == "fit" and not plks.get("biometric_date"):
+            blockers.append("biometric_not_completed")
+
+    if blockers:
+        alerts.append(
+            {
+                "type": "plks_monitor_alert",
+                "severity": "high",
+                "message": "PLKS progression requires action",
+                "blockers": blockers,
+            }
+        )
+        observations.append(f"[PLKSMonitor] Actions needed: {', '.join(blockers)}")
+    else:
+        observations.append("[PLKSMonitor] PLKS chain healthy")
+
+    updated_state = {
+        **state,
+        "current_agent": AgentType.STRATEGIST,
+        "agent_observations": observations,
+        "alerts": alerts,
+        "next_action": "calculate_strategy",
+    }
+    post_agent_writeback(updated_state, {"alerts": alerts})
+    return updated_state

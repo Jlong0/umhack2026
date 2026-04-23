@@ -10,9 +10,13 @@ from typing import Dict, Optional, List
 from datetime import datetime
 import httpx
 from zhipuai import ZhipuAI
-from app.services.gemini_key_rotation_service import gemini_rotation_service
 import json
 import base64
+
+try:
+    from app.services.gemini_key_rotation_service import gemini_rotation_service
+except Exception:
+    gemini_rotation_service = None
 
 
 class GLMService:
@@ -26,6 +30,10 @@ class GLMService:
         self.use_gemini = os.getenv("USE_GEMINI_FOR_TESTING", "true").lower() == "true"
         self.gemini_vision_model = os.getenv("GEMINI_VISION_MODEL", "gemini-2.5-flash")
         self.gemini_reasoning_model = os.getenv("GEMINI_REASONING_MODEL", "gemini-2.5-pro")
+
+        if self.use_gemini and gemini_rotation_service is None:
+            self.use_gemini = False
+            print("WARNING: Gemini rotation service missing - falling back to GLM/mock mode")
 
         if self.use_gemini:
             print("INFO: Using Gemini API with key rotation for testing/optimization")
@@ -365,6 +373,9 @@ class GLMService:
         prompt_override: Optional[str] = None
     ) -> Dict:
         """Parse document using Gemini with key rotation."""
+        if gemini_rotation_service is None:
+            return self._mock_glm4v_response(document_type)
+
         prompts = {
             "passport": """
             Analyze this passport document and extract the following information in JSON format:
@@ -499,6 +510,9 @@ class GLMService:
         context: Dict
     ) -> Dict:
         """Generate justification letter using Gemini with key rotation."""
+        if gemini_rotation_service is None:
+            return self._mock_justification_letter(application_type)
+
         prompts = {
             "quota_application": f"""
             You are drafting a justification letter to the Ministry of Home Affairs (KDN)

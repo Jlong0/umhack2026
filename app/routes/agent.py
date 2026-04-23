@@ -40,6 +40,22 @@ async def start_compliance_workflow(request: StartWorkflowRequest):
     Initializes the LangGraph state and begins agent processing.
     """
     try:
+        existing_ref = db.collection("workflows").document(request.worker_id)
+        existing_doc = existing_ref.get()
+        if existing_doc.exists:
+            existing_data = existing_doc.to_dict()
+            existing_state = existing_data.get("current_state", {})
+            if not existing_state.get("workflow_complete", False):
+                return {
+                    "message": "Workflow already active",
+                    "worker_id": request.worker_id,
+                    "thread_id": f"worker_{request.worker_id}",
+                    "status": existing_state.get("compliance_status"),
+                    "hitl_required": existing_state.get("hitl_required", False),
+                    "workflow_complete": existing_state.get("workflow_complete", False),
+                    "alerts": existing_state.get("alerts", [])
+                }
+
         # Create initial state
         initial_state = create_initial_worker_state(request.worker_data)
         initial_state["worker_id"] = request.worker_id
