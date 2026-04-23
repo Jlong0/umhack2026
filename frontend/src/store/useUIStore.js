@@ -13,6 +13,7 @@ export const useUIStore = create((set) => ({
   // Intent Preview Modal
   isIntentPreviewOpen: false,
   intentPreviewData: null,
+  intentPreviewOnConfirm: null,
 
   // Autonomy Dial (PRD §2 — 0=Full Manual, 33=Suggest, 66=Auto+Approval, 100=Full Auto)
   autonomyLevel: 66,
@@ -41,16 +42,18 @@ export const useUIStore = create((set) => ({
       hitlTargetTaskId: null,
     }),
 
-  openIntentPreview: (data) =>
+  openIntentPreview: (data, onConfirm) =>
     set({
       isIntentPreviewOpen: true,
       intentPreviewData: data,
+      intentPreviewOnConfirm: onConfirm || null,
     }),
 
   closeIntentPreview: () =>
     set({
       isIntentPreviewOpen: false,
       intentPreviewData: null,
+      intentPreviewOnConfirm: null,
     }),
 
   setAutonomyLevel: (level) =>

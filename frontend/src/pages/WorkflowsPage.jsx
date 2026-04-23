@@ -1,31 +1,12 @@
-import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { listAllWorkflows } from "@/services/api";
+import { useAllWorkflows } from "@/hooks/queries/useWorkflowQueries";
 import { AlertCircle, CheckCircle, Clock, PlayCircle } from "lucide-react";
 
 export default function WorkflowsPage() {
-	const [workflows, setWorkflows] = useState([]);
-	const [loading, setLoading] = useState(true);
-	const [error, setError] = useState(null);
+	const { data, isLoading: loading, error: queryError } = useAllWorkflows();
+	const workflows = data?.workflows || [];
+	const error = queryError?.message || null;
 	const navigate = useNavigate();
-
-	useEffect(() => {
-		loadWorkflows();
-		const interval = setInterval(loadWorkflows, 5000);
-		return () => clearInterval(interval);
-	}, []);
-
-	async function loadWorkflows() {
-		try {
-			const data = await listAllWorkflows();
-			setWorkflows(data.workflows || []);
-			setError(null);
-		} catch (err) {
-			setError(err.message);
-		} finally {
-			setLoading(false);
-		}
-	}
 
 	function getStatusBadge(status) {
 		const styles = {

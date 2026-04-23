@@ -24,7 +24,7 @@ export default function StatutoryExposureCalculator() {
   const { data: expiringPermits, isLoading: loadingExpiring } = useExpiringPermits(30);
 
   const expiredCount = criticalAlerts?.alerts?.length || 0;
-  const expiringCount = expiringPermits?.alerts?.length || 0;
+  const expiringCount = expiringPermits?.workers?.length || expiringPermits?.alerts?.length || 0;
 
   // Section 55B: RM10,000 minimum per expired permit
   const minExposure = expiredCount * 10000;

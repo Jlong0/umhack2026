@@ -1,5 +1,5 @@
-const ACTIVE_STATUSES = new Set(["in_progress", "processing", "running", "active"]);
-const BLOCKED_STATUSES = new Set(["blocked", "failed", "error"]);
+const ACTIVE_STATUSES = new Set(["IN_PROGRESS", "in_progress", "processing", "running", "active"]);
+const BLOCKED_STATUSES = new Set(["BLOCKED_HITL", "FAILED", "blocked", "failed", "error"]);
 const APPROVAL_STATUSES = new Set(["awaiting_approval", "pending_human", "human_review"]);
 
 function normalizeStatus(rawStatus, requiresApproval) {
@@ -13,22 +13,26 @@ function normalizeStatus(rawStatus, requiresApproval) {
     .replace(/[\s-]+/g, "_");
 
   if (["inprogress", "running", "active", "processing"].includes(normalized)) {
-    return "in_progress";
+    return "IN_PROGRESS";
   }
 
-  if (["done", "success", "resolved"].includes(normalized)) {
-    return "completed";
+  if (["done", "success", "resolved", "completed"].includes(normalized)) {
+    return "COMPLETED";
   }
 
   if (["error", "failed"].includes(normalized)) {
-    return "failed";
+    return "FAILED";
+  }
+
+  if (["blocked_hitl", "blocked"].includes(normalized)) {
+    return "BLOCKED_HITL";
   }
 
   if (APPROVAL_STATUSES.has(normalized)) {
     return "awaiting_approval";
   }
 
-  return normalized || "pending";
+  return normalized?.toUpperCase() || "PENDING";
 }
 
 function toArray(value) {
@@ -118,7 +122,10 @@ export function normalizeTask(rawTask, index, workerId) {
 
   const displayName = toDisplayName(taskType, rawTask.task_name ?? rawTask.taskName);
   const dependsOn = toArray(rawTask.depends_on ?? rawTask.dependsOn);
-  const requiresApproval = Boolean(rawTask.requires_approval ?? rawTask.requiresApproval);
+  const aiMeta = rawTask.ai_metadata ?? rawTask.aiMetadata ?? {};
+  const requiresApproval = Boolean(
+    rawTask.requires_approval ?? rawTask.requiresApproval ?? aiMeta.requires_human_approval
+  );
   const status = normalizeStatus(rawTask.status, requiresApproval);
   const toolPayload = getToolPayload(rawTask);
 
@@ -135,6 +142,8 @@ export function normalizeTask(rawTask, index, workerId) {
     nodeType: rawTask.node_type ?? rawTask.nodeType ?? inferNodeType(taskType, displayName),
     toolPayload,
     fineExposure: parseFineExposure(rawTask, toolPayload, taskType),
+    confidenceScore: aiMeta.confidence_score ?? rawTask.confidence_score ?? null,
+    reasoning: aiMeta.reasoning ?? rawTask.reasoning ?? null,
     raw: rawTask,
   };
 }
@@ -166,7 +175,7 @@ export function isStatusAwaitingApproval(status) {
 
 export function areDependenciesCompleted(task, tasks) {
   const byType = new Map(tasks.map((candidate) => [candidate.taskType, candidate]));
-  return task.dependsOn.every((dependencyType) => byType.get(dependencyType)?.status === "completed");
+  return task.dependsOn.every((dependencyType) => byType.get(dependencyType)?.status === "COMPLETED");
 }
 
 export function findBlockingDependency(task, tasks) {
@@ -175,7 +184,7 @@ export function findBlockingDependency(task, tasks) {
   }
 
   const byType = new Map(tasks.map((candidate) => [candidate.taskType, candidate]));
-  return task.dependsOn.find((dependencyType) => byType.get(dependencyType)?.status !== "completed") ?? null;
+  return task.dependsOn.find((dependencyType) => byType.get(dependencyType)?.status !== "COMPLETED") ?? null;
 }
 
 export function statusLabel(status) {

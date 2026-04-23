@@ -1,6 +1,5 @@
-import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { getWorkflowStatus, getComplianceGraph, resumeWorkflow } from "@/services/api";
+import { useWorkflowStatus, useComplianceGraph, useResumeWorkflow } from "@/hooks/queries/useWorkflowQueries";
 import ReactFlow, { Background, Controls } from "reactflow";
 import "reactflow/dist/style.css";
 import { ArrowLeft, AlertCircle, CheckCircle, Clock } from "lucide-react";
@@ -8,44 +7,17 @@ import { ArrowLeft, AlertCircle, CheckCircle, Clock } from "lucide-react";
 export default function WorkflowDetailPage() {
 	const { workerId } = useParams();
 	const navigate = useNavigate();
-	const [workflow, setWorkflow] = useState(null);
-	const [graph, setGraph] = useState(null);
-	const [loading, setLoading] = useState(true);
-	const [error, setError] = useState(null);
-	const [resuming, setResuming] = useState(false);
 
-	useEffect(() => {
-		loadWorkflowData();
-		const interval = setInterval(loadWorkflowData, 3000);
-		return () => clearInterval(interval);
-	}, [workerId]);
+	const { data: workflow, isLoading, error: statusError } = useWorkflowStatus(workerId);
+	const { data: graph } = useComplianceGraph(workerId);
+	const resumeMutation = useResumeWorkflow(workerId);
 
-	async function loadWorkflowData() {
-		try {
-			const [statusData, graphData] = await Promise.all([
-				getWorkflowStatus(workerId),
-				getComplianceGraph(workerId),
-			]);
-			setWorkflow(statusData);
-			setGraph(graphData);
-			setError(null);
-		} catch (err) {
-			setError(err.message);
-		} finally {
-			setLoading(false);
-		}
-	}
+	const loading = isLoading;
+	const error = statusError?.message || null;
+	const resuming = resumeMutation.isPending;
 
-	async function handleResumeWorkflow(decision) {
-		setResuming(true);
-		try {
-			await resumeWorkflow(workerId, decision);
-			await loadWorkflowData();
-		} catch (err) {
-			setError(err.message);
-		} finally {
-			setResuming(false);
-		}
+	function handleResumeWorkflow(decision) {
+		resumeMutation.mutate({ userDecision: decision });
 	}
 
 	if (loading) {

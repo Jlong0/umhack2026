@@ -50,6 +50,16 @@ export default function HITLPage() {
 				worker_id: selectedInterrupt.worker_id,
 				message: selectedInterrupt.reason,
 				computed_data: selectedInterrupt.computed_data || {},
+			}, () => {
+				resolveMutation.mutate(
+					{ decision: "approve", notes: notes || "Approved via Intent Preview" },
+					{
+						onSuccess: () => {
+							setSelectedWorkerId(null);
+							setNotes("");
+						},
+					}
+				);
 			});
 			return;
 		}

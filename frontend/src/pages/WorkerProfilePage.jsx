@@ -135,6 +135,9 @@ export default function WorkerProfilePage() {
   const setRuminationLines = useWorkerStore((state) => state.setRuminationLines);
 
   const [chatInput, setChatInput] = useState("");
+  const [chatMessages, setChatMessages] = useState([]);
+  const [chatLoading, setChatLoading] = useState(false);
+  const chatEndRef = useRef(null);
 
   // Real-time Firestore stream for live AI updates
   const { latestEvent, isConnected } = useFirestoreStream(workerId);
@@ -256,7 +259,7 @@ export default function WorkerProfilePage() {
       </section>
 
       {/* AI Chat Interface — PRD Screen D */}
-      <section className="permit-surface overflow-hidden">
+      <section className="permit-surface overflow-hidden flex flex-col" style={{ minHeight: "280px" }}>
         <header className="flex items-center gap-2 border-b border-slate-200 px-4 py-3">
           <MessageSquare className="h-4 w-4 text-indigo-700" />
           <h3 className="text-sm font-semibold text-slate-900">Worker AI Assistant</h3>
@@ -267,18 +270,69 @@ export default function WorkerProfilePage() {
             </span>
           )}
         </header>
-        <div className="flex items-center gap-2 p-4">
+
+        {/* Message History */}
+        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 max-h-64">
+          {chatMessages.length === 0 && (
+            <div className="text-center py-6">
+              <MessageSquare className="h-8 w-8 text-slate-300 mx-auto mb-2" />
+              <p className="text-xs text-slate-400">
+                Ask about {workerId || "this worker"}'s compliance status, permit timeline, or legal transfer rights.
+              </p>
+            </div>
+          )}
+          {chatMessages.map((msg, idx) => (
+            <div
+              key={idx}
+              className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+            >
+              <div
+                className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${
+                  msg.role === "user"
+                    ? "bg-indigo-600 text-white"
+                    : "bg-slate-100 text-slate-800 border border-slate-200"
+                }`}
+              >
+                {msg.content}
+                <div className={`text-[10px] mt-1 ${msg.role === "user" ? "text-indigo-200" : "text-slate-400"}`}>
+                  {new Date(msg.timestamp).toLocaleTimeString()}
+                </div>
+              </div>
+            </div>
+          ))}
+          {chatLoading && (
+            <div className="flex justify-start">
+              <div className="bg-slate-100 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-500">
+                <span className="inline-flex gap-1">
+                  <span className="animate-bounce" style={{ animationDelay: "0ms" }}>●</span>
+                  <span className="animate-bounce" style={{ animationDelay: "150ms" }}>●</span>
+                  <span className="animate-bounce" style={{ animationDelay: "300ms" }}>●</span>
+                </span>
+              </div>
+            </div>
+          )}
+          <div ref={chatEndRef} />
+        </div>
+
+        {/* Input */}
+        <div className="flex items-center gap-2 border-t border-slate-200 p-3">
           <input
             type="text"
             value={chatInput}
             onChange={(e) => setChatInput(e.target.value)}
             placeholder={`Ask about ${workerId || 'this worker'}'s legal transfer rights...`}
             className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm placeholder-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
-            onKeyDown={(e) => e.key === "Enter" && chatInput.trim() && setChatInput("")}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && chatInput.trim() && !chatLoading) {
+                handleSendChat();
+              }
+            }}
+            disabled={chatLoading}
           />
           <button
-            onClick={() => chatInput.trim() && setChatInput("")}
-            className="rounded-lg bg-indigo-600 p-2 text-white transition-colors hover:bg-indigo-500"
+            onClick={handleSendChat}
+            disabled={!chatInput.trim() || chatLoading}
+            className="rounded-lg bg-indigo-600 p-2 text-white transition-colors hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Send className="h-4 w-4" />
           </button>
@@ -286,4 +340,48 @@ export default function WorkerProfilePage() {
       </section>
     </div>
   );
+
+  function handleSendChat() {
+    const message = chatInput.trim();
+    if (!message) return;
+
+    const userMsg = { role: "user", content: message, timestamp: Date.now() };
+    setChatMessages((prev) => [...prev, userMsg]);
+    setChatInput("");
+    setChatLoading(true);
+
+    // Scroll to bottom
+    setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+
+    // Simulate AI response (replace with real API call when backend endpoint is ready)
+    // TODO: Replace with `POST /agents/chat` when backend team implements it
+    setTimeout(() => {
+      const aiResponse = generatePlaceholderResponse(message, workerId, tasks);
+      setChatMessages((prev) => [...prev, { role: "assistant", content: aiResponse, timestamp: Date.now() }]);
+      setChatLoading(false);
+      setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+    }, 800 + Math.random() * 700);
+  }
 }
+
+function generatePlaceholderResponse(question, workerId, tasks) {
+  const q = question.toLowerCase();
+  const activeTasks = tasks.filter((t) => t.status === "IN_PROGRESS").length;
+  const blockedTasks = tasks.filter((t) => t.status === "BLOCKED_HITL").length;
+  const totalTasks = tasks.length;
+
+  if (q.includes("status") || q.includes("compliance")) {
+    return `Worker ${workerId || "N/A"} currently has ${totalTasks} tasks tracked: ${activeTasks} in progress, ${blockedTasks} blocked for human review. ${blockedTasks > 0 ? "⚠️ Action required on blocked tasks." : "✅ No blockers detected."}`;
+  }
+  if (q.includes("permit") || q.includes("expir")) {
+    return `To check permit expiry details for ${workerId || "this worker"}, please visit the Alerts page. The system automatically scans for permits expiring within 30/60/90 day windows.`;
+  }
+  if (q.includes("transfer") || q.includes("legal")) {
+    return `Legal transfer eligibility for ${workerId || "this worker"} depends on current permit class, employer sponsorship status, and compliance with Section 55B of the Immigration Act. Please verify all documents are in COMPLETED status before initiating transfer.`;
+  }
+  if (q.includes("fine") || q.includes("penalty") || q.includes("55b")) {
+    return `Under Section 55B of the Immigration Act, penalties range from RM 10,000 to RM 50,000 per violation. ${blockedTasks > 0 ? `This worker has ${blockedTasks} task(s) requiring human review that may carry fine exposure.` : "No active fine exposure detected for this worker."}`;
+  }
+  return `I can help with compliance status, permit expiry, transfer rights, and Section 55B fine calculations for ${workerId || "this worker"}. What would you like to know?`;
+}
+

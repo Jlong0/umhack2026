@@ -5,7 +5,7 @@
  * UI triggers to Zustand stores.
  */
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { doc, onSnapshot, collection, query, orderBy, limit } from "firebase/firestore";
 import { getFirestoreDb } from "@/services/firebase";
 import { useUIStore } from "@/store/useUIStore";
@@ -23,17 +23,25 @@ export function useFirestoreStream(workerId) {
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState(null);
 
-  const pushBreachAlert = useUIStore((s) => s.pushBreachAlert);
-  const openIntentPreview = useUIStore((s) => s.openIntentPreview);
-  const openHITLDrawer = useUIStore((s) => s.openHITLDrawer);
-  const appendEntry = useAuditLogStore((s) => s.appendEntry);
+  // Use refs for Zustand actions to avoid re-subscribe loops
+  const pushBreachAlertRef = useRef(useUIStore.getState().pushBreachAlert);
+  const openHITLDrawerRef = useRef(useUIStore.getState().openHITLDrawer);
+  const appendEntryRef = useRef(useAuditLogStore.getState().appendEntry);
+
+  useEffect(() => {
+    pushBreachAlertRef.current = useUIStore.getState().pushBreachAlert;
+    openHITLDrawerRef.current = useUIStore.getState().openHITLDrawer;
+    appendEntryRef.current = useAuditLogStore.getState().appendEntry;
+  });
 
   const handleEvent = useCallback(
-    (event) => {
+    async (event) => {
       if (!event?.payload) return;
 
-      // Log every AI event to the audit trail
-      appendEntry({
+      const autonomyLevel = useUIStore.getState().autonomyLevel;
+
+      // Log every AI event to the audit trail regardless of autonomy level
+      appendEntryRef.current({
         actor: "AI",
         action: event.event_type || "AI_EVENT",
         workerId: event.payload.worker_id,
@@ -41,20 +49,54 @@ export function useFirestoreStream(workerId) {
         metadata: event.payload.computed_data || null,
       });
 
-      // Dispatch UI triggers
+      // Autonomy enforcement (PRD §2):
+      // 0 = Full Manual → suppress all AI-triggered UI actions
+      // 33 = Suggest Only → show warnings but block auto-actions
+      // 66 = Auto + Approval → route high-risk through IntentPreview
+      // 100 = Full Auto → all triggers pass through
+      if (autonomyLevel === 0) {
+        // Full Manual: log only, no UI triggers
+        return;
+      }
+
       const trigger = event.payload.ui_trigger;
+
       if (trigger === UI_TRIGGERS.OPEN_WARNING_MODAL) {
-        pushBreachAlert({
+        // Warnings always shown (autonomy >= 33)
+        pushBreachAlertRef.current({
           worker_id: event.payload.worker_id,
           message: event.payload.message,
           computed_data: event.payload.computed_data,
           timestamp: event.timestamp,
         });
       } else if (trigger === UI_TRIGGERS.OPEN_HITL_DRAWER) {
-        openHITLDrawer(event.payload.worker_id, null);
+        openHITLDrawerRef.current(event.payload.worker_id, null);
+      } else if (trigger === UI_TRIGGERS.UPDATE_GATE_STATUS) {
+        // Gate transition — invalidate workflow queries to refresh Kanban
+        try {
+          const { QueryClient } = await import("@tanstack/react-query");
+          // Use window-level query client if available
+          window.__permitiq_queryClient?.invalidateQueries({ queryKey: ["workflows"] });
+          window.__permitiq_queryClient?.invalidateQueries({ queryKey: ["workflowStatus", event.payload.worker_id] });
+        } catch { /* query client not available */ }
+      } else if (trigger === UI_TRIGGERS.SHOW_CONFIDENCE_SCORE) {
+        // Store confidence data for field highlighting
+        appendEntryRef.current({
+          actor: "AI",
+          action: "CONFIDENCE_UPDATE",
+          workerId: event.payload.worker_id,
+          details: `Confidence score: ${event.payload.computed_data?.confidence_score}`,
+          metadata: event.payload.computed_data,
+        });
+      } else if (trigger === UI_TRIGGERS.REFRESH_DASHBOARD) {
+        // Force dashboard data refresh
+        try {
+          window.__permitiq_queryClient?.invalidateQueries({ queryKey: ["alertDashboard"] });
+          window.__permitiq_queryClient?.invalidateQueries({ queryKey: ["pendingInterrupts"] });
+        } catch { /* query client not available */ }
       }
     },
-    [pushBreachAlert, openHITLDrawer, appendEntry]
+    [] // stable — no external deps, uses refs
   );
 
   useEffect(() => {

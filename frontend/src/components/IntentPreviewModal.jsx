@@ -18,9 +18,10 @@ import { useAuditLogStore } from "@/store/useAuditLogStore";
 const COUNTDOWN_SECONDS = 3;
 const HIGH_LIABILITY_THRESHOLD = 5000;
 
-export default function IntentPreviewModal({ onConfirm, onCancel }) {
+export default function IntentPreviewModal() {
   const isOpen = useUIStore((s) => s.isIntentPreviewOpen);
   const data = useUIStore((s) => s.intentPreviewData);
+  const storeOnConfirm = useUIStore((s) => s.intentPreviewOnConfirm);
   const closeIntentPreview = useUIStore((s) => s.closeIntentPreview);
   const appendEntry = useAuditLogStore((s) => s.appendEntry);
 
@@ -82,8 +83,9 @@ export default function IntentPreviewModal({ onConfirm, onCancel }) {
     });
 
     onConfirm?.(data);
+    storeOnConfirm?.(data);
     closeIntentPreview();
-  }, [canExecute, data, fineAmount, onConfirm, closeIntentPreview, appendEntry]);
+  }, [canExecute, data, fineAmount, storeOnConfirm, closeIntentPreview, appendEntry]);
 
   const handleCancel = useCallback(() => {
     appendEntry({
@@ -93,9 +95,8 @@ export default function IntentPreviewModal({ onConfirm, onCancel }) {
       details: `Cancelled irreversible action: ${data?.action}`,
     });
 
-    onCancel?.();
     closeIntentPreview();
-  }, [data, onCancel, closeIntentPreview, appendEntry]);
+  }, [data, closeIntentPreview, appendEntry]);
 
   if (!isOpen || !data) return null;
 
