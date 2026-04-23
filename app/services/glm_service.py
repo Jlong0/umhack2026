@@ -5,7 +5,7 @@ def call_glm(worker_data: dict):
     #MOCK, plug in glm later
     permit_expiry = worker_data.get("permit_expiry_date")
     passport_expiry = worker_data.get("passport_expiry_date")
-    sector = worker_data.get("sector", "Manufacturing")
+    sector = "Manufacturing"
     permit_class = worker_data.get("permit_class", "PLKS")
 
     # mock dates for now
