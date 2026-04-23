@@ -1,5 +1,6 @@
 from uuid import uuid4
 from datetime import datetime, timezone
+from app.config import REQUIRED_WORKER_FIELDS
 from app.firebase_config import db, bucket
 from app.services.worker_service import create_worker
 from app.services.task_service import create_tasks_from_obligations
@@ -89,6 +90,22 @@ def confirm_document_and_create_worker(document_id: str, confirmed_data: dict):
     if not document_doc.exists:
         raise ValueError("Document not found")
 
+    missing_fields = get_missing_required_fields(confirmed_data)
+
+    document_ref.update({
+        "confirmed": True,
+        "confirmed_data": confirmed_data,
+        "missing_fields": missing_fields,
+        "confirmed_at": datetime.now(timezone.utc).isoformat()
+    })
+
+    if missing_fields:
+        return {
+            "status": "incomplete",
+            "missing_fields": missing_fields,
+            "message": "More information is required before worker creation."
+        }
+
     # create worker
     worker_id = create_worker(confirmed_data)
 
@@ -105,6 +122,15 @@ def confirm_document_and_create_worker(document_id: str, confirmed_data: dict):
     })
 
     return {
+        "status": "completed",
         "worker_id": worker_id,
         "obligations_created": len(tasks)
     }
+
+
+def get_missing_required_fields(data: dict) -> list[str]:
+    return [
+        field
+        for field in REQUIRED_WORKER_FIELDS
+        if data.get(field) in (None, "")
+    ]

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, BackgroundTasks
 from app.services.document_service import save_uploaded_document, confirm_document_and_create_worker
-from app.schemas.document import ConfirmDocumentData
+from app.schemas.document import ConfirmDocumentData, ConfirmDocumentResponse
 from app.services.parse_job_service import create_parse_job, process_parse_job, get_parse_job
 
 router = APIRouter()
@@ -38,18 +38,11 @@ def get_document_job(job_id: str):
     return job
 
 
-@router.post("/documents/{document_id}/confirm")
+@router.post("/documents/{document_id}/confirm", response_model=ConfirmDocumentResponse)
 def confirm_document(document_id: str, payload: ConfirmDocumentData):
-    payload_data = payload.model_dump(exclude_none=True)
-    if "name" not in payload_data and payload_data.get("full_name"):
-        payload_data["name"] = payload_data["full_name"]
-    payload_data.setdefault("nationality", "Unknown")
+    try:
+        result = confirm_document_and_create_worker(document_id, payload.model_dump())
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
-    result = confirm_document_and_create_worker(document_id, payload_data)
-
-    return {
-        "message": "document confirmed and worker created",
-        "document_id": document_id,
-        "worker_id": result["worker_id"],
-        "obligations_created": result["obligations_created"]
-    }
