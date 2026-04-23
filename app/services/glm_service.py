@@ -24,6 +24,8 @@ class GLMService:
     def __init__(self):
         self.api_key = os.getenv("ZHIPU_API_KEY", "")
         self.use_gemini = os.getenv("USE_GEMINI_FOR_TESTING", "true").lower() == "true"
+        self.gemini_vision_model = os.getenv("GEMINI_VISION_MODEL", "gemini-2.5-flash")
+        self.gemini_reasoning_model = os.getenv("GEMINI_REASONING_MODEL", "gemini-2.5-pro")
 
         if self.use_gemini:
             print("INFO: Using Gemini API with key rotation for testing/optimization")
@@ -445,7 +447,7 @@ class GLMService:
 
             # Use Gemini with rotation
             result = gemini_rotation_service.generate_content_with_image(
-                model_name="gemini-1.5-flash",
+                model_name=self.gemini_vision_model,
                 prompt=prompt,
                 image_data=image_data,
                 mime_type="image/jpeg"
@@ -477,7 +479,7 @@ class GLMService:
                 "document_type": document_type,
                 "extracted_data": extracted_data,
                 "confidence": 0.85,
-                "model": "gemini-1.5-flash",
+                "model": result.get("model", self.gemini_vision_model),
                 "key_index": result.get("key_index", 0),
                 "timestamp": datetime.now().isoformat()
             }
@@ -564,7 +566,7 @@ class GLMService:
 
         try:
             result = gemini_rotation_service.generate_content(
-                model_name="gemini-1.5-pro",
+                model_name=self.gemini_reasoning_model,
                 prompt=full_prompt,
                 generation_config={
                     "temperature": 0.3,
@@ -584,7 +586,7 @@ class GLMService:
                 "success": True,
                 "application_type": application_type,
                 "letter": result["text"],
-                "model": "gemini-1.5-pro",
+                "model": result.get("model", self.gemini_reasoning_model),
                 "key_index": result.get("key_index", 0),
                 "timestamp": datetime.now().isoformat()
             }
