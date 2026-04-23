@@ -207,7 +207,20 @@ async def get_compliance_graph(worker_id: str):
                     "label": "Supervisor",
                     "active": current_state.get("current_agent") == "supervisor"
                 },
-                "position": {"x": 250, "y": 0}
+                "position": {"x": 350, "y": 0}
+            },
+            {
+                "id": "company_audit",
+                "type": "agent",
+                "data": {
+                    "label": "Company Audit (JTKSM)",
+                    "active": current_state.get("current_agent") == "auditor"
+                            and current_state.get("next_action") == "company_audit",
+                    "status": "completed" if current_state.get("alerts")
+                             and any(a.get("type") == "jtksm_gate_blocked" for a in current_state.get("alerts", []))
+                             else "pending"
+                },
+                "position": {"x": 0, "y": 120}
             },
             {
                 "id": "auditor",
@@ -217,7 +230,17 @@ async def get_compliance_graph(worker_id: str):
                     "active": current_state.get("current_agent") == "auditor",
                     "status": "completed" if current_state.get("documents_validated") else "pending"
                 },
-                "position": {"x": 50, "y": 150}
+                "position": {"x": 175, "y": 120}
+            },
+            {
+                "id": "vdr_filing",
+                "type": "agent",
+                "data": {
+                    "label": "VDR Filing",
+                    "active": current_state.get("current_agent") == "filing"
+                            and current_state.get("next_action") == "vdr_filing",
+                },
+                "position": {"x": 350, "y": 120}
             },
             {
                 "id": "strategist",
@@ -226,7 +249,17 @@ async def get_compliance_graph(worker_id: str):
                     "label": "Strategist",
                     "active": current_state.get("current_agent") == "strategist"
                 },
-                "position": {"x": 250, "y": 150}
+                "position": {"x": 175, "y": 260}
+            },
+            {
+                "id": "plks_monitor",
+                "type": "agent",
+                "data": {
+                    "label": "PLKS Monitor",
+                    "active": current_state.get("current_agent") == "strategist"
+                            and current_state.get("next_action") == "plks_monitor",
+                },
+                "position": {"x": 525, "y": 120}
             },
             {
                 "id": "filing",
@@ -235,17 +268,34 @@ async def get_compliance_graph(worker_id: str):
                     "label": "Filing",
                     "active": current_state.get("current_agent") == "filing"
                 },
-                "position": {"x": 450, "y": 150}
-            }
+                "position": {"x": 350, "y": 260}
+            },
+            {
+                "id": "hitl",
+                "type": "agent",
+                "data": {
+                    "label": "HITL Review",
+                    "active": current_state.get("hitl_required", False)
+                },
+                "position": {"x": 525, "y": 260}
+            },
         ]
 
         edges = [
-            {"id": "e1", "source": "supervisor", "target": "auditor"},
-            {"id": "e2", "source": "supervisor", "target": "strategist"},
-            {"id": "e3", "source": "supervisor", "target": "filing"},
-            {"id": "e4", "source": "auditor", "target": "supervisor"},
-            {"id": "e5", "source": "strategist", "target": "supervisor"},
-            {"id": "e6", "source": "filing", "target": "supervisor"}
+            {"id": "e-sup-ca",  "source": "supervisor",    "target": "company_audit"},
+            {"id": "e-sup-aud", "source": "supervisor",    "target": "auditor"},
+            {"id": "e-sup-vdr", "source": "supervisor",    "target": "vdr_filing"},
+            {"id": "e-sup-plk", "source": "supervisor",    "target": "plks_monitor"},
+            {"id": "e-sup-str", "source": "supervisor",    "target": "strategist"},
+            {"id": "e-sup-fil", "source": "supervisor",    "target": "filing"},
+            {"id": "e-sup-hit", "source": "supervisor",    "target": "hitl"},
+            {"id": "e-ca-sup",  "source": "company_audit", "target": "supervisor"},
+            {"id": "e-aud-sup", "source": "auditor",       "target": "supervisor"},
+            {"id": "e-vdr-sup", "source": "vdr_filing",    "target": "supervisor"},
+            {"id": "e-plk-sup", "source": "plks_monitor",  "target": "supervisor"},
+            {"id": "e-str-sup", "source": "strategist",    "target": "supervisor"},
+            {"id": "e-fil-sup", "source": "filing",        "target": "supervisor"},
+            {"id": "e-hit-sup", "source": "hitl",          "target": "supervisor"},
         ]
 
         return {

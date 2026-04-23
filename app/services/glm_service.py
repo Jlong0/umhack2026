@@ -272,6 +272,39 @@ class GLMService:
 
             Draft a formal letter requesting a Special Pass to bridge the compliance gap.
             Explain the administrative deadlock and proposed resolution timeline.
+            """,
+            "com_request_letter": f"""
+            You are drafting a formal cover letter from an employer to the Malaysian Immigration
+            Department (Jabatan Imigresen Malaysia / JIM) requesting the issuance of a Check Out
+            Memo (COM) for a foreign worker who has been declared medically unfit.
+
+            Company / Employer:
+            - Company Name: {context.get('employer_name', 'N/A')}
+            - Company Registration: {context.get('company_registration', 'N/A')}
+
+            Worker Details:
+            - Full Name: {worker_data.get('full_name', 'N/A')}
+            - Passport Number: {worker_data.get('passport_number', 'N/A')}
+            - Nationality: {worker_data.get('nationality', 'N/A')}
+            - Sector: {worker_data.get('sector', 'N/A')}
+
+            Reason for Repatriation:
+            - The above-named worker has undergone the mandatory FOMEMA medical examination
+              and has been declared UNFIT (Tidak Layak).
+            - FOMEMA Result Date: {context.get('fomema_result_date', 'N/A')}
+            - Medical Condition Category: {context.get('condition_category', 'Category 1 — Communicable Disease')}
+
+            Draft a formal letter that:
+            1. Is addressed to "Pengarah, Jabatan Imigresen Malaysia" (Director, Immigration Dept).
+            2. States the company is hereby notifying JIM of the FOMEMA UNFIT result.
+            3. Formally requests the issuance of a Check Out Memo (COM) to facilitate
+               the lawful repatriation of the worker.
+            4. Confirms the employer will bear repatriation costs (flight ticket, etc.).
+            5. Requests cancellation of any pending visa/permit application for this worker.
+            6. Includes a polite closing with space for company stamp and authorized signature.
+
+            Use formal Malaysian government correspondence style in English.
+            Include "Ref:" and "Date:" headers at the top.
             """
         }
 
@@ -570,6 +603,39 @@ class GLMService:
 
             Draft a formal letter requesting a Special Pass to bridge the compliance gap.
             Explain the administrative deadlock and proposed resolution timeline.
+            """,
+            "com_request_letter": f"""
+            You are drafting a formal cover letter from an employer to the Malaysian Immigration
+            Department (Jabatan Imigresen Malaysia / JIM) requesting the issuance of a Check Out
+            Memo (COM) for a foreign worker who has been declared medically unfit.
+
+            Company / Employer:
+            - Company Name: {context.get('employer_name', 'N/A')}
+            - Company Registration: {context.get('company_registration', 'N/A')}
+
+            Worker Details:
+            - Full Name: {worker_data.get('full_name', 'N/A')}
+            - Passport Number: {worker_data.get('passport_number', 'N/A')}
+            - Nationality: {worker_data.get('nationality', 'N/A')}
+            - Sector: {worker_data.get('sector', 'N/A')}
+
+            Reason for Repatriation:
+            - The above-named worker has undergone the mandatory FOMEMA medical examination
+              and has been declared UNFIT (Tidak Layak).
+            - FOMEMA Result Date: {context.get('fomema_result_date', 'N/A')}
+            - Medical Condition Category: {context.get('condition_category', 'Category 1 — Communicable Disease')}
+
+            Draft a formal letter that:
+            1. Is addressed to "Pengarah, Jabatan Imigresen Malaysia" (Director, Immigration Dept).
+            2. States the company is hereby notifying JIM of the FOMEMA UNFIT result.
+            3. Formally requests the issuance of a Check Out Memo (COM) to facilitate
+               the lawful repatriation of the worker.
+            4. Confirms the employer will bear repatriation costs (flight ticket, etc.).
+            5. Requests cancellation of any pending visa/permit application for this worker.
+            6. Includes a polite closing with space for company stamp and authorized signature.
+
+            Use formal Malaysian government correspondence style in English.
+            Include "Ref:" and "Date:" headers at the top.
             """
         }
 

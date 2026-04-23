@@ -115,23 +115,115 @@ class PLKSService:
         }
 
     async def trigger_com(self, worker_id: str) -> Dict[str, Any]:
-        # Deterministic placeholder document path.
-        com_document_url = f"com/{worker_id}/{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}.json"
+        """
+        Trigger the COM Request Letter process for a worker declared FOMEMA UNFIT.
 
-        # Mark all worker plks applications with com_triggered.
-        docs = db.collection("plks_applications").where("worker_id", "==", worker_id).stream()
-        for doc in docs:
+        This does NOT generate the Check Out Memo itself (that is issued by JIM).
+        Instead it generates a formal cover letter from the employer to JIM
+        requesting that a COM be issued, then uploads it to Firebase Storage.
+        """
+        from app.services.glm_service import glm_service
+        from app.firebase_config import bucket, USE_MOCK
+
+        # ── 1. Fetch worker data ──────────────────────────────────────
+        worker_ref = db.collection("workers").document(worker_id)
+        worker_doc = worker_ref.get()
+        if not worker_doc.exists:
+            raise ValueError("Worker not found")
+        worker_data = worker_doc.to_dict()
+
+        # ── 2. Fetch employer / company info ──────────────────────────
+        company_id = worker_data.get("company_id")
+        employer_name = "N/A"
+        company_registration = "N/A"
+        if company_id:
+            company_doc = db.collection("companies").document(company_id).get()
+            if company_doc.exists:
+                company = company_doc.to_dict()
+                employer_name = company.get("name", "N/A")
+                company_registration = company.get("registration_number", "N/A")
+
+        # ── 3. Fetch FOMEMA result metadata ───────────────────────────
+        plks_docs_iter = (
+            db.collection("plks_applications")
+            .where("worker_id", "==", worker_id)
+            .stream()
+        )
+        plks_snapshot = next(plks_docs_iter, None)
+        fomema_result_date = "N/A"
+        condition_category = "Category 1 — Communicable Disease"
+        if plks_snapshot:
+            plks_data = plks_snapshot.to_dict()
+            fomema_result_date = plks_data.get("fomema_result_date", "N/A")
+            condition_category = plks_data.get(
+                "condition_category",
+                "Category 1 — Communicable Disease",
+            )
+
+        # ── 4. Generate COM Request Letter via AI ─────────────────────
+        context = {
+            "employer_name": employer_name,
+            "company_registration": company_registration,
+            "fomema_result_date": fomema_result_date,
+            "condition_category": condition_category,
+        }
+        result = glm_service.generate_justification_letter_with_glm5(
+            worker_data=worker_data,
+            application_type="com_request_letter",
+            context=context,
+        )
+
+        letter_text = result.get("letter", "")
+        if not letter_text:
+            letter_text = (
+                "[AUTO-GENERATED FALLBACK]\n\n"
+                f"COM Request Letter for worker {worker_data.get('full_name', worker_id)}.\n"
+                f"Passport: {worker_data.get('passport_number', 'N/A')}\n"
+                f"Reason: FOMEMA Medical Examination — UNFIT\n"
+                f"Date: {_now_iso()}\n"
+            )
+
+        # ── 5. Upload to Firebase Storage ─────────────────────────────
+        file_name = (
+            f"com_requests/{worker_id}/"
+            f"COM_Request_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.txt"
+        )
+
+        com_document_url: str
+        if not USE_MOCK and bucket:
+            try:
+                blob = bucket.blob(file_name)
+                blob.upload_from_string(letter_text, content_type="text/plain")
+                blob.make_public()
+                com_document_url = blob.public_url
+            except Exception as exc:
+                print(f"WARNING: Failed to upload COM request letter: {exc}")
+                com_document_url = f"storage://{file_name}"
+        else:
+            com_document_url = f"mock://{file_name}"
+
+        # ── 6. Update database statuses ───────────────────────────────
+        # Mark all PLKS applications for this worker
+        all_plks = (
+            db.collection("plks_applications")
+            .where("worker_id", "==", worker_id)
+            .stream()
+        )
+        for doc in all_plks:
             doc.reference.update(
                 {
                     "com_triggered": True,
-                    "status": "fomema_unfit",
+                    "com_request_letter_url": com_document_url,
+                    "status": "pending_com_application",
                     "updated_at": _now_iso(),
                 }
             )
 
-        db.collection("workers").document(worker_id).set(
+        # Update worker status
+        worker_ref.set(
             {
-                "status": "repatriation",
+                "status": "pending_com_application",
+                "com_request_letter_url": com_document_url,
                 "updated_at": _now_iso(),
             },
             merge=True,
@@ -139,8 +231,10 @@ class PLKSService:
 
         return {
             "worker_id": worker_id,
-            "com_document_url": com_document_url,
+            "com_request_letter_url": com_document_url,
             "triggered": True,
+            "letter_generated": result.get("success", False),
+            "model_used": result.get("model", "fallback"),
         }
 
     async def confirm_biometrics(self, plks_id: str) -> Dict[str, Any]:
