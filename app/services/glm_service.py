@@ -9,8 +9,14 @@ import os
 from typing import Dict, Optional, List
 from datetime import datetime
 import httpx
-from zhipuai import ZhipuAI
-from app.services.gemini_key_rotation_service import gemini_rotation_service
+try:
+    from zhipuai import ZhipuAI
+except Exception:
+    ZhipuAI = None
+try:
+    from app.services.gemini_key_rotation_service import gemini_rotation_service
+except Exception:
+    gemini_rotation_service = None
 import json
 import base64
 
@@ -27,12 +33,20 @@ class GLMService:
         self.gemini_vision_model = os.getenv("GEMINI_VISION_MODEL", "gemini-2.5-flash")
         self.gemini_reasoning_model = os.getenv("GEMINI_REASONING_MODEL", "gemini-2.5-pro")
 
+        if self.use_gemini and gemini_rotation_service is None:
+            self.use_gemini = False
+            print("WARNING: Gemini rotation service unavailable - falling back to GLM/mock mode")
+
         if self.use_gemini:
             print("INFO: Using Gemini API with key rotation for testing/optimization")
             self.client = None  # Not using ZhipuAI client
         elif self.api_key:
-            self.client = ZhipuAI(api_key=self.api_key)
-            print("INFO: Using GLM API for production")
+            if ZhipuAI is None:
+                self.client = None
+                print("WARNING: zhipuai package unavailable - falling back to mock responses")
+            else:
+                self.client = ZhipuAI(api_key=self.api_key)
+                print("INFO: Using GLM API for production")
         else:
             self.client = None
             print("WARNING: No API keys configured - GLM service will use mock responses")

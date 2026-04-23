@@ -9,6 +9,8 @@ import WorkflowDetailPage from "@/pages/WorkflowDetailPage";
 import AlertsPage from "@/pages/AlertsPage";
 import HITLPage from "@/pages/HITLPage";
 import SimulatorPage from "@/pages/SimulatorPage";
+import PipelinePage from "@/pages/PipelinePage";
+import DualSyncPage from "@/pages/DualSyncPage";
 
 function App() {
   return (
@@ -23,6 +25,8 @@ function App() {
         <Route path="/alerts" element={<AlertsPage />} />
         <Route path="/hitl" element={<HITLPage />} />
         <Route path="/simulator" element={<SimulatorPage />} />
+        <Route path="/pipeline" element={<PipelinePage />} />
+        <Route path="/dual-sync" element={<DualSyncPage />} />
       </Route>
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
@@ -31,3 +35,4 @@ function App() {
 }
 
 export default App;
+

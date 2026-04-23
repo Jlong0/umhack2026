@@ -1,11 +1,13 @@
-import { Activity, CheckCircle2, Lock, ShieldCheck, UserCircle2, Workflow } from "lucide-react";
-import { useEffect, useMemo, useRef } from "react";
+import { Activity, CheckCircle2, Lock, ShieldCheck, UserCircle2, Workflow, MessageSquare, Send } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import ReactFlow, { Background, Controls, MarkerType, MiniMap } from "reactflow";
 import "reactflow/dist/style.css";
 import { useWorkerTasksPolling } from "@/hooks/useWorkerTasksPolling";
+import { useFirestoreStream } from "@/hooks/useFirestoreStream";
 import { cn } from "@/lib/utils";
 import { isStatusActive, isStatusBlocked, statusLabel } from "@/services/taskAdapter";
 import { useWorkerStore } from "@/store/useWorkerStore";
+import ConfidenceBadge from "@/components/ConfidenceBadge";
 
 function nodeIconForType(nodeType) {
   if (nodeType === "DocumentAudit") {
@@ -60,9 +62,14 @@ function WorkflowNode({ data }) {
 
       <p className="mt-2 text-sm font-semibold text-slate-900">{task.taskName}</p>
       <p className="mt-1 text-xs text-slate-500">{task.nodeType}</p>
-      <span className="mt-3 inline-flex rounded-full bg-slate-100 px-2 py-1 text-[11px] font-medium capitalize text-slate-700">
-        {statusLabel(task.status)}
-      </span>
+      <div className="mt-2 flex items-center justify-between">
+        <span className="inline-flex rounded-full bg-slate-100 px-2 py-1 text-[11px] font-medium capitalize text-slate-700">
+          {statusLabel(task.status)}
+        </span>
+        {task.confidenceScore != null && (
+          <ConfidenceBadge score={task.confidenceScore} reasoning={task.reasoning} />
+        )}
+      </div>
     </article>
   );
 }
@@ -126,6 +133,11 @@ export default function WorkerProfilePage() {
   const storeTasks = useWorkerStore((state) => state.tasks);
   const ruminationLines = useWorkerStore((state) => state.ruminationLines);
   const setRuminationLines = useWorkerStore((state) => state.setRuminationLines);
+
+  const [chatInput, setChatInput] = useState("");
+
+  // Real-time Firestore stream for live AI updates
+  const { latestEvent, isConnected } = useFirestoreStream(workerId);
 
   useWorkerTasksPolling(workerId, {
     enabled: Boolean(workerId),
@@ -241,6 +253,36 @@ export default function WorkerProfilePage() {
             ))}
           </div>
         </article>
+      </section>
+
+      {/* AI Chat Interface — PRD Screen D */}
+      <section className="permit-surface overflow-hidden">
+        <header className="flex items-center gap-2 border-b border-slate-200 px-4 py-3">
+          <MessageSquare className="h-4 w-4 text-indigo-700" />
+          <h3 className="text-sm font-semibold text-slate-900">Worker AI Assistant</h3>
+          {isConnected && (
+            <span className="ml-auto flex items-center gap-1 text-[10px] text-emerald-600">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              Live
+            </span>
+          )}
+        </header>
+        <div className="flex items-center gap-2 p-4">
+          <input
+            type="text"
+            value={chatInput}
+            onChange={(e) => setChatInput(e.target.value)}
+            placeholder={`Ask about ${workerId || 'this worker'}'s legal transfer rights...`}
+            className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm placeholder-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+            onKeyDown={(e) => e.key === "Enter" && chatInput.trim() && setChatInput("")}
+          />
+          <button
+            onClick={() => chatInput.trim() && setChatInput("")}
+            className="rounded-lg bg-indigo-600 p-2 text-white transition-colors hover:bg-indigo-500"
+          >
+            <Send className="h-4 w-4" />
+          </button>
+        </div>
       </section>
     </div>
   );

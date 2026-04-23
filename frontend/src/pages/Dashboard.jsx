@@ -2,6 +2,8 @@ import { AlertTriangle, ShieldAlert, Timer, Workflow, TrendingUp, Users, AlertCi
 import { createElement, useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import TaskList from "@/components/TaskList";
+import StatutoryExposureCalculator from "@/components/StatutoryExposureCalculator";
+import MTLMTracker from "@/components/MTLMTracker";
 import { useWorkerTasksPolling } from "@/hooks/useWorkerTasksPolling";
 import { isStatusActive, isStatusAwaitingApproval, isStatusBlocked } from "@/services/taskAdapter";
 import { useWorkerStore } from "@/store/useWorkerStore";
@@ -166,6 +168,12 @@ export default function Dashboard() {
         </section>
       )}
 
+      {/* PRD Screen A: Risk Widgets */}
+      <section className="grid gap-4 md:grid-cols-2">
+        <StatutoryExposureCalculator />
+        <MTLMTracker />
+      </section>
+
       <section className="grid gap-4 md:grid-cols-3">
         <HealthCard icon={Workflow} label="Active LangGraph Runs" value={metrics.activeRuns} tone="indigo" />
         <HealthCard icon={ShieldAlert} label="Blocked Tasks" value={metrics.blockedTasks} tone="rose" />
@@ -175,19 +183,6 @@ export default function Dashboard() {
           value={metrics.pendingConfirmations}
           tone="amber"
         />
-      </section>
-
-      <section className="rounded-2xl border border-rose-200 bg-rose-50 px-5 py-5 shadow-soft sm:px-6">
-        <div className="flex items-center gap-2 text-rose-700">
-          <AlertTriangle className="h-5 w-5" />
-          <h3 className="text-base font-semibold">Strict Liability Exposure</h3>
-        </div>
-
-        <p className="mt-3 text-3xl font-bold text-rose-800">
-          {metrics.strictLiabilityExposure > 0
-            ? `Critical Risk: ${asCurrency(metrics.strictLiabilityExposure)} Fine Exposure`
-            : "Critical Risk: Pending CalculateFines execution"}
-        </p>
       </section>
 
       <section className="space-y-3">
