@@ -1,4 +1,5 @@
 from __future__ import annotations
+# PLKS (Pas Lawatan Kerja Sementara) route handlers
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
@@ -25,7 +26,7 @@ class RegisterFOMEMARequest(BaseModel):
 
 
 class FOMEMAResultRequest(BaseModel):
-    result: str = Field(min_length=4)
+    result: str
 
 
 class TriggerCOMRequest(BaseModel):
