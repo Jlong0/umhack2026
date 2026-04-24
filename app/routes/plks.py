@@ -121,3 +121,24 @@ async def get_plks_status(plks_id: str):
         raise HTTPException(status_code=404, detail=str(exc))
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to get PLKS status: {exc}")
+
+
+@router.get("/workers/{worker_id}/com-checklist")
+async def get_com_checklist(worker_id: str):
+    """
+    Generate a structured COM (Check Out Memo) repatriation checklist for a worker
+    declared FOMEMA UNFIT.
+
+    Returns a full step-by-step repatriation guide including:
+    - Case summary (worker, employer, FOMEMA result details)
+    - 7 action steps with deadlines
+    - Complete required document list
+    - Important compliance warnings
+    - Authority contact information
+    """
+    try:
+        return await plks_service.generate_com_checklist(worker_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to generate COM checklist: {exc}")

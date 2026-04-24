@@ -333,7 +333,13 @@ async def list_all_workflows():
                 "hitl_required": current_state.get("hitl_required", False),
                 "workflow_complete": current_state.get("workflow_complete", False),
                 "started_at": data.get("started_at"),
-                "last_updated": data.get("last_updated")
+                "last_updated": data.get("last_updated"),
+                "first_name": current_state.get("full_name", "").split()[0] if current_state.get("full_name") else "",
+                "last_name": " ".join(current_state.get("full_name", "").split()[1:]) if current_state.get("full_name") else "",
+                "nationality": current_state.get("nationality"),
+                "sector": current_state.get("sector"),
+                "current_gate": current_state.get("current_gate"),
+                "days_in_gate": current_state.get("days_to_expiry"),
             })
 
         return {
