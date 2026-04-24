@@ -26,9 +26,6 @@ class HITLDecision(BaseModel):
 
 @router.get("/interrupts")
 async def list_pending_interrupts():
-    """
-    List all pending HITL interrupts requiring human decision.
-    """
     try:
         workflows_ref = db.collection("workflows")
         workflows = workflows_ref.where("current_state.hitl_required", "==", True).stream()
@@ -37,7 +34,6 @@ async def list_pending_interrupts():
         for workflow in workflows:
             data = workflow.to_dict()
             current_state = data.get("current_state", {})
-
             interrupts.append({
                 "worker_id": workflow.id,
                 "interrupt_type": current_state.get("hitl_reason"),
@@ -47,23 +43,48 @@ async def list_pending_interrupts():
                 "created_at": data.get("last_updated")
             })
 
-        return {
-            "total": len(interrupts),
-            "interrupts": interrupts
-        }
+        return {"total": len(interrupts), "interrupts": interrupts}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to list interrupts: {str(e)}")
 
 
+@router.get("/interrupts/stats")
+async def get_interrupt_statistics():
+    try:
+        all_workflows = db.collection("workflows").stream()
+
+        total_interrupts = 0
+        pending_interrupts = 0
+        resolved_interrupts = 0
+        interrupt_types = {}
+
+        for workflow in all_workflows:
+            current_state = workflow.to_dict().get("current_state", {})
+            if current_state.get("hitl_reason"):
+                total_interrupts += 1
+                interrupt_type = current_state.get("hitl_reason")
+                if current_state.get("hitl_required"):
+                    pending_interrupts += 1
+                else:
+                    resolved_interrupts += 1
+                interrupt_types[interrupt_type] = interrupt_types.get(interrupt_type, 0) + 1
+
+        return {
+            "total_interrupts": total_interrupts,
+            "pending": pending_interrupts,
+            "resolved": resolved_interrupts,
+            "by_type": interrupt_types
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get statistics: {str(e)}")
+
+
 @router.get("/interrupts/{worker_id}")
 async def get_interrupt_details(worker_id: str):
-    """
-    Get detailed information about a specific HITL interrupt.
-    """
     try:
-        workflow_ref = db.collection("workflows").document(worker_id)
-        workflow_doc = workflow_ref.get()
+        workflow_doc = db.collection("workflows").document(worker_id).get()
 
         if not workflow_doc.exists:
             raise HTTPException(status_code=404, detail="Workflow not found")
@@ -98,10 +119,6 @@ async def get_interrupt_details(worker_id: str):
 
 @router.post("/interrupts/{worker_id}/resolve")
 async def resolve_interrupt(worker_id: str, decision: HITLDecision):
-    """
-    Resolve a HITL interrupt with human decision.
-    This will resume the workflow with the provided decision.
-    """
     try:
         workflow_ref = db.collection("workflows").document(worker_id)
         workflow_doc = workflow_ref.get()
@@ -115,7 +132,6 @@ async def resolve_interrupt(worker_id: str, decision: HITLDecision):
         if not current_state.get("hitl_required"):
             raise HTTPException(status_code=400, detail="No pending interrupt for this worker")
 
-        # Record the decision
         current_state["hitl_required"] = False
         current_state["hitl_decision"] = decision.decision
         current_state["hitl_decision_notes"] = decision.notes
@@ -128,7 +144,6 @@ async def resolve_interrupt(worker_id: str, decision: HITLDecision):
             f"[HITL] Decision: {decision.decision} - {decision.notes or 'No notes'}"
         )
 
-        # Update workflow
         workflow_ref.update({
             "current_state": current_state,
             "last_updated": datetime.now().isoformat()
@@ -145,43 +160,3 @@ async def resolve_interrupt(worker_id: str, decision: HITLDecision):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to resolve interrupt: {str(e)}")
-
-
-@router.get("/interrupts/stats")
-async def get_interrupt_statistics():
-    """
-    Get statistics on HITL interrupts.
-    """
-    try:
-        workflows_ref = db.collection("workflows")
-        all_workflows = workflows_ref.stream()
-
-        total_interrupts = 0
-        pending_interrupts = 0
-        resolved_interrupts = 0
-        interrupt_types = {}
-
-        for workflow in all_workflows:
-            data = workflow.to_dict()
-            current_state = data.get("current_state", {})
-
-            if current_state.get("hitl_reason"):
-                total_interrupts += 1
-                interrupt_type = current_state.get("hitl_reason")
-
-                if current_state.get("hitl_required"):
-                    pending_interrupts += 1
-                else:
-                    resolved_interrupts += 1
-
-                interrupt_types[interrupt_type] = interrupt_types.get(interrupt_type, 0) + 1
-
-        return {
-            "total_interrupts": total_interrupts,
-            "pending": pending_interrupts,
-            "resolved": resolved_interrupts,
-            "by_type": interrupt_types
-        }
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get statistics: {str(e)}")

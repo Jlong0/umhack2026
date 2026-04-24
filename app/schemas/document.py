@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field, field_validator, ConfigDict
 
 
 class ConfirmDocumentData(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")
 
     full_name: str = Field(..., min_length=2, max_length=100)
     passport_number: str = Field(..., min_length=3, max_length=30)
