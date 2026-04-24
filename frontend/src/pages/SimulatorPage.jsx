@@ -1,11 +1,13 @@
-import { useState, useEffect } from "react";
-import { simulateMTLMLevy, simulateEPSalary, getMTLMTierStructure, getEPSalaryThresholds } from "@/services/api";
+import { useState } from "react";
+import { useMTLMTiers, useEPSalaryThresholds, useSimulateMTLM, useSimulateEPSalary } from "@/hooks/queries/useSimulatorQueries";
 import { Calculator, TrendingUp, DollarSign, AlertCircle, CheckCircle } from "lucide-react";
 
 export default function SimulatorPage() {
 	const [activeTab, setActiveTab] = useState("mtlm");
-	const [mtlmTiers, setMtlmTiers] = useState(null);
-	const [epThresholds, setEpThresholds] = useState(null);
+
+	// Reference data via TanStack Query
+	const { data: mtlmTiers } = useMTLMTiers();
+	const { data: epThresholds } = useEPSalaryThresholds();
 
 	// MTLM State
 	const [mtlmSector, setMtlmSector] = useState("Manufacturing");
@@ -13,55 +15,33 @@ export default function SimulatorPage() {
 	const [currentLocal, setCurrentLocal] = useState(100);
 	const [newWorkers, setNewWorkers] = useState(5);
 	const [mtlmResult, setMtlmResult] = useState(null);
-	const [mtlmLoading, setMtlmLoading] = useState(false);
 
 	// EP Salary State
 	const [epCategory, setEpCategory] = useState("EP_Category_I");
 	const [currentSalary, setCurrentSalary] = useState(15000);
 	const [renewalDate, setRenewalDate] = useState("2026-07-01");
 	const [epResult, setEpResult] = useState(null);
-	const [epLoading, setEpLoading] = useState(false);
 
-	useEffect(() => {
-		loadReferenceData();
-	}, []);
-
-	async function loadReferenceData() {
-		try {
-			const [tiersData, thresholdsData] = await Promise.all([
-				getMTLMTierStructure(),
-				getEPSalaryThresholds(),
-			]);
-			setMtlmTiers(tiersData);
-			setEpThresholds(thresholdsData);
-		} catch (err) {
-			console.error("Failed to load reference data:", err);
-		}
-	}
+	// Mutations
+	const mtlmMutation = useSimulateMTLM();
+	const epMutation = useSimulateEPSalary();
 
 	async function handleMTLMSimulation() {
-		setMtlmLoading(true);
-		try {
-			const result = await simulateMTLMLevy(mtlmSector, currentForeign, currentLocal, newWorkers);
-			setMtlmResult(result);
-		} catch (err) {
-			console.error("MTLM simulation failed:", err);
-		} finally {
-			setMtlmLoading(false);
-		}
+		mtlmMutation.mutate(
+			{ sector: mtlmSector, currentForeignCount: currentForeign, currentLocalCount: currentLocal, newForeignWorkers: newWorkers },
+			{ onSuccess: (data) => setMtlmResult(data) }
+		);
 	}
 
 	async function handleEPSimulation() {
-		setEpLoading(true);
-		try {
-			const result = await simulateEPSalary(epCategory, currentSalary, renewalDate);
-			setEpResult(result);
-		} catch (err) {
-			console.error("EP simulation failed:", err);
-		} finally {
-			setEpLoading(false);
-		}
+		epMutation.mutate(
+			{ category: epCategory, currentSalaryRM: currentSalary, renewalDate },
+			{ onSuccess: (data) => setEpResult(data) }
+		);
 	}
+
+	const mtlmLoading = mtlmMutation.isPending;
+	const epLoading = epMutation.isPending;
 
 	return (
 		<div className="space-y-6">

@@ -1,8 +1,13 @@
-import { Activity, LayoutDashboard, Upload, Wrench, Workflow, AlertCircle, Users, Calculator } from "lucide-react";
+import { Activity, LayoutDashboard, Upload, Wrench, Workflow, AlertCircle, Users, Calculator, Columns, GitBranch, ScrollText } from "lucide-react";
 import { createElement } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useWorkerStore } from "@/store/useWorkerStore";
+import { useUIStore } from "@/store/useUIStore";
+import ComplianceBreachBanner from "@/components/ComplianceBreachBanner";
+import IntentPreviewModal from "@/components/IntentPreviewModal";
+import AuditLogDrawer from "@/components/AuditLogDrawer";
+import AutonomyDial from "@/components/AutonomyDial";
 
 const NAV_ITEMS = [
   {
@@ -21,6 +26,11 @@ const NAV_ITEMS = [
     icon: Workflow,
   },
   {
+    to: "/pipeline",
+    label: "Gate Pipeline",
+    icon: Columns,
+  },
+  {
     to: "/alerts",
     label: "Compliance Alerts",
     icon: AlertCircle,
@@ -29,6 +39,11 @@ const NAV_ITEMS = [
     to: "/hitl",
     label: "HITL Interrupts",
     icon: Users,
+  },
+  {
+    to: "/dual-sync",
+    label: "F&B Dual Sync",
+    icon: GitBranch,
   },
   {
     to: "/simulator",
@@ -66,6 +81,7 @@ function statusTone(status) {
 export default function AppLayout() {
   const parseJobStatus = useWorkerStore((state) => state.parseJobStatus);
   const workerId = useWorkerStore((state) => state.workerId);
+  const toggleAuditLog = useUIStore((s) => s.toggleAuditLog);
 
   return (
     <div className="relative min-h-screen">
@@ -78,15 +94,26 @@ export default function AppLayout() {
             <h1 className="font-heading text-xl font-semibold text-slate-950">Agentic Workflow Console</h1>
           </div>
 
-          <div className="flex items-center gap-4 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs text-slate-600 shadow-soft">
-            <Activity className="h-4 w-4 text-indigo-600" />
-            <span className={cn("font-medium capitalize", statusTone(parseJobStatus))}>
-              Parse state: {String(parseJobStatus).replace(/_/g, " ")}
-            </span>
-            <span className="hidden text-slate-400 sm:inline">|</span>
-            <span className="font-mono text-[11px] text-slate-500">
-              Worker: {workerId || "demo-worker-001"}
-            </span>
+          <div className="flex items-center gap-4">
+            <AutonomyDial compact />
+            <button
+              onClick={toggleAuditLog}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 transition hover:border-indigo-200 hover:text-indigo-800 shadow-soft"
+              aria-label="Open audit log"
+            >
+              <ScrollText className="h-3.5 w-3.5" />
+              Audit Log
+            </button>
+            <div className="flex items-center gap-4 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs text-slate-600 shadow-soft">
+              <Activity className="h-4 w-4 text-indigo-600" />
+              <span className={cn("font-medium capitalize", statusTone(parseJobStatus))}>
+                Parse state: {String(parseJobStatus).replace(/_/g, " ")}
+              </span>
+              <span className="hidden text-slate-400 sm:inline">|</span>
+              <span className="font-mono text-[11px] text-slate-500">
+                Worker: {workerId || "demo-worker-001"}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -117,9 +144,14 @@ export default function AppLayout() {
         </div>
       </header>
 
+      <ComplianceBreachBanner />
+
       <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
         <Outlet />
       </main>
+
+      <IntentPreviewModal />
+      <AuditLogDrawer />
     </div>
   );
 }

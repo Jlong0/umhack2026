@@ -1,11 +1,15 @@
 import { AlertTriangle, ShieldAlert, Timer, Workflow, TrendingUp, Users, AlertCircle } from "lucide-react";
-import { createElement, useMemo, useState, useEffect } from "react";
+import { createElement, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import TaskList from "@/components/TaskList";
+import StatutoryExposureCalculator from "@/components/StatutoryExposureCalculator";
+import MTLMTracker from "@/components/MTLMTracker";
 import { useWorkerTasksPolling } from "@/hooks/useWorkerTasksPolling";
 import { isStatusActive, isStatusAwaitingApproval, isStatusBlocked } from "@/services/taskAdapter";
 import { useWorkerStore } from "@/store/useWorkerStore";
-import { getAlertDashboard, listAllWorkflows, listPendingInterrupts } from "@/services/api";
+import { useAlertDashboard } from "@/hooks/queries/useAlertQueries";
+import { useAllWorkflows } from "@/hooks/queries/useWorkflowQueries";
+import { usePendingInterrupts } from "@/hooks/queries/useHITLQueries";
 
 function asCurrency(value) {
   return new Intl.NumberFormat("en-MY", {
@@ -49,35 +53,17 @@ export default function Dashboard() {
   const taskSource = useWorkerStore((state) => state.taskSource);
   const storeTasks = useWorkerStore((state) => state.tasks);
 
-  const [alertDashboard, setAlertDashboard] = useState(null);
-  const [workflows, setWorkflows] = useState([]);
-  const [pendingInterrupts, setPendingInterrupts] = useState(0);
+  const { data: alertDashboard } = useAlertDashboard();
+  const { data: workflowData } = useAllWorkflows();
+  const { data: interruptData } = usePendingInterrupts();
+
+  const workflows = workflowData?.workflows || [];
+  const pendingInterrupts = interruptData?.total || 0;
 
   const { lastUpdatedAt } = useWorkerTasksPolling(workerId, {
     enabled: Boolean(workerId),
     intervalMs: 6500,
   });
-
-  useEffect(() => {
-    loadDashboardData();
-    const interval = setInterval(loadDashboardData, 10000);
-    return () => clearInterval(interval);
-  }, []);
-
-  async function loadDashboardData() {
-    try {
-      const [alertData, workflowData, interruptData] = await Promise.all([
-        getAlertDashboard().catch(() => null),
-        listAllWorkflows().catch(() => ({ workflows: [] })),
-        listPendingInterrupts().catch(() => ({ total: 0 })),
-      ]);
-      setAlertDashboard(alertData);
-      setWorkflows(workflowData.workflows || []);
-      setPendingInterrupts(interruptData.total || 0);
-    } catch (err) {
-      console.error("Failed to load dashboard data:", err);
-    }
-  }
 
   const tasks = storeTasks;
 
@@ -166,6 +152,12 @@ export default function Dashboard() {
         </section>
       )}
 
+      {/* PRD Screen A: Risk Widgets */}
+      <section className="grid gap-4 md:grid-cols-2">
+        <StatutoryExposureCalculator />
+        <MTLMTracker />
+      </section>
+
       <section className="grid gap-4 md:grid-cols-3">
         <HealthCard icon={Workflow} label="Active LangGraph Runs" value={metrics.activeRuns} tone="indigo" />
         <HealthCard icon={ShieldAlert} label="Blocked Tasks" value={metrics.blockedTasks} tone="rose" />
@@ -175,19 +167,6 @@ export default function Dashboard() {
           value={metrics.pendingConfirmations}
           tone="amber"
         />
-      </section>
-
-      <section className="rounded-2xl border border-rose-200 bg-rose-50 px-5 py-5 shadow-soft sm:px-6">
-        <div className="flex items-center gap-2 text-rose-700">
-          <AlertTriangle className="h-5 w-5" />
-          <h3 className="text-base font-semibold">Strict Liability Exposure</h3>
-        </div>
-
-        <p className="mt-3 text-3xl font-bold text-rose-800">
-          {metrics.strictLiabilityExposure > 0
-            ? `Critical Risk: ${asCurrency(metrics.strictLiabilityExposure)} Fine Exposure`
-            : "Critical Risk: Pending CalculateFines execution"}
-        </p>
       </section>
 
       <section className="space-y-3">

@@ -11,11 +11,14 @@ from app.agents.nodes import (
     auditor_node,
     strategist_node,
     filing_node,
-    hitl_interrupt_node
+    hitl_interrupt_node,
+    company_audit_node,
+    vdr_filing_node,
+    plks_monitor_node,
 )
 
 
-def route_supervisor(state: WorkerComplianceState) -> Literal["auditor", "strategist", "filing", "hitl", "end"]:
+def route_supervisor(state: WorkerComplianceState) -> Literal["auditor", "strategist", "filing", "company_audit", "vdr_filing", "plks_monitor", "hitl", "end"]:
     """
     Supervisor routing logic - decides which specialist agent to invoke next.
     """
@@ -36,6 +39,12 @@ def route_supervisor(state: WorkerComplianceState) -> Literal["auditor", "strate
 
     if next_action == "audit_documents":
         return "auditor"
+    elif next_action == "company_audit":
+        return "company_audit"
+    elif next_action == "vdr_filing":
+        return "vdr_filing"
+    elif next_action == "plks_monitor":
+        return "plks_monitor"
     elif next_action == "calculate_strategy":
         return "strategist"
     elif next_action == "prepare_filing":
@@ -75,6 +84,9 @@ def create_compliance_graph() -> StateGraph:
     workflow.add_node("auditor", auditor_node)
     workflow.add_node("strategist", strategist_node)
     workflow.add_node("filing", filing_node)
+    workflow.add_node("company_audit", company_audit_node)
+    workflow.add_node("vdr_filing", vdr_filing_node)
+    workflow.add_node("plks_monitor", plks_monitor_node)
     workflow.add_node("hitl", hitl_interrupt_node)
 
     # Set entry point
@@ -88,6 +100,9 @@ def create_compliance_graph() -> StateGraph:
             "auditor": "auditor",
             "strategist": "strategist",
             "filing": "filing",
+            "company_audit": "company_audit",
+            "vdr_filing": "vdr_filing",
+            "plks_monitor": "plks_monitor",
             "hitl": "hitl",
             "end": END
         }
@@ -97,6 +112,9 @@ def create_compliance_graph() -> StateGraph:
     workflow.add_edge("auditor", "supervisor")
     workflow.add_edge("strategist", "supervisor")
     workflow.add_edge("filing", "supervisor")
+    workflow.add_edge("company_audit", "supervisor")
+    workflow.add_edge("vdr_filing", "supervisor")
+    workflow.add_edge("plks_monitor", "supervisor")
 
     # HITL can either wait or return to supervisor
     workflow.add_conditional_edges(

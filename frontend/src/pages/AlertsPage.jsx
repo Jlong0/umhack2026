@@ -1,49 +1,24 @@
-import { useState, useEffect } from "react";
-import { getAlertDashboard, getCriticalAlerts, getExpiringPermits, scanAllWorkers } from "@/services/api";
+import { useState } from "react";
+import { useAlertDashboard, useCriticalAlerts, useExpiringPermits, useScanAllWorkers } from "@/hooks/queries/useAlertQueries";
+import { useQueryClient } from "@tanstack/react-query";
 import { AlertCircle, Clock, TrendingUp, Users, RefreshCw } from "lucide-react";
 
 export default function AlertsPage() {
-	const [dashboard, setDashboard] = useState(null);
-	const [criticalAlerts, setCriticalAlerts] = useState([]);
-	const [expiringPermits, setExpiringPermits] = useState([]);
-	const [loading, setLoading] = useState(true);
-	const [scanning, setScanning] = useState(false);
-	const [error, setError] = useState(null);
+	const queryClient = useQueryClient();
+	const { data: dashboard, isLoading: loadingDashboard } = useAlertDashboard();
+	const { data: criticalData, isLoading: loadingCritical } = useCriticalAlerts();
+	const { data: expiringData, isLoading: loadingExpiring } = useExpiringPermits(30);
+	const { refetch: triggerScan, isFetching: scanning } = useScanAllWorkers();
 
-	useEffect(() => {
-		loadAlertData();
-		const interval = setInterval(loadAlertData, 30000);
-		return () => clearInterval(interval);
-	}, []);
-
-	async function loadAlertData() {
-		try {
-			const [dashboardData, criticalData, expiringData] = await Promise.all([
-				getAlertDashboard(),
-				getCriticalAlerts(),
-				getExpiringPermits(30),
-			]);
-			setDashboard(dashboardData);
-			setCriticalAlerts(criticalData.alerts || []);
-			setExpiringPermits(expiringData.workers || []);
-			setError(null);
-		} catch (err) {
-			setError(err.message);
-		} finally {
-			setLoading(false);
-		}
-	}
+	const criticalAlerts = criticalData?.alerts || [];
+	const expiringPermits = expiringData?.workers || [];
+	const loading = loadingDashboard && loadingCritical && loadingExpiring;
 
 	async function handleScanAll() {
-		setScanning(true);
-		try {
-			await scanAllWorkers();
-			await loadAlertData();
-		} catch (err) {
-			setError(err.message);
-		} finally {
-			setScanning(false);
-		}
+		await triggerScan();
+		queryClient.invalidateQueries({ queryKey: ["alertDashboard"] });
+		queryClient.invalidateQueries({ queryKey: ["criticalAlerts"] });
+		queryClient.invalidateQueries({ queryKey: ["expiringPermits"] });
 	}
 
 	function getSeverityColor(severity) {

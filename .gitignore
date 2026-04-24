@@ -4,6 +4,25 @@ skills/*
 !skills/uxuiprinciples-agent-skills/
 !skills/api-design-principles/
 !skills/security-auditor/
+
+# Dependencies
 node_modules/
+.venv/
+venv/
 __pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Frontend Build
+frontend/dist/
+frontend/.vite/
+
+# Secrets & Config
 secrets/
+.env
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db

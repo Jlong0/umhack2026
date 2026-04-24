@@ -9,10 +9,21 @@ import os
 from typing import Dict, Optional, List
 from datetime import datetime
 import httpx
-from zhipuai import ZhipuAI
-from app.services.gemini_key_rotation_service import gemini_rotation_service
+try:
+    from zhipuai import ZhipuAI
+except Exception:
+    ZhipuAI = None
+try:
+    from app.services.gemini_key_rotation_service import gemini_rotation_service
+except Exception:
+    gemini_rotation_service = None
 import json
 import base64
+
+try:
+    from app.services.gemini_key_rotation_service import gemini_rotation_service
+except Exception:
+    gemini_rotation_service = None
 
 
 class GLMService:
@@ -27,12 +38,20 @@ class GLMService:
         self.gemini_vision_model = os.getenv("GEMINI_VISION_MODEL", "gemini-2.5-flash")
         self.gemini_reasoning_model = os.getenv("GEMINI_REASONING_MODEL", "gemini-2.5-pro")
 
+        if self.use_gemini and gemini_rotation_service is None:
+            self.use_gemini = False
+            print("WARNING: Gemini rotation service missing - falling back to GLM/mock mode")
+
         if self.use_gemini:
             print("INFO: Using Gemini API with key rotation for testing/optimization")
             self.client = None  # Not using ZhipuAI client
         elif self.api_key:
-            self.client = ZhipuAI(api_key=self.api_key)
-            print("INFO: Using GLM API for production")
+            if ZhipuAI is None:
+                self.client = None
+                print("WARNING: zhipuai package unavailable - falling back to mock responses")
+            else:
+                self.client = ZhipuAI(api_key=self.api_key)
+                print("INFO: Using GLM API for production")
         else:
             self.client = None
             print("WARNING: No API keys configured - GLM service will use mock responses")
@@ -264,6 +283,39 @@ class GLMService:
 
             Draft a formal letter requesting a Special Pass to bridge the compliance gap.
             Explain the administrative deadlock and proposed resolution timeline.
+            """,
+            "com_request_letter": f"""
+            You are drafting a formal cover letter from an employer to the Malaysian Immigration
+            Department (Jabatan Imigresen Malaysia / JIM) requesting the issuance of a Check Out
+            Memo (COM) for a foreign worker who has been declared medically unfit.
+
+            Company / Employer:
+            - Company Name: {context.get('employer_name', 'N/A')}
+            - Company Registration: {context.get('company_registration', 'N/A')}
+
+            Worker Details:
+            - Full Name: {worker_data.get('full_name', 'N/A')}
+            - Passport Number: {worker_data.get('passport_number', 'N/A')}
+            - Nationality: {worker_data.get('nationality', 'N/A')}
+            - Sector: {worker_data.get('sector', 'N/A')}
+
+            Reason for Repatriation:
+            - The above-named worker has undergone the mandatory FOMEMA medical examination
+              and has been declared UNFIT (Tidak Layak).
+            - FOMEMA Result Date: {context.get('fomema_result_date', 'N/A')}
+            - Medical Condition Category: {context.get('condition_category', 'Category 1 — Communicable Disease')}
+
+            Draft a formal letter that:
+            1. Is addressed to "Pengarah, Jabatan Imigresen Malaysia" (Director, Immigration Dept).
+            2. States the company is hereby notifying JIM of the FOMEMA UNFIT result.
+            3. Formally requests the issuance of a Check Out Memo (COM) to facilitate
+               the lawful repatriation of the worker.
+            4. Confirms the employer will bear repatriation costs (flight ticket, etc.).
+            5. Requests cancellation of any pending visa/permit application for this worker.
+            6. Includes a polite closing with space for company stamp and authorized signature.
+
+            Use formal Malaysian government correspondence style in English.
+            Include "Ref:" and "Date:" headers at the top.
             """
         }
 
@@ -365,6 +417,9 @@ class GLMService:
         prompt_override: Optional[str] = None
     ) -> Dict:
         """Parse document using Gemini with key rotation."""
+        if gemini_rotation_service is None:
+            return self._mock_glm4v_response(document_type)
+
         prompts = {
             "passport": """
             Analyze this passport document and extract the following information in JSON format:
@@ -499,6 +554,9 @@ class GLMService:
         context: Dict
     ) -> Dict:
         """Generate justification letter using Gemini with key rotation."""
+        if gemini_rotation_service is None:
+            return self._mock_justification_letter(application_type)
+
         prompts = {
             "quota_application": f"""
             You are drafting a justification letter to the Ministry of Home Affairs (KDN)
@@ -556,6 +614,39 @@ class GLMService:
 
             Draft a formal letter requesting a Special Pass to bridge the compliance gap.
             Explain the administrative deadlock and proposed resolution timeline.
+            """,
+            "com_request_letter": f"""
+            You are drafting a formal cover letter from an employer to the Malaysian Immigration
+            Department (Jabatan Imigresen Malaysia / JIM) requesting the issuance of a Check Out
+            Memo (COM) for a foreign worker who has been declared medically unfit.
+
+            Company / Employer:
+            - Company Name: {context.get('employer_name', 'N/A')}
+            - Company Registration: {context.get('company_registration', 'N/A')}
+
+            Worker Details:
+            - Full Name: {worker_data.get('full_name', 'N/A')}
+            - Passport Number: {worker_data.get('passport_number', 'N/A')}
+            - Nationality: {worker_data.get('nationality', 'N/A')}
+            - Sector: {worker_data.get('sector', 'N/A')}
+
+            Reason for Repatriation:
+            - The above-named worker has undergone the mandatory FOMEMA medical examination
+              and has been declared UNFIT (Tidak Layak).
+            - FOMEMA Result Date: {context.get('fomema_result_date', 'N/A')}
+            - Medical Condition Category: {context.get('condition_category', 'Category 1 — Communicable Disease')}
+
+            Draft a formal letter that:
+            1. Is addressed to "Pengarah, Jabatan Imigresen Malaysia" (Director, Immigration Dept).
+            2. States the company is hereby notifying JIM of the FOMEMA UNFIT result.
+            3. Formally requests the issuance of a Check Out Memo (COM) to facilitate
+               the lawful repatriation of the worker.
+            4. Confirms the employer will bear repatriation costs (flight ticket, etc.).
+            5. Requests cancellation of any pending visa/permit application for this worker.
+            6. Includes a polite closing with space for company stamp and authorized signature.
+
+            Use formal Malaysian government correspondence style in English.
+            Include "Ref:" and "Date:" headers at the top.
             """
         }
 
