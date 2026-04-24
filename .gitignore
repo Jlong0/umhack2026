@@ -1,54 +1,28 @@
-# Python virtual environments
+skills/*
+!skills/vercel-labs-agent-skills/
+!skills/frontend-design/
+!skills/uxuiprinciples-agent-skills/
+!skills/api-design-principles/
+!skills/security-auditor/
+
+# Dependencies
+node_modules/
 .venv/
 venv/
-env/
-
-# Python cache and tooling
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
 
-# Node dependencies and build outputs
-node_modules/
-frontend/node_modules/
-dist/
+# Frontend Build
 frontend/dist/
-frontend/dist-ssr/
+frontend/.vite/
 
-# Environment files
+# Secrets & Config
+secrets/
 .env
-.env.*
-!.env.example
-frontend/.env
-frontend/.env.*
-!frontend/.env.example
+.env.local
 
-# Claude Code local directory
-.claude/
-
-# Backend runtime output
-uploads/
-
-# Firebase secret key
-serviceAccountKey.json
-secrets/*.json
-*.firebase.json
-app/services/gemini_key_rotation_service.py
-app/services/*gemini*key*.py
-
-# Logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-
-# OS / IDE
+# OS
 .DS_Store
-.idea/
-.vscode/*
-!.vscode/extensions.json
+Thumbs.db
