@@ -1,24 +1,17 @@
-import { useRef, useState } from "react";
-import { FileText, UploadCloud } from "lucide-react";
+import { useRef, useState, useEffect } from "react";
+import { FileText, UploadCloud, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/components/ui/toast";
 
 const DOCUMENT_TYPES = [
   { value: "passport", label: "Passport" },
   { value: "passport_photo", label: "Passport Size Photo" },
   { value: "biometric_health", label: "Biometric & Health Proof" },
+  { value: "verified_signature", label: "Verified Signature" },
+  { value: "academic_transcripts", label: "Academic Transcripts (If required for position)" },
+  { value: "degree_certificates", label: "Degree Certificates (If required for position)" },
+  { value: "cv", label: "Curriculum Vitae / CV (If required for position)" },
   { value: "personal_demographic", label: "Personal & Demographic" },
-];
-
-const PERSONAL_DEMOGRAPHIC_FIELDS = [
-  { key: "marital_status", label: "Marital Status" },
-  { key: "dependents_details", label: "Dependents Details" },
-  { key: "permanent_home_address", label: "Permanent Home Address" },
-  { key: "emergency_contact_name", label: "Emergency Contact Name" },
-  { key: "emergency_contact_phone", label: "Emergency Contact Phone Number" },
-  { key: "family_background", label: "Family Background" },
-  { key: "education_history", label: "Education History" },
-  { key: "employment_history", label: "Employment History" },
-  { key: "past_overseas_travel_history", label: "Past Overseas Travel History" },
 ];
 
 function formatBytes(bytes) {
@@ -75,6 +68,7 @@ export default function WorkerUploadPage() {
             setIsDragActive={setIsDragActive}
             inputRef={inputRef}
             handleDrop={handleDrop}
+            docType={docType}
           />
         ) : (
           <PersonalDemographicForm />
@@ -84,7 +78,42 @@ export default function WorkerUploadPage() {
   );
 }
 
-function PhotoUpload({ file, setFile, isDragActive, setIsDragActive, inputRef, handleDrop }) {
+const MOCK_PASSPORT_DATA = {
+  "Current Passport Number": "A12345678",
+  "Current Passport Issue Date": "2020-03-15",
+  "Current Passport Expiry Date": "2030-03-14",
+  "Old Passport Number(s)": "A98765432",
+  "Old Passport Issue Date(s)": "2010-03-15",
+  "Old Passport Expiry Date(s)": "2020-03-14",
+};
+
+function PhotoUpload({ file, setFile, isDragActive, setIsDragActive, inputRef, handleDrop, docType }) {
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (!file) {
+      setPreviewUrl(null);
+      return;
+    }
+
+    if (file.type.startsWith("image/")) {
+      const objectUrl = URL.createObjectURL(file);
+      setPreviewUrl(objectUrl);
+      return () => URL.revokeObjectURL(objectUrl);
+    } else {
+      setPreviewUrl(null);
+    }
+  }, [file]);
+
+  const handleUpload = () => {
+    toast({
+      title: "Upload Successful",
+      description: `${file.name} has been securely uploaded.`,
+    });
+    setFile(null); // clears the preview as well
+  };
+
   return (
     <div className="space-y-4">
       <div
@@ -120,20 +149,51 @@ function PhotoUpload({ file, setFile, isDragActive, setIsDragActive, inputRef, h
       </div>
 
       {file && (
-        <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-4 py-3">
-          <div className="flex min-w-0 items-center gap-3">
-            <FileText className="h-5 w-5 shrink-0 text-slate-500" />
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium text-slate-900">{file.name}</p>
-              <p className="text-xs text-slate-500">{formatBytes(file.size)}</p>
+        <div className="space-y-3">
+          {previewUrl && (
+            <div className="relative flex justify-center w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-50 p-2">
+              <img 
+                src={previewUrl} 
+                alt="Document Preview" 
+                className="max-h-64 rounded-lg object-contain"
+              />
             </div>
+          )}
+          <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-4 py-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <FileText className="h-5 w-5 shrink-0 text-slate-500" />
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-slate-900">{file.name}</p>
+                <p className="text-xs text-slate-500">{formatBytes(file.size)}</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleUpload}
+              className="rounded-lg bg-indigo-700 px-6 py-2 text-sm font-semibold text-white transition hover:bg-indigo-800"
+            >
+              Upload
+            </button>
           </div>
-          <button
-            type="button"
-            className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition hover:bg-slate-700"
-          >
-            Upload
-          </button>
+
+          {docType === "passport" && (
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Extracted from document — read only</p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {Object.entries(MOCK_PASSPORT_DATA).map(([label, value]) => (
+                  <div key={label} className="space-y-1">
+                    <label className="block text-xs font-medium text-slate-600">{label}</label>
+                    <input
+                      type="text"
+                      value={value}
+                      readOnly
+                      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 cursor-not-allowed focus:outline-none"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -141,27 +201,222 @@ function PhotoUpload({ file, setFile, isDragActive, setIsDragActive, inputRef, h
 }
 
 function PersonalDemographicForm() {
+  const { toast } = useToast();
+  const [hasTravelHistory, setHasTravelHistory] = useState("");
+  const [employmentHistory, setEmploymentHistory] = useState([""]);
+  const [childrenList, setChildrenList] = useState([]);
+
+  const addChild = () => setChildrenList([...childrenList, { name: "", age: "" }]);
+  const removeChild = (index) => {
+    const newList = [...childrenList];
+    newList.splice(index, 1);
+    setChildrenList(newList);
+  };
+  const updateChild = (index, field, value) => {
+    const newList = [...childrenList];
+    newList[index][field] = value;
+    setChildrenList(newList);
+  };
+
+  const addEmployment = () => setEmploymentHistory([...employmentHistory, ""]);
+  const removeEmployment = (index) => {
+    const newHistory = [...employmentHistory];
+    newHistory.splice(index, 1);
+    setEmploymentHistory(newHistory);
+  };
+  const updateEmployment = (index, value) => {
+    const newHistory = [...employmentHistory];
+    newHistory[index] = value;
+    setEmploymentHistory(newHistory);
+  };
+
+  const handleSubmit = () => {
+    toast({
+      title: "Form Submitted",
+      description: "Your personal and demographic details have been saved.",
+    });
+    // Reset form states for realistic "one-by-one" flow
+    setHasTravelHistory("");
+    setEmploymentHistory([""]);
+    setChildrenList([]);
+  };
+
+  const inputClasses = "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-300";
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <p className="text-sm text-slate-500">Fill in your personal and demographic details below.</p>
+      
       <div className="grid gap-4 sm:grid-cols-2">
-        {PERSONAL_DEMOGRAPHIC_FIELDS.map((field) => (
-          <div key={field.key} className="space-y-1">
-            <label className="block text-xs font-medium text-slate-600">{field.label}</label>
-            <input
-              type="text"
-              placeholder={field.label}
-              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-300"
-            />
+        {/* Marital Status */}
+        <div className="space-y-1">
+          <label className="block text-xs font-medium text-slate-600">Marital Status</label>
+          <select className={inputClasses} defaultValue="">
+            <option value="" disabled>Select Marital Status</option>
+            <option value="Single">Single</option>
+            <option value="Married">Married</option>
+          </select>
+        </div>
+
+        {/* Father's Name */}
+        <div className="space-y-1">
+          <label className="block text-xs font-medium text-slate-600">Father's Name</label>
+          <input type="text" placeholder="Father's Name" className={inputClasses} />
+        </div>
+
+        {/* Mother's Name */}
+        <div className="space-y-1">
+          <label className="block text-xs font-medium text-slate-600">Mother's Name</label>
+          <input type="text" placeholder="Mother's Name" className={inputClasses} />
+        </div>
+
+        {/* Spouse's Name */}
+        <div className="space-y-1">
+          <label className="block text-xs font-medium text-slate-600">Spouse's Name (Optional)</label>
+          <input type="text" placeholder="Spouse's Name" className={inputClasses} />
+        </div>
+
+        {/* Children Details */}
+        <div className="space-y-3 sm:col-span-2">
+          <div className="flex items-center justify-between">
+            <label className="block text-xs font-medium text-slate-600">Children Details (Optional)</label>
+            <button 
+              type="button" 
+              onClick={addChild}
+              className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-700 bg-indigo-50 px-2 py-1 rounded transition hover:bg-indigo-100"
+            >
+              <Plus className="h-3.5 w-3.5" /> Add Child
+            </button>
           </div>
-        ))}
+          
+          {childrenList.length > 0 && (
+            <div className="space-y-2">
+              {childrenList.map((child, idx) => (
+                <div key={idx} className="flex gap-2 items-center">
+                  <input 
+                    type="text" 
+                    placeholder={`Child ${idx + 1} Name`} 
+                    className={cn(inputClasses, "flex-1")}
+                    value={child.name}
+                    onChange={(e) => updateChild(idx, "name", e.target.value)}
+                  />
+                  <input 
+                    type="number" 
+                    min="0"
+                    placeholder="Age" 
+                    className={cn(inputClasses, "w-24")}
+                    value={child.age}
+                    onChange={(e) => updateChild(idx, "age", e.target.value)}
+                  />
+                  <button 
+                    type="button" 
+                    onClick={() => removeChild(idx)}
+                    className="p-2 text-slate-400 hover:text-rose-600 transition"
+                    title="Remove Child"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Permanent Home Address */}
+        <div className="space-y-1 sm:col-span-2">
+          <label className="block text-xs font-medium text-slate-600">Permanent Home Address</label>
+          <input type="text" placeholder="Permanent Home Address" className={inputClasses} />
+        </div>
+
+        {/* Emergency Contact Name */}
+        <div className="space-y-1">
+          <label className="block text-xs font-medium text-slate-600">Emergency Contact Name</label>
+          <input type="text" placeholder="Emergency Contact Name" className={inputClasses} />
+        </div>
+
+        {/* Emergency Contact Phone */}
+        <div className="space-y-1">
+          <label className="block text-xs font-medium text-slate-600">Emergency Contact Phone Number</label>
+          <input type="text" placeholder="Emergency Contact Phone Number" className={inputClasses} />
+        </div>
+
+        {/* Education History */}
+        <div className="space-y-1">
+          <label className="block text-xs font-medium text-slate-600">Education History</label>
+          <select className={inputClasses} defaultValue="">
+             <option value="" disabled>Select Education Level</option>
+             <option value="Primary School">Primary School</option>
+             <option value="Secondary/High School">Secondary/High School</option>
+             <option value="Bachelor's Degree">Bachelor's Degree</option>
+             <option value="Master's Degree">Master's Degree</option>
+             <option value="Other">Other</option>
+          </select>
+        </div>
+
+        {/* Past Overseas Travel History */}
+        <div className="space-y-1">
+          <label className="block text-xs font-medium text-slate-600">Past Overseas Travel History</label>
+          <select 
+            className={inputClasses} 
+            value={hasTravelHistory}
+            onChange={(e) => setHasTravelHistory(e.target.value)}
+          >
+             <option value="" disabled>Select Yes or No</option>
+             <option value="Yes">Yes</option>
+             <option value="No">No</option>
+          </select>
+        </div>
+        
+        {hasTravelHistory === "Yes" && (
+          <div className="space-y-1 sm:col-span-2">
+            <label className="block text-xs font-medium text-slate-600">Travel History Details</label>
+            <input type="text" placeholder="Please specify your past overseas travel history" className={inputClasses} />
+          </div>
+        )}
       </div>
-      <div className="flex justify-end pt-2">
+
+      {/* Employment History */}
+      <div className="space-y-3 pt-2">
+        <label className="block text-xs font-medium text-slate-600">Employment History</label>
+        <div className="space-y-2">
+          {employmentHistory.map((emp, idx) => (
+            <div key={idx} className="flex gap-2 items-center">
+              <input 
+                type="text" 
+                placeholder={`Job ${idx + 1} (e.g., Chef)`} 
+                className={inputClasses}
+                value={emp}
+                onChange={(e) => updateEmployment(idx, e.target.value)}
+              />
+              {employmentHistory.length > 1 && (
+                <button 
+                  type="button" 
+                  onClick={() => removeEmployment(idx)}
+                  className="p-2 text-slate-400 hover:text-rose-600 transition"
+                  title="Remove Job"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+        <button 
+          type="button" 
+          onClick={addEmployment}
+          className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-700 bg-indigo-50 px-3 py-1.5 rounded-md transition hover:bg-indigo-100"
+        >
+          <Plus className="h-3.5 w-3.5" /> Add Another Job
+        </button>
+      </div>
+
+      <div className="flex justify-end pt-4 border-t border-slate-100">
         <button
           type="button"
-          className="rounded-lg bg-indigo-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-800"
+          onClick={handleSubmit}
+          className="rounded-lg bg-indigo-700 px-6 py-2 text-sm font-semibold text-white transition hover:bg-indigo-800"
         >
-          Submit
+          Submit Form
         </button>
       </div>
     </div>
