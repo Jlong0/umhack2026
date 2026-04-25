@@ -1,8 +1,8 @@
 import { useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { FileText, Download, Upload, CheckCircle, Clock } from "lucide-react";
 import { useContracts, useUploadSigned } from "@/hooks/queries/useContractQueries";
-import { getContractPdfUrl } from "@/services/api";
-import { useWorkerStore } from "@/store/useWorkerStore";
+import { getContractPdfUrl, getDemoWorkerId } from "@/services/api";
 
 const STATUS_LABEL = {
   generated: { label: "Awaiting your signature", color: "text-amber-600 bg-amber-50" },
@@ -79,14 +79,20 @@ function ContractRow({ contract }) {
 }
 
 export default function WorkerContractPage() {
-  const workerId = useWorkerStore((s) => s.workerId);
-  const { data, isLoading } = useContracts(null, workerId || undefined);
+  const { data: demoData } = useQuery({
+    queryKey: ["demo-worker"],
+    queryFn: getDemoWorkerId,
+  });
+  const workerId = demoData?.worker_id;
+  const workerName = demoData?.worker_name;
+  const { data, isLoading } = useContracts(null, workerId);
   const contracts = data?.contracts || [];
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-xl font-bold text-slate-900">My Contracts</h1>
+        {workerName && <p className="text-sm text-slate-500 mt-0.5">Viewing as: {workerName}</p>}
         <p className="text-sm text-slate-500 mt-1">
           Download your employment contract, sign it, then upload the signed copy.
         </p>

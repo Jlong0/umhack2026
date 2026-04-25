@@ -253,3 +253,7 @@ export async function uploadSignedContract(contractId, file) {
 export async function reviewContract(contractId) {
 	return apiRequest(`/contracts/${contractId}/review`, { method: "PATCH" });
 }
+
+export async function getDemoWorkerId() {
+	return apiRequest("/contracts/demo-worker", { method: "GET" });
+}

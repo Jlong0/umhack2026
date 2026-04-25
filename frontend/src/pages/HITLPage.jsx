@@ -1,10 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { usePendingInterrupts, useInterruptDetails, useResolveInterrupt } from "@/hooks/queries/useHITLQueries";
-import { useUIStore } from "@/store/useUIStore";
-import { useAuditLogStore } from "@/store/useAuditLogStore";
-import ConfidenceBadge from "@/components/ConfidenceBadge";
-import { AlertCircle, CheckCircle, XCircle, Edit3, Eye, Shield, FileText } from "lucide-react";
+import { useHITLWorkers, useResolveWorkerFields } from "@/hooks/queries/useHITLQueries";
+import { AlertCircle, CheckCircle, Shield, FileText, Eye } from "lucide-react";
 import { useContracts, useReviewContract, useContractPdfUrl } from "@/hooks/queries/useContractQueries";
 
 function ContractReviewTab() {
@@ -128,15 +125,6 @@ function ContractReviewTab() {
 export default function HITLPage() {
 	const navigate = useNavigate();
 	const [activeTab, setActiveTab] = useState("interrupts");
-	const [selectedWorkerId, setSelectedWorkerId] = useState(null);
-	const [notes, setNotes] = useState("");
-	const openIntentPreview = useUIStore((s) => s.openIntentPreview);
-	const appendEntry = useAuditLogStore((s) => s.appendEntry);
-import { useHITLWorkers, useResolveWorkerFields } from "@/hooks/queries/useHITLQueries";
-import { AlertCircle, CheckCircle, Shield } from "lucide-react";
-
-export default function HITLPage() {
-	const navigate = useNavigate();
 	const [selectedWorker, setSelectedWorker] = useState(null);
 	const [fieldValues, setFieldValues] = useState({});
 
