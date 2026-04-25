@@ -54,7 +54,7 @@ async function apiRequest(path, options = {}) {
 	return data;
 }
 
-export async function uploadDocument(file, documentType = "passport") {
+export async function uploadDocument(file, documentType) {
 	const body = new FormData();
 	body.append("file", file);
 	body.append("document_type", documentType);
@@ -74,6 +74,24 @@ export async function confirmDocument(documentId, payload) {
 		method: "POST",
 		body: JSON.stringify(payload),
 	});
+}
+
+export async function createWorkerProfile(payload) {
+	const res = await fetch(`${API_BASE}/workers/create`, {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+		},
+		body: JSON.stringify(payload),
+	});
+
+	const data = await res.json();
+
+	if (!res.ok) {
+		throw new Error(data.detail || "Worker creation failed");
+	}
+
+	return data;
 }
 
 export async function getWorkerTasks(workerId) {

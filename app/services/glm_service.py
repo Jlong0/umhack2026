@@ -87,6 +87,7 @@ class GLMService:
             - passport_number
             - full_name
             - nationality
+            - sex
             - date_of_birth
             - issue_date
             - expiry_date
@@ -426,6 +427,7 @@ class GLMService:
             - passport_number
             - full_name
             - nationality
+            - sex
             - date_of_birth
             - issue_date
             - expiry_date
