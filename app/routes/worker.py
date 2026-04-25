@@ -6,7 +6,7 @@ router = APIRouter()
 
 @router.post("/workers")
 def add_worker(worker: WorkerCreate):
-    worker_dict = worker.dict()
+    worker_dict = worker.model_dump()
     worker_id = create_worker(worker_dict)
 
     return {
