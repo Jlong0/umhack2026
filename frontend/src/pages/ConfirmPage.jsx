@@ -1,10 +1,11 @@
 /* eslint-disable react-hooks/set-state-in-effect */
-import { Copy, LoaderCircle, PlayCircle, Wrench } from "lucide-react";
+import { Copy, LoaderCircle, PlayCircle, Wrench, CheckCircle, XCircle } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/components/ui/toast";
 import { useWorkerTasksPolling } from "@/hooks/useWorkerTasksPolling";
 import { cn } from "@/lib/utils";
-import { patchWorkerTask } from "@/services/api";
+import { patchWorkerTask, listPendingHandoffs, confirmHandoff, rejectHandoff } from "@/services/api";
 import { areDependenciesCompleted, isStatusAwaitingApproval } from "@/services/taskAdapter";
 import { useWorkerStore } from "@/store/useWorkerStore";
 
@@ -261,6 +262,83 @@ export default function ConfirmPage() {
         onDismiss={() => setIsModalOpen(false)}
         isApproving={isApproving}
       />
+
+      <PendingHandoffsSection />
     </div>
+  );
+}
+
+function PendingHandoffsSection() {
+  const qc = useQueryClient();
+  const [receipt, setReceipt] = useState(null);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["pending-handoffs"],
+    queryFn: listPendingHandoffs,
+    refetchInterval: 10000,
+  });
+
+  const confirmMutation = useMutation({
+    mutationFn: confirmHandoff,
+    onSuccess: (data) => { setReceipt(data); qc.invalidateQueries({ queryKey: ["pending-handoffs"] }); },
+  });
+
+  const rejectMutation = useMutation({
+    mutationFn: (id) => rejectHandoff(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["pending-handoffs"] }),
+  });
+
+  const handoffs = data?.handoffs || [];
+
+  return (
+    <section className="permit-surface border-amber-200 p-5 sm:p-6 space-y-4">
+      <div>
+        <h3 className="text-base font-semibold text-slate-900">Pending Agent Handoffs</h3>
+        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1 mt-1 inline-block">
+          Simulation mode — no real portal submission will occur
+        </p>
+      </div>
+
+      {receipt && (
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm">
+          <p className="font-semibold text-emerald-800">Simulated Submission Confirmed</p>
+          <p className="text-xs text-emerald-700 mt-1">Receipt ID: <span className="font-mono">{receipt.receipt_id}</span></p>
+          <button onClick={() => setReceipt(null)} className="text-xs text-emerald-600 underline mt-1">Dismiss</button>
+        </div>
+      )}
+
+      {isLoading ? (
+        <p className="text-sm text-slate-500">Loading...</p>
+      ) : handoffs.length === 0 ? (
+        <p className="text-sm text-slate-500">No pending handoffs.</p>
+      ) : handoffs.map(h => (
+        <div key={h.handoff_id} className="rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-3">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-sm font-semibold text-slate-900">{h.action_type?.replace(/_/g, " ").toUpperCase()}</p>
+              <p className="text-xs text-slate-500">Triggered by: {h.triggered_by} · Worker: {h.worker_id}</p>
+            </div>
+            <span className="text-xs bg-amber-100 text-amber-700 rounded-full px-2 py-0.5">Awaiting</span>
+          </div>
+          <pre className="text-xs bg-white border border-slate-200 rounded p-3 overflow-auto max-h-32">
+            {JSON.stringify(h.payload, null, 2)}
+          </pre>
+          <div className="flex gap-2">
+            <button
+              onClick={() => confirmMutation.mutate(h.handoff_id)}
+              disabled={confirmMutation.isPending}
+              className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-50">
+              <CheckCircle className="h-3.5 w-3.5" /> Confirm (Simulate)
+            </button>
+            <button
+              onClick={() => rejectMutation.mutate(h.handoff_id)}
+              disabled={rejectMutation.isPending}
+              className="flex items-center gap-1.5 rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50">
+              <XCircle className="h-3.5 w-3.5" /> Reject
+            </button>
+          </div>
+        </div>
+      ))}
+    </section>
   );
 }

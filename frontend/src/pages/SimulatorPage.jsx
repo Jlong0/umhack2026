@@ -1,6 +1,19 @@
 import { useState } from "react";
 import { useMTLMTiers, useEPSalaryThresholds, useSimulateMTLM, useSimulateEPSalary } from "@/hooks/queries/useSimulatorQueries";
+import { useQuery } from "@tanstack/react-query";
+import { listWorkers } from "@/services/api";
 import { Calculator, TrendingUp, DollarSign, AlertCircle, CheckCircle } from "lucide-react";
+
+const QUOTA_MAX = 50;
+
+function useActiveWorkerCount() {
+  return useQuery({
+    queryKey: ["workers-quota"],
+    queryFn: listWorkers,
+    select: (data) => (data?.workers || data || []).filter(w => w.status === "active").length,
+    refetchInterval: 30000,
+  });
+}
 
 export default function SimulatorPage() {
 	const [activeTab, setActiveTab] = useState("mtlm");
@@ -8,6 +21,7 @@ export default function SimulatorPage() {
 	// Reference data via TanStack Query
 	const { data: mtlmTiers } = useMTLMTiers();
 	const { data: epThresholds } = useEPSalaryThresholds();
+	const { data: activeCount = 0 } = useActiveWorkerCount();
 
 	// MTLM State
 	const [mtlmSector, setMtlmSector] = useState("Manufacturing");
@@ -134,6 +148,16 @@ export default function SimulatorPage() {
 									className="w-full border border-gray-300 rounded-lg px-4 py-2"
 									min="0"
 								/>
+							</div>
+
+							<div className="rounded-lg border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm">
+								<span className="text-gray-600">Quota Currently Used: </span>
+								<span className={`font-bold ${activeCount / QUOTA_MAX >= 0.9 ? "text-red-600" : "text-indigo-700"}`}>
+									{activeCount} / {QUOTA_MAX}
+								</span>
+								{activeCount / QUOTA_MAX >= 0.9 && (
+									<span className="ml-2 text-xs text-red-600">— 90% threshold reached</span>
+								)}
 							</div>
 
 							<button

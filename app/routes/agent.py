@@ -60,6 +60,10 @@ async def start_compliance_workflow(request: StartWorkflowRequest):
         initial_state = create_initial_worker_state(request.worker_data)
         initial_state["worker_id"] = request.worker_id
 
+        # Initialise trace fields before invoking graph
+        initial_state["trace"] = []
+        initial_state["current_node"] = None
+
         # Create thread config for persistence
         config = {
             "configurable": {
@@ -349,3 +353,96 @@ async def list_all_workflows():
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to list workflows: {str(e)}")
+# ---------------------------------------------------------------------------
+
+@router.get("/handoffs")
+async def list_pending_handoffs():
+    docs = db.collection("pending_handoffs").stream()
+    handoffs = []
+    for doc in docs:
+        data = doc.to_dict()
+        if data.get("status") == "awaiting_confirmation":
+            data["handoff_id"] = doc.id
+            handoffs.append(data)
+    return {"handoffs": handoffs, "total": len(handoffs)}
+
+
+@router.post("/handoffs/{handoff_id}/confirm")
+async def confirm_handoff(handoff_id: str):
+    from datetime import timezone
+    ref = db.collection("pending_handoffs").document(handoff_id)
+    doc = ref.get()
+    if not doc.exists:
+        raise HTTPException(status_code=404, detail="Handoff not found")
+    now = datetime.now(timezone.utc).isoformat()
+    date_str = datetime.now(timezone.utc).strftime("%Y%m%d")
+    receipt_id = f"MOCK-FWCMS-{date_str}-{handoff_id[:5].upper()}"
+    ref.update({"status": "confirmed"})
+    db.collection("handoff_log").document(handoff_id).set({
+        **doc.to_dict(),
+        "status": "confirmed",
+        "simulated": True,
+        "receipt_id": receipt_id,
+        "actioned_at": now,
+    })
+    return {"handoff_id": handoff_id, "receipt_id": receipt_id, "status": "confirmed"}
+
+
+@router.post("/handoffs/{handoff_id}/reject")
+async def reject_handoff(handoff_id: str, notes: str = ""):
+    from datetime import timezone
+    ref = db.collection("pending_handoffs").document(handoff_id)
+    if not ref.get().exists:
+        raise HTTPException(status_code=404, detail="Handoff not found")
+    ref.update({"status": "rejected", "notes": notes,
+                "actioned_at": datetime.now(timezone.utc).isoformat()})
+    return {"handoff_id": handoff_id, "status": "rejected"}
+
+
+# ---------------------------------------------------------------------------
+# Sync-check endpoints
+# ---------------------------------------------------------------------------
+
+_SYNC_FIELDS = ["salary_rm", "permit_expiry_date", "fomema_status", "levy_status"]
+
+
+@router.get("/sync-check")
+async def sync_check():
+    workers = {w.id: w.to_dict() for w in db.collection("workers").stream()}
+    mock_records = {m.id: m.to_dict() for m in db.collection("mock_gov_records").stream()}
+
+    results = []
+    for worker_id, worker in workers.items():
+        mock = mock_records.get(worker_id)
+        if not mock:
+            results.append({"worker_id": worker_id,
+                            "worker_name": worker.get("full_name", worker_id),
+                            "status": "not_filed", "conflicts": []})
+            continue
+
+        conflicts = []
+        for field in _SYNC_FIELDS:
+            internal = worker.get(field)
+            external = mock.get(field)
+            if internal is not None and external is not None and str(internal) != str(external):
+                conflicts.append({"field": field, "internal": internal, "mock_gov": external})
+
+        results.append({
+            "worker_id": worker_id,
+            "worker_name": worker.get("full_name", worker_id),
+            "status": "conflict" if conflicts else "matched",
+            "conflicts": conflicts,
+        })
+
+    return {"records": results, "total": len(results)}
+
+
+@router.post("/sync-check/{worker_id}/resolve")
+async def resolve_sync_conflict(worker_id: str, field: str):
+    worker_doc = db.collection("workers").document(worker_id).get()
+    if not worker_doc.exists:
+        raise HTTPException(status_code=404, detail="Worker not found")
+    internal_value = worker_doc.to_dict().get(field)
+    db.collection("mock_gov_records").document(worker_id).set(
+        {field: internal_value, "last_updated": datetime.now().isoformat()}, merge=True)
+    return {"worker_id": worker_id, "field": field, "resolved_to": internal_value}

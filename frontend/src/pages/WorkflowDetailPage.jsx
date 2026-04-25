@@ -2,7 +2,62 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useWorkflowStatus, useComplianceGraph, useResumeWorkflow } from "@/hooks/queries/useWorkflowQueries";
 import ReactFlow, { Background, Controls } from "reactflow";
 import "reactflow/dist/style.css";
-import { ArrowLeft, AlertCircle, CheckCircle, Clock } from "lucide-react";
+import { ArrowLeft, AlertCircle, CheckCircle, XCircle, Loader, Circle } from "lucide-react";
+
+const TRACE_ICON = {
+  completed: <CheckCircle className="h-4 w-4 text-emerald-500 shrink-0" />,
+  failed:    <XCircle className="h-4 w-4 text-red-500 shrink-0" />,
+  running:   <Loader className="h-4 w-4 text-amber-500 animate-spin shrink-0" />,
+};
+
+function duration(entries, node) {
+  const start = entries.find(e => e.node === node && e.status === "running");
+  const end   = entries.find(e => e.node === node && e.status !== "running");
+  if (!start || !end) return null;
+  const ms = new Date(end.timestamp) - new Date(start.timestamp);
+  return ms > 0 ? `${(ms / 1000).toFixed(1)}s` : null;
+}
+
+function TraceSection({ trace }) {
+  if (!trace?.length) return null;
+  // Deduplicate: keep last entry per node
+  const seen = new Map();
+  for (const e of trace) seen.set(e.node, e);
+  const entries = [...seen.values()];
+
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+      <h2 className="text-base font-semibold text-gray-900 mb-4">Execution Trace</h2>
+      <div className="space-y-2">
+        {entries.map((e, i) => (
+          <div key={i} className="flex items-start gap-3 rounded-lg border border-gray-100 bg-gray-50 px-4 py-2.5">
+            {TRACE_ICON[e.status] || <Circle className="h-4 w-4 text-gray-300 shrink-0" />}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-mono font-medium text-gray-900">{e.node}</span>
+                {duration(trace, e.node) && (
+                  <span className="text-xs text-gray-400">{duration(trace, e.node)}</span>
+                )}
+              </div>
+              {e.output_summary && (
+                <p className="text-xs text-gray-500 mt-0.5">{e.output_summary}</p>
+              )}
+              {e.error && (
+                <p className="text-xs text-red-600 mt-0.5 font-mono">{e.error}</p>
+              )}
+            </div>
+            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+              e.status === "completed" ? "bg-emerald-50 text-emerald-700" :
+              e.status === "failed"    ? "bg-red-50 text-red-700" :
+              e.status === "running"   ? "bg-amber-50 text-amber-700" :
+                                         "bg-gray-100 text-gray-500"
+            }`}>{e.status}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function WorkflowDetailPage() {
 	const { workerId } = useParams();
@@ -150,6 +205,8 @@ export default function WorkflowDetailPage() {
 					</div>
 				</div>
 			)}
+
+			<TraceSection trace={workflow?.trace} />
 		</div>
 	);
 }

@@ -254,6 +254,24 @@ export async function reviewContract(contractId) {
 	return apiRequest(`/contracts/${contractId}/review`, { method: "PATCH" });
 }
 
-export async function getDemoWorkerId() {
-	return apiRequest("/contracts/demo-worker", { method: "GET" });
+// Sync-check APIs
+export async function getSyncCheck() {
+	return apiRequest("/agents/sync-check", { method: "GET" });
+}
+
+export async function resolveSyncConflict(workerId, field) {
+	return apiRequest(`/agents/sync-check/${workerId}/resolve?field=${encodeURIComponent(field)}`, { method: "POST" });
+}
+
+// Handoff APIs
+export async function listPendingHandoffs() {
+	return apiRequest("/agents/handoffs", { method: "GET" });
+}
+
+export async function confirmHandoff(handoffId) {
+	return apiRequest(`/agents/handoffs/${handoffId}/confirm`, { method: "POST" });
+}
+
+export async function rejectHandoff(handoffId, notes = "") {
+	return apiRequest(`/agents/handoffs/${handoffId}/reject?notes=${encodeURIComponent(notes)}`, { method: "POST" });
 }
