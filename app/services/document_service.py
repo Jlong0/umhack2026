@@ -90,47 +90,76 @@ def confirm_document_and_create_worker(document_id: str, confirmed_data: dict):
     if not document_doc.exists:
         raise ValueError("Document not found")
 
-    missing_fields = get_missing_required_fields(confirmed_data)
+    worker_data = {
+        "passport": {
+            **confirmed_data,
+            "source": "parsed",
+            "document_id": document_id,
+        },
+        "medical_information": None,
+        "general_information": {},
+    }
+
+    missing_fields = get_missing_required_fields(worker_data)
 
     document_ref.update({
         "confirmed": True,
-        "confirmed_data": confirmed_data,
+        "confirmed_data": worker_data,
         "missing_fields": missing_fields,
-        "confirmed_at": datetime.now(timezone.utc).isoformat()
+        "confirmed_at": datetime.now(timezone.utc).isoformat(),
     })
 
     if missing_fields:
         return {
             "status": "incomplete",
             "missing_fields": missing_fields,
-            "message": "More information is required before worker creation."
+            "message": "More information is required before worker creation.",
         }
 
-    # create worker
-    worker_id = create_worker(confirmed_data)
+    worker_id = create_worker(worker_data)
 
-    obligations_payload = generate_compliance_obligations(confirmed_data)
+    compliance_input = flatten_worker_for_compliance(worker_data)
+    obligations_payload = generate_compliance_obligations(compliance_input)
     tasks = _normalize_obligations_to_tasks(obligations_payload)
+
     create_tasks_from_obligations(worker_id, tasks)
 
-    # update document metadata
     document_ref.update({
-        "confirmed": True,
-        "confirmed_data": confirmed_data,
         "worker_id": worker_id,
-        "confirmed_at": datetime.now(timezone.utc).isoformat()
     })
 
     return {
         "status": "completed",
         "worker_id": worker_id,
-        "obligations_created": len(tasks)
+        "obligations_created": len(tasks),
     }
 
 
-def get_missing_required_fields(data: dict) -> list[str]:
-    return [
-        field
-        for field in REQUIRED_WORKER_FIELDS
-        if data.get(field) in (None, "")
-    ]
+def flatten_worker_for_compliance(worker_data: dict):
+    passport = worker_data.get("passport", {}) or {}
+    general = worker_data.get("general_information", {}) or {}
+
+    return {
+        "name": passport.get("full_name") or passport.get("name"),
+        "passport_number": passport.get("passport_number"),
+        "nationality": passport.get("nationality"),
+        "passport_expiry_date": passport.get("passport_expiry_date"),
+        "permit_expiry_date": general.get("permit_expiry_date"),
+        "permit_class": general.get("permit_class"),
+        "sector": general.get("sector"),
+        "employment_date": general.get("employment_date"),
+    }
+
+def get_missing_required_fields(worker_data: dict):
+    passport = worker_data.get("passport", {}) or {}
+    general = worker_data.get("general_information", {}) or {}
+
+    required = {
+        "passport.full_name": passport.get("full_name") or passport.get("name"),
+        "passport.passport_number": passport.get("passport_number"),
+        "passport.nationality": passport.get("nationality"),
+        "general_information.permit_class": general.get("permit_class"),
+        "general_information.sector": general.get("sector"),
+    }
+
+    return [field for field, value in required.items() if not value]

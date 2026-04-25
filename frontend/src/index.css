@@ -33,7 +33,7 @@
   }
 
   body {
-    @apply min-h-screen bg-background font-sans text-foreground antialiased;
+    @apply min-h-screen bg-background font-sans text-foreground antialiased overflow-y-scroll;
     background-image:
       radial-gradient(circle at 10% 12%, rgba(30, 64, 175, 0.13), transparent 36%),
       radial-gradient(circle at 88% 2%, rgba(190, 24, 93, 0.1), transparent 26%),

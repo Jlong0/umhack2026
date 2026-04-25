@@ -46,3 +46,11 @@ def confirm_document(document_id: str, payload: ConfirmDocumentData):
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+
+@router.post("/workers/create", response_model=ConfirmDocumentResponse)
+def create_worker_endpoint(payload: WorkerCreateRequest):
+    try:
+        result = create_worker_from_input(payload)
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))

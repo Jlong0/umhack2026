@@ -1,6 +1,6 @@
 import { Activity, LayoutDashboard, Upload, Wrench, Workflow, AlertCircle, Users, Calculator, Columns, GitBranch, ScrollText } from "lucide-react";
 import { createElement } from "react";
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useWorkerStore } from "@/store/useWorkerStore";
 import { useUIStore } from "@/store/useUIStore";
@@ -82,6 +82,7 @@ export default function AppLayout() {
   const parseJobStatus = useWorkerStore((state) => state.parseJobStatus);
   const workerId = useWorkerStore((state) => state.workerId);
   const toggleAuditLog = useUIStore((s) => s.toggleAuditLog);
+  const navigate = useNavigate();
 
   return (
     <div className="relative min-h-screen">
@@ -95,6 +96,17 @@ export default function AppLayout() {
           </div>
 
           <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-500">Role:</span>
+              <select
+                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                value="staff"
+                onChange={(e) => { if (e.target.value === "worker") navigate("/worker/upload"); }}
+              >
+                <option value="staff">Staff</option>
+                <option value="worker">Worker</option>
+              </select>
+            </div>
             <AutonomyDial compact />
             <button
               onClick={toggleAuditLog}
