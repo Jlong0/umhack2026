@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
+import WorkerLayout from "@/components/WorkerLayout";
 import ConfirmPage from "@/pages/ConfirmPage";
 import Dashboard from "@/pages/Dashboard";
 import UploadPage from "@/pages/UploadPage";
@@ -11,6 +12,8 @@ import HITLPage from "@/pages/HITLPage";
 import SimulatorPage from "@/pages/SimulatorPage";
 import PipelinePage from "@/pages/PipelinePage";
 import DualSyncPage from "@/pages/DualSyncPage";
+import WorkerUploadPage from "@/pages/worker/WorkerUploadPage";
+import WorkerStatusPage from "@/pages/worker/WorkerStatusPage";
 
 function App() {
   return (
@@ -27,6 +30,11 @@ function App() {
         <Route path="/simulator" element={<SimulatorPage />} />
         <Route path="/pipeline" element={<PipelinePage />} />
         <Route path="/dual-sync" element={<DualSyncPage />} />
+      </Route>
+      <Route element={<WorkerLayout />}>
+        <Route path="/worker" element={<Navigate to="/worker/upload" replace />} />
+        <Route path="/worker/upload" element={<WorkerUploadPage />} />
+        <Route path="/worker/status" element={<WorkerStatusPage />} />
       </Route>
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
