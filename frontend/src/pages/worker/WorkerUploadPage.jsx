@@ -255,53 +255,40 @@ export default function UploadPage() {
     try {
       // 🔥 NEW API
       const response = await createWorkerProfile(workerPayload);
-      console.log(response)
 
       setWorkerId(response.worker_id);
 
-      // 🧠 Start workflow (use flattened values)
-      await startComplianceWorkflow(response.worker_id, {
-        ...workerPayload.passport,
-        ...workerPayload.general_information,
-        worker_id: response.worker_id,
-        full_name:
-          workerPayload.passport?.full_name ||
-          workerPayload.general_information?.full_name ||
-          "Unknown Worker",
-        name:
-          workerPayload.passport?.full_name ||
-          "Unknown Worker",
-        nationality:
-          workerPayload.passport?.nationality ||
-          "Unknown",
-      });
+      // // 🧠 Start workflow (use flattened values)
+      // await startComplianceWorkflow(response.worker_id, {
+      //   ...workerPayload.passport,
+      //   ...workerPayload.general_information,
+      //   worker_id: response.worker_id,
+      //   full_name:
+      //     workerPayload.passport?.full_name ||
+      //     workerPayload.general_information?.full_name ||
+      //     "Unknown Worker",
+      //   name:
+      //     workerPayload.passport?.full_name ||
+      //     "Unknown Worker",
+      //   nationality:
+      //     workerPayload.passport?.nationality ||
+      //     "Unknown",
+      // });
 
       toast({
-        title: "Worker profile created",
+        title: "Submitted for admin review",
         description:
-          "Obligations generated and workflow started. Opening workflow visualizer...",
+          "Worker information has been saved and is waiting for admin confirmation",
         variant: "success",
       });
-
-      navigate(`/workflows/${response.worker_id}`);
     } catch (error) {
       console.error("Create worker error:", error);
 
-      if (error instanceof ApiError && error.status === 500) {
-        toast({
-          title: "Backend error",
-          description:
-            "Worker created but workflow failed. Check backend logs.",
-          variant: "destructive",
-          duration: 7000,
-        });
-      } else {
-        toast({
-          title: "Creation failed",
-          description: error.message || "Unable to create worker.",
-          variant: "destructive",
-        });
-      }
+      toast({
+        title: "Submission failed",
+        description: error.message || "Unable to submit worker for review.",
+        variant: "destructive",
+      });
     } finally {
       setIsConfirming(false);
     }
