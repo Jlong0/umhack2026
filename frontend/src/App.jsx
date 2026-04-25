@@ -17,6 +17,8 @@ import WorkerUploadPage from "@/pages/worker/WorkerUploadPage";
 import WorkerStatusPage from "@/pages/worker/WorkerStatusPage";
 import WorkerContractPage from "@/pages/worker/WorkerContractPage";
 import ContractGenerationPage from "@/pages/ContractGenerationPage";
+import WorkerObligationCalendar from "@/pages/WorkerObligationCalendar";
+
 
 import MedicalReviewPage from "@/pages/MedicalReviewPage";
 
@@ -38,6 +40,7 @@ function App() {
         <Route path="/workers" element={<WorkersPage />} />
         <Route path="/dual-sync" element={<DualSyncPage />} />
         <Route path="/contract-generation" element={<ContractGenerationPage />} />
+        <Route path="/worker-calendar" element={<WorkerObligationCalendar />} />
       </Route>
       <Route element={<WorkerLayout />}>
         <Route path="/worker" element={<Navigate to="/worker/upload" replace />} />
