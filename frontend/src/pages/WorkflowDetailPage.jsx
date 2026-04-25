@@ -1,7 +1,26 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useWorkflowStatus, useComplianceGraph, useResumeWorkflow } from "@/hooks/queries/useWorkflowQueries";
 import ReactFlow, { Background, Controls } from "reactflow";
+import { Handle, Position } from "reactflow";
 import "reactflow/dist/style.css";
+
+function AgentNode({ data }) {
+  return (
+    <div className={`px-3 py-2 rounded-lg border text-xs font-medium shadow-sm ${
+      data.active
+        ? "bg-blue-600 text-white border-blue-700"
+        : data.status === "completed"
+        ? "bg-emerald-50 text-emerald-800 border-emerald-300"
+        : "bg-white text-gray-700 border-gray-300"
+    }`}>
+      <Handle type="target" position={Position.Top} className="!bg-gray-400" />
+      {data.label}
+      <Handle type="source" position={Position.Bottom} className="!bg-gray-400" />
+    </div>
+  );
+}
+
+const NODE_TYPES = { agent: AgentNode };
 import { ArrowLeft, AlertCircle, CheckCircle, XCircle, Loader, Circle } from "lucide-react";
 
 const TRACE_ICON = {
@@ -194,6 +213,7 @@ export default function WorkflowDetailPage() {
 						<ReactFlow
 							nodes={graph.nodes}
 							edges={graph.edges}
+							nodeTypes={NODE_TYPES}
 							fitView
 							nodesDraggable={false}
 							nodesConnectable={false}
