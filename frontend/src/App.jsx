@@ -16,6 +16,8 @@ import WorkersPage from "@/pages/WorkersPage";
 import WorkerUploadPage from "@/pages/worker/WorkerUploadPage";
 import WorkerStatusPage from "@/pages/worker/WorkerStatusPage";
 
+import MedicalReviewPage from "@/pages/MedicalReviewPage";
+
 function App() {
   return (
     <Routes>
@@ -28,6 +30,7 @@ function App() {
         <Route path="/workflows/:workerId" element={<WorkflowDetailPage />} />
         <Route path="/alerts" element={<AlertsPage />} />
         <Route path="/hitl" element={<HITLPage />} />
+        <Route path="/hitl/medical/:workerId" element={<MedicalReviewPage />} />
         <Route path="/simulator" element={<SimulatorPage />} />
         <Route path="/pipeline" element={<PipelinePage />} />
         <Route path="/workers" element={<WorkersPage />} />

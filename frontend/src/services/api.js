@@ -159,8 +159,22 @@ export async function getAlertDashboard() {
 }
 
 // HITL APIs
+export async function setMedicalResult(workerId, result) {
+	return apiRequest(`/hitl/workers/${workerId}/medical-result`, {
+		method: "PATCH",
+		body: JSON.stringify({ result }),
+	});
+}
+
 export async function listHITLWorkers() {
 	return apiRequest("/hitl/workers", { method: "GET" });
+}
+
+export async function resolveWorkerFields(workerId, fields) {
+	return apiRequest(`/hitl/workers/${workerId}/resolve-fields`, {
+		method: "PATCH",
+		body: JSON.stringify({ fields }),
+	});
 }
 
 export async function listPendingInterrupts() {
