@@ -1,4 +1,5 @@
 import json
+import re
 from uuid import uuid4
 from datetime import datetime, timezone
 from pathlib import Path
@@ -6,107 +7,93 @@ from pathlib import Path
 import fitz  # pymupdf
 
 from app.firebase_config import db, bucket
-from app.services.gemini_service import generate_text
 
 LOCAL_UPLOAD_DIR = Path("uploads")
 
-WORKER_FIELD_MAP = {
-    "full_name": ["full name", "worker name", "name of worker", "employee name"],
-    "passport_number": ["passport number", "passport no", "ic/passport"],
-    "nationality": ["nationality", "country"],
-    "sector": ["sector", "industry"],
-    "permit_class": ["permit class", "permit type", "visa type"],
-    "permit_expiry_date": ["permit expiry", "permit expiry date", "work permit expiry"],
-    "passport_expiry_date": ["passport expiry", "passport expiry date"],
-    "arrival_date": ["arrival date", "date of arrival"],
-    "biomedical_ref_number": ["biomedical ref", "biomedical reference"],
-}
+# Maps search phrases in the PDF to worker field keys
+LABEL_TO_FIELD = [
+    ("Passport Number", "passport_number"),
+    ("passport number", "passport_number"),
+    ("Passport No", "passport_number"),
+    ("IC/Passport", "passport_number"),
+    ("Nationality", "nationality"),
+    ("Sector", "sector"),
+    ("Permit Class", "permit_class"),
+    ("Permit Expiry", "permit_expiry_date"),
+    ("Passport Expiry", "passport_expiry_date"),
+    ("Arrival Date", "arrival_date"),
+]
 
 
-def _extract_pdf_context(doc: fitz.Document) -> dict:
-    """Extract text blocks and AcroForm fields from PDF."""
-    acroform_fields = []
-    text_blocks = []
-
-    for page_num, page in enumerate(doc):
-        # AcroForm fields
-        for widget in page.widgets() or []:
-            acroform_fields.append({
-                "page": page_num,
-                "field_name": widget.field_name,
-                "field_type": widget.field_type_string,
-                "rect": list(widget.rect),
-            })
-
-        # Text blocks (to find blank lines / labels)
-        blocks = page.get_text("blocks")
-        for b in blocks:
-            text = b[4].strip()
-            if text:
-                text_blocks.append({"page": page_num, "text": text, "rect": list(b[:4])})
-
-    return {"acroform_fields": acroform_fields, "text_blocks": text_blocks}
+def _flatten_worker(worker: dict) -> dict:
+    passport = worker.get("passport") or {}
+    general = worker.get("general_information") or {}
+    return {
+        "full_name": worker.get("full_name") or passport.get("full_name") or passport.get("name") or worker.get("name", ""),
+        "passport_number": worker.get("passport_number") or passport.get("passport_number", ""),
+        "nationality": worker.get("nationality") or passport.get("nationality", ""),
+        "sector": worker.get("sector") or general.get("sector", ""),
+        "permit_class": worker.get("permit_class") or general.get("permit_class", ""),
+        "permit_expiry_date": worker.get("permit_expiry_date") or general.get("permit_expiry_date", ""),
+        "passport_expiry_date": worker.get("passport_expiry_date") or passport.get("passport_expiry_date", ""),
+        "arrival_date": worker.get("arrival_date", ""),
+    }
 
 
-def _gemini_map_fields(pdf_context: dict, worker: dict) -> dict:
-    """Ask Gemini to map PDF fields/labels to worker values."""
-    worker_info = {k: worker.get(k) or worker.get("full_name" if k == "name" else k)
-                   for k in WORKER_FIELD_MAP}
+def _fill_name_blank(page: fitz.Page, name: str):
+    """Find the blank line for the employee name (before 'the Employee') and fill it."""
+    # Search for all occurrences — pick the one near "the Employee", not "the Company"
+    employee_hits = page.search_for("the Employee")
+    company_hits = page.search_for("the Company")
 
-    prompt = f"""You are filling an employment contract PDF with worker data.
+    if not employee_hits:
+        return
 
-PDF AcroForm fields: {json.dumps(pdf_context['acroform_fields'][:30])}
-PDF text labels (near blank lines): {json.dumps(pdf_context['text_blocks'][:50])}
+    # Use the y-position of the "the Employee" hit to find the right blank line
+    emp_rect = employee_hits[0]
 
-Worker data:
-{json.dumps(worker_info, indent=2)}
+    # Search for underscore sequences on the same line
+    underscore_hits = page.search_for("___")
+    target = None
+    for hit in underscore_hits:
+        # Find the underscore line closest to (and above) the "the Employee" text
+        if abs(hit.y0 - emp_rect.y0) < 15:
+            target = hit
+            break
 
-Return a JSON object mapping each field to fill:
-{{
-  "acroform": {{"field_name": "value_to_insert"}},
-  "text_overlay": [{{"page": 0, "label_text": "exact label text from pdf", "value": "worker value", "rect": [x0,y0,x1,y1]}}]
-}}
+    if target:
+        insert_point = fitz.Point(target.x0 + 2, target.y0 + target.height * 0.8)
+    else:
+        # Fallback: insert just to the left of "the Employee" text
+        insert_point = fitz.Point(72, emp_rect.y0 + emp_rect.height * 0.8)
 
-Only include fields where you can confidently match worker data. Return only valid JSON."""
+    page.insert_text(insert_point, name, fontsize=10, color=(0, 0, 0))
 
-    result = generate_text(prompt)
-    if not result.get("success"):
-        return {"acroform": {}, "text_overlay": []}
-    try:
-        text = result["text"]
-        if "```json" in text:
-            text = text.split("```json")[1].split("```")[0].strip()
-        elif "```" in text:
-            text = text.split("```")[1].split("```")[0].strip()
-        return json.loads(text)
-    except Exception:
-        return {"acroform": {}, "text_overlay": []}
+
+def _insert_after_label(page: fitz.Page, label: str, value: str):
+    """Find label text on page and insert value right after it on the same baseline."""
+    hits = page.search_for(label)
+    if not hits:
+        return
+    rect = hits[0]
+    insert_point = fitz.Point(rect.x1 + 4, rect.y0 + rect.height * 0.8)
+    page.insert_text(insert_point, value, fontsize=10, color=(0, 0, 0))
 
 
 def fill_contract_for_worker(template_bytes: bytes, worker: dict) -> bytes:
+    flat = _flatten_worker(worker)
     doc = fitz.open(stream=template_bytes, filetype="pdf")
-    pdf_context = _extract_pdf_context(doc)
-    mapping = _gemini_map_fields(pdf_context, worker)
 
-    # Fill AcroForm fields
-    acroform_map = mapping.get("acroform", {})
-    if acroform_map:
-        for page in doc:
-            for widget in page.widgets() or []:
-                if widget.field_name in acroform_map:
-                    widget.field_value = str(acroform_map[widget.field_name])
-                    widget.update()
+    for page in doc:
+        # Fill worker name in the blank before "(hereinafter referred to as"
+        if flat.get("full_name"):
+            _fill_name_blank(page, flat["full_name"])
 
-    # Text overlays for blank-line style templates
-    for overlay in mapping.get("text_overlay", []):
-        page_num = overlay.get("page", 0)
-        rect = overlay.get("rect")
-        value = overlay.get("value", "")
-        if rect and value and page_num < len(doc):
-            page = doc[page_num]
-            # Insert text just above the detected rect (baseline of blank line)
-            insert_point = fitz.Point(rect[0] + 2, rect[3] - 2)
-            page.insert_text(insert_point, str(value), fontsize=10, color=(0, 0, 0))
+        # Fill labelled fields
+        for label, field_key in LABEL_TO_FIELD:
+            value = flat.get(field_key, "")
+            if value:
+                _insert_after_label(page, label, str(value))
 
     return doc.tobytes(deflate=True)
 
@@ -127,7 +114,7 @@ def _save_pdf_bytes(pdf_bytes: bytes, storage_path: str) -> bool:
 
 def generate_contracts_for_all_workers(template_bytes: bytes, job_id: str):
     """Background task: generate one contract PDF per worker."""
-    workers = db.collection("workers").stream()
+    workers = db.collection("workers").limit(2).stream()
     worker_list = [(w.id, w.to_dict()) for w in workers]
 
     db.collection("contract_jobs").document(job_id).set({
@@ -138,6 +125,7 @@ def generate_contracts_for_all_workers(template_bytes: bytes, job_id: str):
     })
 
     done = 0
+    errors = []
     for worker_id, worker in worker_list:
         try:
             pdf_bytes = fill_contract_for_worker(template_bytes, worker)
@@ -155,10 +143,11 @@ def generate_contracts_for_all_workers(template_bytes: bytes, job_id: str):
                 "reviewed_at": None,
             })
             done += 1
-        except Exception:
-            pass
+        except Exception as e:
+            errors.append({"worker_id": worker_id, "error": str(e)})
 
     db.collection("contract_jobs").document(job_id).update({
         "status": "done",
         "done": done,
+        "errors": errors,
     })

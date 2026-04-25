@@ -29,12 +29,29 @@ def list_workers_detail():
         def phase_data(phase_def):
             return {f["key"]: merged.get(f["key"]) for f in phase_def["fields"]}
 
+        passport = w.get("passport", {})
+        general = w.get("general_information", {})
+        medical = w.get("medical_information", {})
+
         result.append({
             "worker_id": wid,
-            "full_name": w.get("full_name") or w.get("master_name"),
-            "passport_number": w.get("passport_number"),
-            "nationality": w.get("nationality"),
-            "sector": w.get("sector"),
+
+            # keep full nested data for frontend/admin review
+            "passport": passport,
+            "general_information": general,
+            "medical_information": medical,
+
+            # optional flat fallback fields for old UI
+            "full_name": passport.get("full_name") or w.get("full_name") or w.get("master_name"),
+            "passport_number": passport.get("passport_number") or w.get("passport_number"),
+            "nationality": passport.get("nationality") or w.get("nationality"),
+            "sector": general.get("sector") or w.get("sector"),
+
+            "review_status": w.get("review_status"),
+            "workflow_status": w.get("workflow_status"),
+            "data_status": w.get("data_status"),
+            "missing_fields": w.get("missing_fields", []),
+
             "stage_1": {k: {"label": v["label"], "data": phase_data(v)} for k, v in STAGE_1_PHASES.items()},
             "stage_2": {k: {"label": v["label"], "data": phase_data(v)} for k, v in STAGE_2_PHASES.items()},
             "compliance_state": comp,

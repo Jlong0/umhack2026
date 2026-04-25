@@ -5,7 +5,18 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException, UploadFile, File
 from app.firebase_config import db, bucket
 from app.agents.contract_agent import generate_contracts_for_all_workers
 
+
 router = APIRouter(prefix="/contracts", tags=["contracts"])
+
+
+@router.get("/demo-worker")
+async def get_demo_worker():
+    """Returns the first worker in Firestore — used as the demo worker on the worker portal."""
+    docs = list(db.collection("workers").limit(1).stream())
+    if not docs:
+        raise HTTPException(status_code=404, detail="No workers found")
+    data = docs[0].to_dict()
+    return {"worker_id": docs[0].id, "worker_name": data.get("full_name") or data.get("name", "Worker")}
 
 
 @router.post("/generate")
@@ -46,8 +57,9 @@ async def get_contract_pdf(contract_id: str):
         raise HTTPException(status_code=404, detail="PDF not found")
 
     try:
+        from datetime import timedelta
         blob = bucket.blob(storage_path)
-        url = blob.generate_signed_url(expiration=3600)
+        url = blob.generate_signed_url(expiration=timedelta(hours=1), version="v4")
         return {"url": url}
     except Exception:
         # Local fallback
