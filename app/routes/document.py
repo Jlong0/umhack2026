@@ -38,6 +38,7 @@ async def upload_document(
     return {
         "message": "upload received",
         "document_id": document["document_id"],
+        "storage_path": document.get("storage_path"),
         "job_id": job["job_id"],
         "status": job["status"]
     }
