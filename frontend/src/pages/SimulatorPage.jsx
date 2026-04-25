@@ -206,7 +206,7 @@ export default function SimulatorPage() {
 											Tier: {mtlmResult.current_state.tier}
 										</div>
 										<div className="text-xs text-blue-700">
-											Ratio: {mtlmResult.current_state.foreign_worker_ratio.toFixed(1)}%
+											Ratio: {(mtlmResult.current_state.foreign_worker_ratio ?? 0).toFixed(1)}%
 										</div>
 									</div>
 
@@ -219,7 +219,7 @@ export default function SimulatorPage() {
 											Tier: {mtlmResult.projected_state.tier}
 										</div>
 										<div className="text-xs text-green-700">
-											Ratio: {mtlmResult.projected_state.foreign_worker_ratio.toFixed(1)}%
+											Ratio: {(mtlmResult.projected_state.foreign_worker_ratio ?? 0).toFixed(1)}%
 										</div>
 									</div>
 								</div>

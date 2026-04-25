@@ -3,7 +3,6 @@ import AppLayout from "@/components/AppLayout";
 import WorkerLayout from "@/components/WorkerLayout";
 import ConfirmPage from "@/pages/ConfirmPage";
 import Dashboard from "@/pages/Dashboard";
-import UploadPage from "@/pages/UploadPage";
 import WorkerProfilePage from "@/pages/WorkerProfilePage";
 import WorkflowsPage from "@/pages/WorkflowsPage";
 import WorkflowDetailPage from "@/pages/WorkflowDetailPage";
@@ -27,7 +26,6 @@ function App() {
     <Routes>
       <Route element={<AppLayout />}>
         <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/ingestion" element={<UploadPage />} />
         <Route path="/worker-visualizer" element={<WorkerProfilePage />} />
         <Route path="/tool-handoff" element={<ConfirmPage />} />
         <Route path="/workflows" element={<WorkflowsPage />} />

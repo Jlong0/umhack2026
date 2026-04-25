@@ -13,6 +13,7 @@ export default function AlertsPage() {
 	const criticalAlerts = criticalData?.alerts || [];
 	const expiringPermits = expiringData?.workers || [];
 	const loading = loadingDashboard && loadingCritical && loadingExpiring;
+	const error = null;
 
 	async function handleScanAll() {
 		await triggerScan();
