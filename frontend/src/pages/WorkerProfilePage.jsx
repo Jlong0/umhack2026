@@ -8,6 +8,8 @@ import { cn } from "@/lib/utils";
 import { isStatusActive, isStatusBlocked, statusLabel } from "@/services/taskAdapter";
 import { useWorkerStore } from "@/store/useWorkerStore";
 import ConfidenceBadge from "@/components/ConfidenceBadge";
+import { useQuery } from "@tanstack/react-query";
+import { listWorkers } from "@/services/api";
 
 function nodeIconForType(nodeType) {
   if (nodeType === "DocumentAudit") {
@@ -129,10 +131,14 @@ function buildFlow(tasks) {
 
 export default function WorkerProfilePage() {
   const workerId = useWorkerStore((state) => state.workerId);
+  const setWorkerId = useWorkerStore((state) => state.setWorkerId);
   const taskSource = useWorkerStore((state) => state.taskSource);
   const storeTasks = useWorkerStore((state) => state.tasks);
   const ruminationLines = useWorkerStore((state) => state.ruminationLines);
   const setRuminationLines = useWorkerStore((state) => state.setRuminationLines);
+
+  const { data: workersData } = useQuery({ queryKey: ["workers"], queryFn: listWorkers });
+  const workerList = workersData?.workers || [];
 
   const [chatInput, setChatInput] = useState("");
   const [chatMessages, setChatMessages] = useState([]);
@@ -194,16 +200,28 @@ export default function WorkerProfilePage() {
             <div>
               <h2 className="text-xl font-semibold">Worker Profile & LangGraph Visualizer</h2>
               <p className="text-sm text-slate-600">
-                Worker ID: {workerId || "demo-worker-001"} | Source: {taskSource}
+                Worker ID: {workerId || "none selected"} | Source: {taskSource}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 text-xs text-slate-600">
-            <span className="rounded-full bg-emerald-100 px-3 py-1 font-medium text-emerald-800">
+          <div className="flex items-center gap-3">
+            <select
+              value={workerId || ""}
+              onChange={(e) => setWorkerId(e.target.value || null)}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-indigo-400 focus:outline-none"
+            >
+              <option value="">Select worker...</option>
+              {workerList.map((w) => (
+                <option key={w.worker_id} value={w.worker_id}>
+                  {w.full_name || w.passport?.full_name || w.worker_id}
+                </option>
+              ))}
+            </select>
+            <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-800">
               Completed: {completedCount}
             </span>
-            <span className="rounded-full bg-rose-100 px-3 py-1 font-medium text-rose-800">
+            <span className="rounded-full bg-rose-100 px-3 py-1 text-xs font-medium text-rose-800">
               Blocked: {blockedCount}
             </span>
           </div>
