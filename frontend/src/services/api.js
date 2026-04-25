@@ -54,7 +54,7 @@ async function apiRequest(path, options = {}) {
 	return data;
 }
 
-export async function uploadDocument(file, documentType = "passport") {
+export async function uploadDocument(file, documentType) {
 	const body = new FormData();
 	body.append("file", file);
 	body.append("document_type", documentType);
@@ -71,6 +71,13 @@ export async function getParseJob(jobId) {
 
 export async function confirmDocument(documentId, payload) {
 	return apiRequest(`/documents/${documentId}/confirm`, {
+		method: "POST",
+		body: JSON.stringify(payload),
+	});
+}
+
+export async function createWorkerProfile(payload) {
+	return apiRequest("/workers/create", {
 		method: "POST",
 		body: JSON.stringify(payload),
 	});
@@ -141,6 +148,24 @@ export async function getAlertDashboard() {
 }
 
 // HITL APIs
+export async function setMedicalResult(workerId, result) {
+	return apiRequest(`/hitl/workers/${workerId}/medical-result`, {
+		method: "PATCH",
+		body: JSON.stringify({ result }),
+	});
+}
+
+export async function listHITLWorkers() {
+	return apiRequest("/hitl/workers", { method: "GET" });
+}
+
+export async function resolveWorkerFields(workerId, fields) {
+	return apiRequest(`/hitl/workers/${workerId}/resolve-fields`, {
+		method: "PATCH",
+		body: JSON.stringify({ fields }),
+	});
+}
+
 export async function listPendingInterrupts() {
 	return apiRequest("/hitl/interrupts", { method: "GET" });
 }
@@ -184,10 +209,73 @@ export async function simulateEPSalary(category, currentSalaryRM, renewalDate) {
 	});
 }
 
+export async function listWorkers() {
+	return apiRequest("/workers", { method: "GET" });
+}
+
+export async function getDocumentFields(documentType) {
+	return apiRequest(`/documents/fields/${documentType}`, { method: "GET" });
+}
+
 export async function getMTLMTierStructure() {
 	return apiRequest("/simulator/mtlm-tiers", { method: "GET" });
 }
 
 export async function getEPSalaryThresholds() {
 	return apiRequest("/simulator/ep-salary-thresholds", { method: "GET" });
+}
+
+// Contract APIs
+export async function generateContracts(templateFile) {
+	const body = new FormData();
+	body.append("template", templateFile);
+	return apiRequest("/contracts/generate", { method: "POST", body });
+}
+
+export async function listContracts(status, workerId) {
+	const params = new URLSearchParams();
+	if (status) params.set("status", status);
+	if (workerId) params.set("worker_id", workerId);
+	const qs = params.toString() ? `?${params}` : "";
+	return apiRequest(`/contracts${qs}`, { method: "GET" });
+}
+
+export async function getContractPdfUrl(contractId) {
+	return apiRequest(`/contracts/${contractId}/pdf`, { method: "GET" });
+}
+
+export async function uploadSignedContract(contractId, file) {
+	const body = new FormData();
+	body.append("file", file);
+	return apiRequest(`/contracts/${contractId}/upload-signed`, { method: "POST", body });
+}
+
+export async function reviewContract(contractId) {
+	return apiRequest(`/contracts/${contractId}/review`, { method: "PATCH" });
+}
+
+export async function getDemoWorkerId() {
+	return apiRequest("/contracts/demo-worker", { method: "GET" });
+}
+
+// Sync-check APIs
+export async function getSyncCheck() {
+	return apiRequest("/agents/sync-check", { method: "GET" });
+}
+
+export async function resolveSyncConflict(workerId, field) {
+	return apiRequest(`/agents/sync-check/${workerId}/resolve?field=${encodeURIComponent(field)}`, { method: "POST" });
+}
+
+// Handoff APIs
+export async function listPendingHandoffs() {
+	return apiRequest("/agents/handoffs", { method: "GET" });
+}
+
+export async function confirmHandoff(handoffId) {
+	return apiRequest(`/agents/handoffs/${handoffId}/confirm`, { method: "POST" });
+}
+
+export async function rejectHandoff(handoffId, notes = "") {
+	return apiRequest(`/agents/handoffs/${handoffId}/reject?notes=${encodeURIComponent(notes)}`, { method: "POST" });
 }

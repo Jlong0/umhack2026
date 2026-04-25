@@ -122,7 +122,7 @@ class PLKSService:
         Instead it generates a formal cover letter from the employer to JIM
         requesting that a COM be issued, then uploads it to Firebase Storage.
         """
-        from app.services.glm_service import glm_service
+        from app.services.gemini_service import generate_text
         from app.firebase_config import bucket, USE_MOCK
 
         # ── 1. Fetch worker data ──────────────────────────────────────
@@ -167,13 +167,20 @@ class PLKSService:
             "fomema_result_date": fomema_result_date,
             "condition_category": condition_category,
         }
-        result = glm_service.generate_justification_letter_with_glm5(
-            worker_data=worker_data,
-            application_type="com_request_letter",
-            context=context,
+        prompt = (
+            f"Draft a formal COM request letter to Jabatan Imigresen Malaysia.\n"
+            f"Employer: {context['employer_name']} ({context['company_registration']})\n"
+            f"Worker: {worker_data.get('full_name')}, Passport: {worker_data.get('passport_number')}\n"
+            f"Nationality: {worker_data.get('nationality')}, Sector: {worker_data.get('sector')}\n"
+            f"FOMEMA result date: {context['fomema_result_date']}, Category: {context['condition_category']}\n"
+            "Include Ref/Date headers, request COM issuance, confirm employer bears repatriation costs, "
+            "request permit cancellation, leave space for company stamp and signature."
         )
-
-        letter_text = result.get("letter", "")
+        result = generate_text(
+            prompt,
+            "You are an expert in Malaysian foreign worker compliance and formal government correspondence.",
+        )
+        letter_text = result.get("text", "")
         if not letter_text:
             letter_text = (
                 "[AUTO-GENERATED FALLBACK]\n\n"

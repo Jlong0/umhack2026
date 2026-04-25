@@ -40,8 +40,32 @@ def _task(
 
 # ── legacy helper kept for backward-compatibility ──────────────────────
 
-def generate_compliance_obligations(worker_data: dict) -> dict[str, Any]:
-    """Generate a standard set of compliance obligations for a worker."""
+def generate_compliance_obligations(worker_data: dict, use_agent: bool = False) -> dict[str, Any]:
+    """Generate compliance obligations. Set use_agent=True to route through compliance_reasoner_node."""
+    if use_agent:
+        from app.agents.state import VDRState
+        from app.agents.nodes import compliance_reasoner_node
+        state: VDRState = {
+            "master_name": worker_data.get("full_name"),
+            "passport_number": worker_data.get("passport_number"),
+            "nature_of_business": worker_data.get("sector"),
+            "fomema_status": worker_data.get("fomema_status", "Pending"),
+            "pipeline_status": "running",
+            "company_name": None, "roc_number": None, "act446_cert_number": None,
+            "act446_max_capacity": None, "local_employee_count": None,
+            "foreign_employee_count": None, "quota_requested": None,
+            "passport_expiry": None, "worker_dob": None, "biomedical_ref": None,
+            "borang100_home_address": None, "borang100_parents_names": None,
+            "employer_eligible": True, "housing_compliant": True, "worker_eligible": True,
+            "quota_flags": [], "validation_errors": [], "signatures_required": [],
+            "signatures_completed": [], "obligations": [], "vdr_form_data": {}, "halt_reason": None,
+        }
+        result = compliance_reasoner_node(state)
+        obligations = result.get("obligations", [])
+        return {"obligations": obligations, "status": "generated", "obligation_count": len(obligations)}
+
+    # fall through to legacy path
+    obligations: list[dict[str, Any]] = []
     obligations: list[dict[str, Any]] = []
 
     obligations.append(

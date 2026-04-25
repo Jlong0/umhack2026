@@ -35,8 +35,59 @@ def _resolve_credentials_path() -> Path:
 
 if USE_MOCK:
     print("WARNING: Using mock Firebase - data will not persist")
-    db = None
-    bucket = None
+
+    from uuid import uuid4
+    from collections import defaultdict
+
+    class _MockDoc:
+        def __init__(self, data=None):
+            self._data = data or {}
+            self.id = str(uuid4())
+            self.exists = data is not None
+        def to_dict(self): return dict(self._data)
+        def get(self): return self
+
+    class _MockDocRef:
+        def __init__(self, store, col, doc_id):
+            self._store = store
+            self._col = col
+            self.id = doc_id
+        def get(self):
+            data = self._store[self._col].get(self.id)
+            d = _MockDoc(data)
+            d.id = self.id
+            return d
+        def set(self, data, merge=False):
+            if merge:
+                self._store[self._col].setdefault(self.id, {}).update(data)
+            else:
+                self._store[self._col][self.id] = data
+        def update(self, data): self._store[self._col].setdefault(self.id, {}).update(data)
+
+    class _MockCollection:
+        def __init__(self, store, name):
+            self._store = store
+            self._name = name
+        def add(self, data):
+            doc_id = str(uuid4())
+            self._store[self._name][doc_id] = data
+            ref = _MockDocRef(self._store, self._name, doc_id)
+            ref.id = doc_id
+            return (None, ref)
+        def document(self, doc_id):
+            return _MockDocRef(self._store, self._name, doc_id)
+
+    class _MockDB:
+        def __init__(self):
+            self._store = defaultdict(dict)
+        def collection(self, name):
+            return _MockCollection(self._store, name)
+
+    class _MockBucket:
+        pass
+
+    db = _MockDB()
+    bucket = _MockBucket()
 else:
     resolved_cred_path = _resolve_credentials_path()
     cred = credentials.Certificate(str(resolved_cred_path))

@@ -1,4 +1,4 @@
-import { Activity, LayoutDashboard, Upload, Wrench, Workflow, AlertCircle, Users, Calculator, Columns, GitBranch, ScrollText } from "lucide-react";
+import { Activity, LayoutDashboard, Upload, Wrench, Workflow, AlertCircle, Users, Calculator, Columns, GitBranch, ScrollText, FileSignature, CalendarIcon} from "lucide-react";
 import { createElement } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -36,9 +36,19 @@ const NAV_ITEMS = [
     icon: AlertCircle,
   },
   {
+    to: "/workers",
+    label: "Workers",
+    icon: ScrollText,
+  },
+  {
     to: "/hitl",
     label: "HITL Interrupts",
     icon: Users,
+  },
+  {
+    to: "/contract-generation",
+    label: "Contracts",
+    icon: FileSignature,
   },
   {
     to: "/dual-sync",
@@ -59,6 +69,11 @@ const NAV_ITEMS = [
     to: "/tool-handoff",
     label: "Tool Handoff",
     icon: Wrench,
+  },
+  {
+    to: "/worker-calendar",
+    label: "Worker Obligation Calendar",
+    icon: CalendarIcon,
   },
 ];
 

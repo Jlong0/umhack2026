@@ -34,6 +34,7 @@ export function useParseJobPolling(jobId) {
 
     let cancelled = false;
     let pollTimer;
+    let failCount = 0;
 
     setIsPolling(true);
     setError(null);
@@ -42,7 +43,7 @@ export function useParseJobPolling(jobId) {
     setParseStep("Agent extracting data...");
 
     const stepTimer = window.setInterval(() => {
-      setStepIndex((previous) => Math.min(previous + 1, EXTRACTION_STEPS.length - 1));
+      setStepIndex((prev) => Math.min(prev + 1, EXTRACTION_STEPS.length - 1));
     }, 1800);
 
     const stop = (status, finalStep) => {
@@ -50,38 +51,30 @@ export function useParseJobPolling(jobId) {
       window.clearInterval(pollTimer);
       setParseJobStatus(status);
       setParseStep(finalStep);
-      if (!cancelled) {
-        setIsPolling(false);
-      }
+      if (!cancelled) setIsPolling(false);
     };
 
     const pollOnce = async () => {
       try {
         const payload = await getParseJob(jobId);
-        if (cancelled) {
-          return;
-        }
-
+        if (cancelled) return;
+        failCount = 0;
         const status = String(payload?.status ?? "processing").toLowerCase();
         setParseJobStatus(status);
-
         if (status === "completed") {
           setParsedFields(payload?.result?.fields || {});
           stop("completed", "Extraction completed. Review and confirm the fields.");
-          return;
-        }
-
-        if (status === "failed") {
+        } else if (status === "failed") {
           setError(new Error(payload?.error || "Parse job failed."));
           stop("failed", "Extraction failed. Please retry upload.");
         }
       } catch (pollError) {
-        if (cancelled) {
-          return;
+        if (cancelled) return;
+        failCount += 1;
+        if (failCount >= 3) {
+          setError(pollError);
+          stop("failed", "Network issue while polling parse status.");
         }
-
-        setError(pollError);
-        stop("failed", "Network issue while polling parse status.");
       }
     };
 

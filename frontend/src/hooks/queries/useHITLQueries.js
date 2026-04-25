@@ -1,10 +1,38 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
+  listHITLWorkers,
+  resolveWorkerFields,
+  setMedicalResult,
   listPendingInterrupts,
   getInterruptDetails,
   resolveInterrupt,
   getInterruptStatistics,
 } from "@/services/api";
+
+export function useHITLWorkers() {
+  return useQuery({
+    queryKey: ["hitlWorkers"],
+    queryFn: listHITLWorkers,
+    refetchInterval: 10 * 1000,
+    retry: false,
+  });
+}
+
+export function useSetMedicalResult(workerId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (result) => setMedicalResult(workerId, result),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["hitlWorkers"] }),
+  });
+}
+
+export function useResolveWorkerFields(workerId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (fields) => resolveWorkerFields(workerId, fields),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["hitlWorkers"] }),
+  });
+}
 import { useAuditLogStore } from "@/store/useAuditLogStore";
 
 export function usePendingInterrupts() {

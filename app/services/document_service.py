@@ -1,10 +1,15 @@
+import os
+from pathlib import Path
 from uuid import uuid4
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date
 from app.config import REQUIRED_WORKER_FIELDS
 from app.firebase_config import db, bucket
+from app.schemas.document import WorkerCreateRequest
 from app.services.worker_service import create_worker
 from app.services.task_service import create_tasks_from_obligations
 from app.services.compliance_reasoning_service import generate_compliance_obligations
+
+LOCAL_UPLOAD_DIR = Path("uploads")
 
 
 async def save_uploaded_document(file, worker_id=None, document_type=None):
@@ -14,8 +19,23 @@ async def save_uploaded_document(file, worker_id=None, document_type=None):
 
     contents = await file.read()
 
-    blob = bucket.blob(storage_path)
-    blob.upload_from_string(contents, content_type=file.content_type)
+    # Try Firebase Storage, fall back to local disk
+    if bucket is not None:
+        try:
+            blob = bucket.blob(storage_path)
+            blob.upload_from_string(contents, content_type=file.content_type)
+        except Exception:
+            bucket_ok = False
+        else:
+            bucket_ok = True
+    else:
+        bucket_ok = False
+
+    if not bucket_ok:
+        LOCAL_UPLOAD_DIR.mkdir(exist_ok=True)
+        local_path = LOCAL_UPLOAD_DIR / filename
+        local_path.write_bytes(contents)
+        storage_path = str(local_path)
 
     doc_data = {
         "filename": file.filename,
@@ -82,58 +102,53 @@ def _normalize_obligations_to_tasks(obligations_payload) -> list[dict]:
 
     return tasks
 
+def serialize_dates(obj):
+    if isinstance(obj, dict):
+        return {k: serialize_dates(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [serialize_dates(v) for v in obj]
+    elif isinstance(obj, date):
+        return obj.isoformat()  # 🔥 convert to "YYYY-MM-DD"
+    else:
+        return obj
 
-def confirm_document_and_create_worker(document_id: str, confirmed_data: dict):
-    document_ref = db.collection("documents").document(document_id)
-    document_doc = document_ref.get()
+def create_worker_from_payload(payload: WorkerCreateRequest):
+    raw = payload.model_dump(exclude_none=True)
 
-    if not document_doc.exists:
-        raise ValueError("Document not found")
-
+    # 🔒 enforce structure
     worker_data = {
-        "passport": {
-            **confirmed_data,
-            "source": "parsed",
-            "document_id": document_id,
-        },
-        "medical_information": None,
-        "general_information": {},
+        "passport": raw.get("passport") or {},
+        "medical_information": raw.get("medical_information") or {},
+        "general_information": raw.get("general_information") or {},
     }
 
+    worker_data = serialize_dates(worker_data)
+
+    # 🔍 validate
     missing_fields = get_missing_required_fields(worker_data)
 
-    document_ref.update({
-        "confirmed": True,
-        "confirmed_data": worker_data,
-        "missing_fields": missing_fields,
-        "confirmed_at": datetime.now(timezone.utc).isoformat(),
-    })
+    # 📌 status flags
+    worker_data["review_status"] = "pending_review"
+    worker_data["workflow_status"] = "not_started"
+    worker_data["created_at"] = datetime.now(timezone.utc).isoformat()
+    worker_data["updated_at"] = datetime.now(timezone.utc).isoformat()
 
     if missing_fields:
-        return {
-            "status": "incomplete",
-            "missing_fields": missing_fields,
-            "message": "More information is required before worker creation.",
-        }
+        worker_data["data_status"] = "incomplete"
+        worker_data["missing_fields"] = missing_fields
+    else:
+        worker_data["data_status"] = "complete"
+        worker_data["missing_fields"] = []
 
+    # ✅ create worker
     worker_id = create_worker(worker_data)
 
-    compliance_input = flatten_worker_for_compliance(worker_data)
-    obligations_payload = generate_compliance_obligations(compliance_input)
-    tasks = _normalize_obligations_to_tasks(obligations_payload)
-
-    create_tasks_from_obligations(worker_id, tasks)
-
-    document_ref.update({
-        "worker_id": worker_id,
-    })
-
     return {
-        "status": "completed",
+        "status": "pending_review",
         "worker_id": worker_id,
-        "obligations_created": len(tasks),
+        "data_status": worker_data["data_status"],
+        "missing_fields": worker_data["missing_fields"],
     }
-
 
 def flatten_worker_for_compliance(worker_data: dict):
     passport = worker_data.get("passport", {}) or {}
@@ -150,16 +165,19 @@ def flatten_worker_for_compliance(worker_data: dict):
         "employment_date": general.get("employment_date"),
     }
 
-def get_missing_required_fields(worker_data: dict):
-    passport = worker_data.get("passport", {}) or {}
-    general = worker_data.get("general_information", {}) or {}
+def get_missing_required_fields(worker_data):
+    passport = worker_data.get("passport", {})
+    general = worker_data.get("general_information", {})
 
-    required = {
-        "passport.full_name": passport.get("full_name") or passport.get("name"),
-        "passport.passport_number": passport.get("passport_number"),
-        "passport.nationality": passport.get("nationality"),
-        "general_information.permit_class": general.get("permit_class"),
-        "general_information.sector": general.get("sector"),
-    }
+    missing = []
 
-    return [field for field, value in required.items() if not value]
+    if not passport.get("passport_number"):
+        missing.append("passport.passport_number")
+
+    if not passport.get("full_name"):
+        missing.append("passport.full_name")
+
+    if not general.get("address"):
+        missing.append("general_information.address")
+
+    return missing
