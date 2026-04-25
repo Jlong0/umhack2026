@@ -14,6 +14,16 @@ const DOCUMENT_TYPES = [
   { value: "personal_demographic", label: "Personal & Demographic" },
 ];
 
+const DOC_REQUIREMENTS = {
+  passport: "Requires a full scan including every page. Must have at least 18 months of validity.",
+  passport_photo: "Must be 35mm x 50mm on a white background. Clear, no glasses, and hair must not cover the face.",
+  biometric_health: "Original Medical Report including physical data (height, weight, vaccination history) and Pre-Departure Bio-Medical reference number.",
+  verified_signature: "The signature on your employment contract must perfectly match the signature in your passport.",
+  academic_transcripts: "Certified copies of academic transcripts.",
+  degree_certificates: "Certified copies of degree certificates.",
+  cv: "A detailed Curriculum Vitae outlining your past work experience."
+};
+
 function formatBytes(bytes) {
   if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
   const units = ["B", "KB", "MB", "GB"];
@@ -114,8 +124,16 @@ function PhotoUpload({ file, setFile, isDragActive, setIsDragActive, inputRef, h
     setFile(null); // clears the preview as well
   };
 
+  const requirementText = DOC_REQUIREMENTS[docType];
+
   return (
     <div className="space-y-4">
+      {requirementText && (
+        <div className="rounded-lg bg-blue-50 border border-blue-100 p-4">
+          <h4 className="text-sm font-semibold text-blue-900 mb-1">Upload Requirements</h4>
+          <p className="text-xs text-blue-800 leading-relaxed">{requirementText}</p>
+        </div>
+      )}
       <div
         className={cn(
           "node-transition rounded-xl border-2 border-dashed p-6 text-center",
@@ -248,6 +266,46 @@ function PersonalDemographicForm() {
       <p className="text-sm text-slate-500">Fill in your personal and demographic details below.</p>
       
       <div className="grid gap-4 sm:grid-cols-2">
+        {/* Full Name */}
+        <div className="space-y-1">
+          <label className="block text-xs font-medium text-slate-600">Full Name</label>
+          <input type="text" placeholder="Full Name (as per passport)" className={inputClasses} />
+        </div>
+
+        {/* Date of Birth */}
+        <div className="space-y-1">
+          <label className="block text-xs font-medium text-slate-600">Date of Birth</label>
+          <input type="date" className={inputClasses} />
+        </div>
+
+        {/* Gender */}
+        <div className="space-y-1">
+          <label className="block text-xs font-medium text-slate-600">Gender</label>
+          <select className={inputClasses} defaultValue="">
+            <option value="" disabled>Select Gender</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+          </select>
+        </div>
+
+        {/* Nationality */}
+        <div className="space-y-1">
+          <label className="block text-xs font-medium text-slate-600">Nationality</label>
+          <input type="text" placeholder="Nationality" className={inputClasses} />
+        </div>
+
+        {/* Height */}
+        <div className="space-y-1">
+          <label className="block text-xs font-medium text-slate-600">Height (cm)</label>
+          <input type="number" min="0" placeholder="e.g. 170" className={inputClasses} />
+        </div>
+
+        {/* Weight */}
+        <div className="space-y-1">
+          <label className="block text-xs font-medium text-slate-600">Weight (kg)</label>
+          <input type="number" min="0" placeholder="e.g. 65" className={inputClasses} />
+        </div>
+
         {/* Marital Status */}
         <div className="space-y-1">
           <label className="block text-xs font-medium text-slate-600">Marital Status</label>
