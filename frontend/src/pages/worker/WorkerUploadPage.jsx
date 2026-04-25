@@ -159,7 +159,7 @@ export default function UploadPage() {
       ...current,
       [activeParsingType]: normalizeInitialValues(parsedFields),
     }));
-  
+
     setActiveParsingType(null);
   }, [parsedFields, activeParsingType]);
 
@@ -255,6 +255,7 @@ export default function UploadPage() {
     try {
       // 🔥 NEW API
       const response = await createWorkerProfile(workerPayload);
+      console.log(response)
 
       setWorkerId(response.worker_id);
 

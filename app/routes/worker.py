@@ -21,6 +21,7 @@ def add_worker(worker: WorkerCreate):
 @router.post("/workers/create", response_model=ConfirmDocumentResponse)
 def create_worker_endpoint(payload: WorkerCreateRequest):
     try:
+        print(payload)
         result = create_worker_from_payload(payload)
         return result
     except ValueError as e:
