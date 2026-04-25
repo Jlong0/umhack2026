@@ -184,6 +184,14 @@ export async function simulateEPSalary(category, currentSalaryRM, renewalDate) {
 	});
 }
 
+export async function listWorkers() {
+	return apiRequest("/workers", { method: "GET" });
+}
+
+export async function getDocumentFields(documentType) {
+	return apiRequest(`/documents/fields/${documentType}`, { method: "GET" });
+}
+
 export async function getMTLMTierStructure() {
 	return apiRequest("/simulator/mtlm-tiers", { method: "GET" });
 }

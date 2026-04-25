@@ -12,6 +12,7 @@ import HITLPage from "@/pages/HITLPage";
 import SimulatorPage from "@/pages/SimulatorPage";
 import PipelinePage from "@/pages/PipelinePage";
 import DualSyncPage from "@/pages/DualSyncPage";
+import WorkersPage from "@/pages/WorkersPage";
 import WorkerUploadPage from "@/pages/worker/WorkerUploadPage";
 import WorkerStatusPage from "@/pages/worker/WorkerStatusPage";
 
@@ -29,6 +30,7 @@ function App() {
         <Route path="/hitl" element={<HITLPage />} />
         <Route path="/simulator" element={<SimulatorPage />} />
         <Route path="/pipeline" element={<PipelinePage />} />
+        <Route path="/workers" element={<WorkersPage />} />
         <Route path="/dual-sync" element={<DualSyncPage />} />
       </Route>
       <Route element={<WorkerLayout />}>

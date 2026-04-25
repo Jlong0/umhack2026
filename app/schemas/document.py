@@ -1,6 +1,11 @@
 from datetime import date
-from typing import Literal, Optional, Any
+from typing import Literal, Optional
 from pydantic import BaseModel, Field, field_validator, ConfigDict
+
+DOCUMENT_TYPES = {
+    "passport", "ssm_profile", "act446_certificate",
+    "epf_socso_statement", "biomedical_slip", "borang100", "fomema_report",
+}
 
 
 class ConfirmDocumentData(BaseModel):
@@ -18,37 +23,34 @@ class ConfirmDocumentData(BaseModel):
 
     @field_validator("full_name")
     @classmethod
-    def validate_full_name(cls, value: str) -> str:
-        value = value.strip()
-        if not value:
+    def validate_full_name(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
             raise ValueError("full_name cannot be empty")
-        return value
+        return v
 
     @field_validator("passport_number")
     @classmethod
-    def validate_passport_number(cls, value: str) -> str:
-        value = value.strip().upper()
-        if not value:
-            raise ValueError("passport_number cannot be empty")
-        return value
+    def validate_passport_number(cls, v: str) -> str:
+        return v.strip().upper()
 
     @field_validator("sector")
     @classmethod
-    def validate_sector(cls, value: str) -> str:
+    def validate_sector(cls, v: str) -> str:
         allowed = {"manufacturing", "construction", "services", "plantation", "agriculture"}
-        normalized = value.strip().lower()
-        if normalized not in allowed:
+        n = v.strip().lower()
+        if n not in allowed:
             raise ValueError(f"sector must be one of: {', '.join(sorted(allowed))}")
-        return normalized.title()
+        return n.title()
 
     @field_validator("permit_class")
     @classmethod
-    def validate_permit_class(cls, value: str) -> str:
+    def validate_permit_class(cls, v: str) -> str:
         allowed = {"plks", "temporary", "professional_visit_pass"}
-        normalized = value.strip().lower()
-        if normalized not in allowed:
+        n = v.strip().lower()
+        if n not in allowed:
             raise ValueError(f"permit_class must be one of: {', '.join(sorted(allowed))}")
-        return normalized.upper() if normalized == "plks" else normalized
+        return n.upper() if n == "plks" else n
 
 
 class ConfirmDocumentResponse(BaseModel):
@@ -56,3 +58,15 @@ class ConfirmDocumentResponse(BaseModel):
     worker_id: Optional[str] = None
     obligations: Optional[int] = None
     missing_fields: Optional[list[str]] = None
+
+
+class DocumentUpload(BaseModel):
+    document_type: str
+    worker_id: Optional[str] = None
+
+    @field_validator("document_type")
+    @classmethod
+    def validate_document_type(cls, v: str) -> str:
+        if v not in DOCUMENT_TYPES:
+            raise ValueError(f"document_type must be one of: {', '.join(sorted(DOCUMENT_TYPES))}")
+        return v

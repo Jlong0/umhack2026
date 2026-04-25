@@ -36,6 +36,11 @@ const NAV_ITEMS = [
     icon: AlertCircle,
   },
   {
+    to: "/workers",
+    label: "Workers",
+    icon: ScrollText,
+  },
+  {
     to: "/hitl",
     label: "HITL Interrupts",
     icon: Users,

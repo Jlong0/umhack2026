@@ -1,9 +1,22 @@
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, BackgroundTasks
 from app.services.document_service import save_uploaded_document, confirm_document_and_create_worker
-from app.schemas.document import ConfirmDocumentData, ConfirmDocumentResponse
+from app.schemas.document import ConfirmDocumentData, ConfirmDocumentResponse, DOCUMENT_TYPES
 from app.services.parse_job_service import create_parse_job, process_parse_job, get_parse_job
+from app.constants.application_fields import DOCUMENT_FIELDS
 
 router = APIRouter()
+
+
+@router.get("/documents/fields")
+def get_document_fields():
+    return {"fields": DOCUMENT_FIELDS}
+
+
+@router.get("/documents/fields/{document_type}")
+def get_fields_for_type(document_type: str):
+    if document_type not in DOCUMENT_FIELDS:
+        raise HTTPException(status_code=404, detail=f"No fields defined for '{document_type}'")
+    return {"document_type": document_type, "fields": DOCUMENT_FIELDS[document_type]}
 
 
 @router.post("/documents/upload")

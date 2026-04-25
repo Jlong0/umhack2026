@@ -5,7 +5,7 @@ import FileUpload from "@/components/FileUpload";
 import ParsedForm from "@/components/ParsedForm";
 import { useToast } from "@/components/ui/toast";
 import { useParseJobPolling } from "@/hooks/useParseJobPolling";
-import { ApiError, confirmDocument, startComplianceWorkflow, uploadDocument } from "@/services/api";
+import { ApiError, confirmDocument, getDocumentFields, startComplianceWorkflow, uploadDocument } from "@/services/api";
 import { useWorkerStore } from "@/store/useWorkerStore";
 
 function normalizeInitialValues(parsedFields) {
@@ -30,9 +30,17 @@ export default function UploadPage() {
   const updateParsedField = useWorkerStore((state) => state.updateParsedField);
 
   const [selectedFile, setSelectedFile] = useState(null);
+  const [docType, setDocType] = useState("passport");
   const [formValues, setFormValues] = useState({});
   const [isUploading, setIsUploading] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
+  const [expectedFields, setExpectedFields] = useState([]);
+
+  useEffect(() => {
+    getDocumentFields(docType)
+      .then((res) => setExpectedFields(res.fields || []))
+      .catch(() => setExpectedFields([]));
+  }, [docType]);
 
   const { isPolling, stepText, error: pollError } = useParseJobPolling(jobId);
 
@@ -90,7 +98,7 @@ export default function UploadPage() {
     setIsUploading(true);
 
     try {
-      const response = await uploadDocument(selectedFile, "passport");
+      const response = await uploadDocument(selectedFile, docType);
       setParsedFields({});
       setJobContext({
         jobId: response.job_id,
@@ -211,6 +219,40 @@ export default function UploadPage() {
         </article>
 
         <div className="space-y-6">
+          <section className="permit-surface p-5 sm:p-6">
+            <h3 className="text-lg font-semibold text-slate-900">Document Type</h3>
+            <p className="mt-1 text-sm text-slate-600">Select the document you are uploading before scanning.</p>
+            <select
+              value={docType}
+              onChange={(e) => { setDocType(e.target.value); setParsedFields({}); setFormValues({}); }}
+              className="mt-3 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="passport">Passport (Bio-data Page)</option>
+              <option value="ssm_profile">SSM Company Profile</option>
+              <option value="act446_certificate">Act 446 Housing Certificate</option>
+              <option value="epf_socso_statement">EPF / SOCSO Statement</option>
+              <option value="biomedical_slip">Bio-Medical Slip</option>
+              <option value="borang100">Security Vetting — Borang 100</option>
+              <option value="fomema_report">FOMEMA Report</option>
+              <option value="insurance_cover_note">Insurance Cover Note</option>
+              <option value="employment_contract">Employment Contract</option>
+            </select>
+            {expectedFields.length > 0 && (
+              <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                <p className="mb-1.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Fields to be extracted</p>
+                <ul className="space-y-1">
+                  {expectedFields.map((f) => (
+                    <li key={f.key} className="flex items-center gap-2 text-xs text-slate-600">
+                      <span className="h-1.5 w-1.5 rounded-full bg-indigo-400 shrink-0" />
+                      <span className="font-medium">{f.label}</span>
+                      <span className="text-slate-400 font-mono">({f.key})</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </section>
+
           <FileUpload
             file={selectedFile}
             onFileSelect={setSelectedFile}
