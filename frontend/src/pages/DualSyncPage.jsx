@@ -1,173 +1,166 @@
 /**
- * DualSyncPage — PRD Screen C (Dual-Channel Sync View)
- *
- * Two-column comparative table for F&B sector workers:
- * Column 1: Federal status (MyEG/PLKS)
- * Column 2: Municipal status (Typhoid/Food Handler Certs)
- *
- * Includes "Export Audit Packet" button.
+ * DualSyncPage — Sync check between internal Firestore records and mock gov records.
+ * No live FWCMS connection — all external data is simulated.
  */
 
 import { useState } from "react";
-import { useAllWorkflows } from "@/hooks/queries/useWorkflowQueries";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { AlertTriangle, CheckCircle, FileX, RefreshCw, X } from "lucide-react";
+import { getSyncCheck, resolveSyncConflict } from "@/services/api";
 import { useAuditLogStore } from "@/store/useAuditLogStore";
 
-function StatusChip({ status }) {
-  const config = {
-    verified: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
-    pending: "bg-amber-500/10 text-amber-400 border-amber-500/20",
-    expired: "bg-red-500/10 text-red-400 border-red-500/20",
-  };
-
-  const normalized = (status || "pending").toLowerCase();
-  const style = config[normalized] || config.pending;
-  const label = normalized.charAt(0).toUpperCase() + normalized.slice(1);
-
-  return (
-    <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold ${style}`}>
-      {label}
-    </span>
-  );
+function useSyncCheck() {
+  return useQuery({ queryKey: ["sync-check"], queryFn: getSyncCheck, refetchInterval: 30000 });
 }
 
+function useResolveConflict() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ worker_id, field }) => resolveSyncConflict(worker_id, field),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["sync-check"] }),
+  });
+}
+
+const STATUS_STYLE = {
+  matched:   { icon: <CheckCircle className="h-4 w-4 text-emerald-500" />, label: "Matched",   badge: "bg-emerald-50 text-emerald-700" },
+  conflict:  { icon: <AlertTriangle className="h-4 w-4 text-amber-500" />, label: "CONFLICT",  badge: "bg-amber-50 text-amber-700" },
+  not_filed: { icon: <FileX className="h-4 w-4 text-red-500" />,           label: "Not Filed", badge: "bg-red-50 text-red-700" },
+};
+
 export default function DualSyncPage() {
-  const { data: workflows, isLoading } = useAllWorkflows();
+  const { data, isLoading, refetch, isFetching } = useSyncCheck();
+  const resolveMutation = useResolveConflict();
   const appendEntry = useAuditLogStore((s) => s.appendEntry);
-  const [exporting, setExporting] = useState(false);
+  const [selected, setSelected] = useState(null);
 
-  // Filter to F&B sector workers only
-  const fbWorkers = (workflows?.workflows || workflows || []).filter(
-    (w) => w.sector === "F&B" || w.sector === "FnB" || w.sector === "fnb"
-  );
+  const records = data?.records || [];
+  const matched   = records.filter(r => r.status === "matched").length;
+  const conflicts = records.filter(r => r.status === "conflict").length;
+  const notFiled  = records.filter(r => r.status === "not_filed").length;
 
-  const handleExport = () => {
-    setExporting(true);
-    const packet = {
-      export_date: new Date().toISOString(),
-      sector: "F&B",
-      workers: fbWorkers.map((w) => ({
-        worker_id: w.worker_id,
-        name: `${w.first_name} ${w.last_name}`,
-        federal: {
-          plks_status: w.current_gate === "ACTIVE" ? "verified" : "pending",
-          plks_expiry: w.deadlines?.plks_expiry,
-          myeg_status: w.myeg_status || "pending",
-        },
-        municipal: {
-          typhoid_status: w.deadlines?.typhoid_expiry
-            ? new Date(w.deadlines.typhoid_expiry) > new Date() ? "verified" : "expired"
-            : "pending",
-          typhoid_expiry: w.deadlines?.typhoid_expiry,
-          food_handler_cert: w.food_handler_cert || "pending",
-        },
-      })),
-    };
-
-    const blob = new Blob([JSON.stringify(packet, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
+  function handleExport() {
+    const blob = new Blob([JSON.stringify({ records, exported_at: new Date().toISOString() }, null, 2)], { type: "application/json" });
     const a = document.createElement("a");
-    a.href = url;
-    a.download = `audit-packet-fnb-${new Date().toISOString().slice(0, 10)}.json`;
+    a.href = URL.createObjectURL(blob);
+    a.download = `sync-report-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
-    URL.revokeObjectURL(url);
-
-    appendEntry({
-      actor: "HUMAN",
-      action: "AUDIT_PACKET_EXPORTED",
-      details: `F&B audit packet exported with ${fbWorkers.length} workers`,
-    });
-
-    setTimeout(() => setExporting(false), 1000);
-  };
+    appendEntry({ actor: "HUMAN", action: "SYNC_REPORT_EXPORTED", details: `${records.length} records exported` });
+  }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-100">Dual-Channel Sync View</h1>
-          <p className="text-sm text-gray-500">
-            Federal (Immigration) vs Municipal (Health) compliance for F&B workers
+          <h1 className="text-2xl font-bold text-gray-900">F&B Integration Layer</h1>
+          <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1 mt-1 inline-block">
+            Government portal data is simulated (mock). No live FWCMS connection.
           </p>
         </div>
-        <button
-          onClick={handleExport}
-          disabled={exporting || fbWorkers.length === 0}
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-blue-500/20 transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {exporting ? "Exporting..." : "📦 Export Audit Packet"}
-        </button>
+        <div className="flex gap-2">
+          <button onClick={handleExport} className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-600 hover:border-indigo-300">
+            Export Report
+          </button>
+          <button onClick={() => refetch()} disabled={isFetching}
+            className="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-600 hover:border-indigo-300 disabled:opacity-50">
+            <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
+            Run Sync Check
+          </button>
+        </div>
       </div>
 
-      {/* Table */}
-      {isLoading ? (
-        <div className="space-y-3">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-16 animate-pulse rounded-xl bg-white/[0.02]" />
-          ))}
-        </div>
-      ) : fbWorkers.length === 0 ? (
-        <div className="rounded-xl border border-white/5 bg-white/[0.02] p-12 text-center">
-          <p className="text-sm text-gray-500">No F&B sector workers found</p>
-          <p className="mt-1 text-xs text-gray-600">
-            This view is exclusive to Food & Beverage sector workers
-          </p>
-        </div>
-      ) : (
-        <div className="overflow-hidden rounded-xl border border-white/5">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-white/5 bg-white/[0.02]">
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
-                  Worker
-                </th>
-                <th colSpan={2} className="border-l border-white/5 px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-blue-400">
-                  Federal (MyEG / PLKS)
-                </th>
-                <th colSpan={2} className="border-l border-white/5 px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-amber-400">
-                  Municipal (Health)
-                </th>
-              </tr>
-              <tr className="border-b border-white/5 bg-white/[0.01]">
-                <th className="px-4 py-2 text-left text-[10px] text-gray-600">ID / Name</th>
-                <th className="border-l border-white/5 px-4 py-2 text-left text-[10px] text-gray-600">PLKS Status</th>
-                <th className="px-4 py-2 text-left text-[10px] text-gray-600">MyEG Status</th>
-                <th className="border-l border-white/5 px-4 py-2 text-left text-[10px] text-gray-600">Typhoid Vaccine</th>
-                <th className="px-4 py-2 text-left text-[10px] text-gray-600">Food Handler Cert</th>
-              </tr>
-            </thead>
-            <tbody>
-              {fbWorkers.map((worker) => {
-                const typhoidExpiry = worker.deadlines?.typhoid_expiry;
-                const typhoidStatus = typhoidExpiry
-                  ? new Date(typhoidExpiry) > new Date() ? "verified" : "expired"
-                  : "pending";
+      <div className="grid grid-cols-4 gap-4">
+        {[
+          { label: "Total Workers", value: records.length, color: "text-gray-900" },
+          { label: "Matched",       value: matched,         color: "text-emerald-700" },
+          { label: "Conflicts",     value: conflicts,       color: "text-amber-700" },
+          { label: "Not Filed",     value: notFiled,        color: "text-red-700" },
+        ].map(c => (
+          <div key={c.label} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+            <p className="text-xs text-gray-500">{c.label}</p>
+            <p className={`text-2xl font-bold mt-1 ${c.color}`}>{c.value}</p>
+          </div>
+        ))}
+      </div>
 
-                return (
-                  <tr key={worker.worker_id} className="border-b border-white/[0.03] transition-colors hover:bg-white/[0.02]">
-                    <td className="px-4 py-3">
-                      <div className="text-sm font-medium text-gray-200">
-                        {worker.first_name} {worker.last_name}
-                      </div>
-                      <div className="font-mono text-[10px] text-gray-500">{worker.worker_id}</div>
-                    </td>
-                    <td className="border-l border-white/5 px-4 py-3">
-                      <StatusChip status={worker.current_gate === "ACTIVE" ? "verified" : "pending"} />
-                    </td>
-                    <td className="px-4 py-3">
-                      <StatusChip status={worker.myeg_status || "pending"} />
-                    </td>
-                    <td className="border-l border-white/5 px-4 py-3">
-                      <StatusChip status={typhoidStatus} />
-                    </td>
-                    <td className="px-4 py-3">
-                      <StatusChip status={worker.food_handler_cert || "pending"} />
+      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50 border-b border-gray-100">
+            <tr>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500">Worker</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500">Internal (Parsed)</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500">
+                Mock Gov. Record <span className="text-gray-400 cursor-help" title="Simulated. No live FWCMS.">?</span>
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500">Status</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {isLoading ? (
+              <tr><td colSpan={4} className="px-4 py-8 text-center text-gray-400">Loading...</td></tr>
+            ) : records.map(r => {
+              const s = STATUS_STYLE[r.status] || STATUS_STYLE.matched;
+              return (
+                <tr key={r.worker_id}
+                  onClick={() => r.conflicts?.length && setSelected(r)}
+                  className={r.conflicts?.length ? "cursor-pointer hover:bg-gray-50" : ""}>
+                  <td className="px-4 py-3 font-medium text-gray-900">{r.worker_name}</td>
+                  <td className="px-4 py-3 text-gray-600 text-xs">
+                    {r.conflicts?.map(c => `${c.field}: ${c.internal}`).join(", ") || "—"}
+                  </td>
+                  <td className="px-4 py-3 text-gray-600 text-xs">
+                    {r.status === "not_filed" ? "— Not Found —" :
+                      r.conflicts?.map(c => `${c.field}: ${c.mock_gov}`).join(", ") || "In sync"}
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${s.badge}`}>
+                      {s.icon}{s.label}
+                    </span>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {selected && (
+        <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center" onClick={() => setSelected(null)}>
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-bold text-gray-900">CONFLICT — {selected.worker_name}</h2>
+              <button onClick={() => setSelected(null)}><X className="h-4 w-4 text-gray-400" /></button>
+            </div>
+            <p className="text-xs text-amber-600 mb-4">Marking as Correct updates mock_gov_records in Firestore only. No real portal submission.</p>
+            <table className="w-full text-sm mb-4">
+              <thead><tr className="text-xs text-gray-500 border-b">
+                <th className="pb-2 text-left">Field</th>
+                <th className="pb-2 text-left">Internal</th>
+                <th className="pb-2 text-left">Mock Gov.</th>
+                <th className="pb-2"></th>
+              </tr></thead>
+              <tbody className="divide-y divide-gray-100">
+                {selected.conflicts.map(c => (
+                  <tr key={c.field}>
+                    <td className="py-2 font-mono text-xs">{c.field}</td>
+                    <td className="py-2">{String(c.internal)}</td>
+                    <td className="py-2 text-red-600">{String(c.mock_gov)}</td>
+                    <td className="py-2">
+                      <button onClick={() => resolveMutation.mutate({ worker_id: selected.worker_id, field: c.field })}
+                        disabled={resolveMutation.isPending}
+                        className="text-xs text-indigo-600 hover:underline disabled:opacity-50">
+                        Mark Correct
+                      </button>
                     </td>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                ))}
+              </tbody>
+            </table>
+            <button
+              onClick={() => { selected.conflicts.forEach(c => resolveMutation.mutate({ worker_id: selected.worker_id, field: c.field })); setSelected(null); }}
+              className="w-full rounded-lg bg-indigo-600 py-2 text-sm font-semibold text-white hover:bg-indigo-500">
+              Mark All Internal as Correct
+            </button>
+          </div>
         </div>
       )}
     </div>

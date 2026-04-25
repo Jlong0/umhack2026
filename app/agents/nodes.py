@@ -5,6 +5,7 @@ from datetime import datetime, date, timezone
 from dateutil.relativedelta import relativedelta
 
 from app.agents.state import VDRState, WorkerComplianceState, AgentType, ComplianceStatus, RegulatoryGate
+from app.agents.trace import append_trace
 from app.firebase_config import db
 from app.services.gemini_service import parse_document, generate_text
 from app.services.realtime_service import realtime_dashboard_manager
@@ -88,77 +89,74 @@ def _low_confidence_fields(extracted: dict, threshold: float = 0.75) -> list:
 
 
 def document_parser_node(state: VDRState) -> VDRState:
-    """
-    Parses all uploaded documents via Gemini vision.
-    Populates VDRState fields from extracted data.
-    Pauses pipeline if critical fields have low confidence.
-    """
-    updates: dict = {}
-    low_conf: list = []
+    state = append_trace(state, "document_parser_node", "running")
+    try:
+        updates: dict = {}
+        low_conf: list = []
 
-    # Fetch document list for this pipeline run from Firestore
-    # Documents are stored under parse_jobs with a pipeline_id or worker context.
-    # We read from state's vdr_form_data which may carry document URLs keyed by type.
-    docs: dict = (state.get("vdr_form_data") or {}).get("documents", {})
+        docs: dict = (state.get("vdr_form_data") or {}).get("documents", {})
 
-    for doc_type, image_url in docs.items():
-        if not image_url:
-            continue
-        result = parse_document(image_url, doc_type)
-        if not result.get("success"):
-            continue
-        extracted = result.get("extracted_data", {})
+        for doc_type, image_url in docs.items():
+            if not image_url:
+                continue
+            result = parse_document(image_url, doc_type)
+            if not result.get("success"):
+                continue
+            extracted = result.get("extracted_data", {})
 
-        if doc_type == "passport":
-            master_name, conf = _extract_field(extracted, "master_name")
-            passport_number, pconf = _extract_field(extracted, "passport_number")
-            expiry, econf = _extract_field(extracted, "expiry_date")
-            dob, _ = _extract_field(extracted, "dob")
-            updates["master_name"] = master_name
-            updates["passport_number"] = passport_number
-            updates["passport_expiry"] = expiry
-            updates["worker_dob"] = dob
-            for field, c in [("master_name", conf), ("passport_number", pconf), ("passport_expiry", econf)]:
-                if c < 0.75:
-                    low_conf.append(field)
+            if doc_type == "passport":
+                master_name, conf = _extract_field(extracted, "master_name")
+                passport_number, pconf = _extract_field(extracted, "passport_number")
+                expiry, econf = _extract_field(extracted, "expiry_date")
+                dob, _ = _extract_field(extracted, "dob")
+                updates["master_name"] = master_name
+                updates["passport_number"] = passport_number
+                updates["passport_expiry"] = expiry
+                updates["worker_dob"] = dob
+                for field, c in [("master_name", conf), ("passport_number", pconf), ("passport_expiry", econf)]:
+                    if c < 0.75:
+                        low_conf.append(field)
 
-        elif doc_type == "ssm_profile":
-            updates["company_name"], _ = _extract_field(extracted, "company_name")
-            updates["roc_number"], _ = _extract_field(extracted, "roc_number")
-            updates["nature_of_business"], _ = _extract_field(extracted, "nature_of_business")
+            elif doc_type == "ssm_profile":
+                updates["company_name"], _ = _extract_field(extracted, "company_name")
+                updates["roc_number"], _ = _extract_field(extracted, "roc_number")
+                updates["nature_of_business"], _ = _extract_field(extracted, "nature_of_business")
 
-        elif doc_type == "act446_certificate":
-            updates["act446_cert_number"], _ = _extract_field(extracted, "cert_number")
-            cap, _ = _extract_field(extracted, "max_capacity")
-            updates["act446_max_capacity"] = int(cap) if cap is not None else None
+            elif doc_type == "act446_certificate":
+                updates["act446_cert_number"], _ = _extract_field(extracted, "cert_number")
+                cap, _ = _extract_field(extracted, "max_capacity")
+                updates["act446_max_capacity"] = int(cap) if cap is not None else None
 
-        elif doc_type == "epf_socso_statement":
-            lc, _ = _extract_field(extracted, "local_employee_count")
-            fc, _ = _extract_field(extracted, "foreign_employee_count")
-            updates["local_employee_count"] = int(lc) if lc is not None else None
-            updates["foreign_employee_count"] = int(fc) if fc is not None else None
+            elif doc_type == "epf_socso_statement":
+                lc, _ = _extract_field(extracted, "local_employee_count")
+                fc, _ = _extract_field(extracted, "foreign_employee_count")
+                updates["local_employee_count"] = int(lc) if lc is not None else None
+                updates["foreign_employee_count"] = int(fc) if fc is not None else None
 
-        elif doc_type == "biomedical_slip":
-            updates["biomedical_ref"], _ = _extract_field(extracted, "reference_number")
+            elif doc_type == "biomedical_slip":
+                updates["biomedical_ref"], _ = _extract_field(extracted, "reference_number")
 
-        elif doc_type == "borang100":
-            updates["borang100_home_address"], _ = _extract_field(extracted, "home_country_address")
-            parents, _ = _extract_field(extracted, "parents_names")
-            updates["borang100_parents_names"] = json.dumps(parents) if parents else None
+            elif doc_type == "borang100":
+                updates["borang100_home_address"], _ = _extract_field(extracted, "home_country_address")
+                parents, _ = _extract_field(extracted, "parents_names")
+                updates["borang100_parents_names"] = json.dumps(parents) if parents else None
 
-        elif doc_type == "fomema_report":
-            result_val, _ = _extract_field(extracted, "result")
-            updates["fomema_status"] = result_val or "Pending"
+            elif doc_type == "fomema_report":
+                result_val, _ = _extract_field(extracted, "result")
+                updates["fomema_status"] = result_val or "Pending"
 
-    if low_conf:
-        return {
-            **state,
-            **updates,
-            "pipeline_status": "paused",
-            "halt_reason": f"Low confidence on critical fields: {', '.join(low_conf)}. Manual review required.",
-        }
+        if low_conf:
+            state = {**state, **updates, "pipeline_status": "paused",
+                     "halt_reason": f"Low confidence on critical fields: {', '.join(low_conf)}. Manual review required."}
+            return append_trace(state, "document_parser_node", "completed",
+                                summary=f"Paused — low confidence: {', '.join(low_conf)}")
 
-    return {**state, **updates, "pipeline_status": "running"}
+        state = {**state, **updates, "pipeline_status": "running"}
+        return append_trace(state, "document_parser_node", "completed",
+                            summary=f"Parsed {len(docs)} documents")
+    except Exception as e:
+        state = {**state, "pipeline_status": "failed"}
+        return append_trace(state, "document_parser_node", "failed", error=str(e))
 
 
 # ---------------------------------------------------------------------------
@@ -166,105 +164,101 @@ def document_parser_node(state: VDRState) -> VDRState:
 # ---------------------------------------------------------------------------
 
 def pre_form_validator_node(state: VDRState) -> VDRState:
-    today = TODAY()
-    errors: list = []
-    flags: list = []
+    state = append_trace(state, "pre_form_validator_node", "running")
+    try:
+        today = TODAY()
+        errors: list = []
+        flags: list = []
 
-    # Passport validity >= 18 months
-    if state.get("passport_expiry"):
-        try:
-            expiry = datetime.strptime(state["passport_expiry"], "%y%m%d").date()
-            if expiry < today + relativedelta(months=18):
-                errors.append("Passport expires in < 18 months. New passport required.")
-        except (ValueError, TypeError):
-            pass
+        # Passport validity >= 18 months
+        if state.get("passport_expiry"):
+            try:
+                expiry = datetime.strptime(state["passport_expiry"], "%y%m%d").date()
+                if expiry < today + relativedelta(months=18):
+                    errors.append("Passport expires in < 18 months. New passport required.")
+            except (ValueError, TypeError):
+                pass
 
-    # Worker age <= 45
-    if state.get("worker_dob"):
-        try:
-            dob = datetime.strptime(state["worker_dob"], "%y%m%d").date()
-            age = relativedelta(today, dob).years
-            if age > 45:
-                errors.append("Worker age exceeds 45. Ineligible for PLKS.")
-        except (ValueError, TypeError):
-            pass
+        # Worker age <= 45
+        if state.get("worker_dob"):
+            try:
+                dob = datetime.strptime(state["worker_dob"], "%y%m%d").date()
+                age = relativedelta(today, dob).years
+                if age > 45:
+                    errors.append("Worker age exceeds 45. Ineligible for PLKS.")
+            except (ValueError, TypeError):
+                pass
 
-    # Housing capacity
-    quota = state.get("quota_requested") or 0
-    capacity = state.get("act446_max_capacity") or 0
-    if quota and capacity and quota > capacity:
-        errors.append("Quota exceeds licensed housing capacity. Reduce quota.")
+        # Housing capacity
+        quota = state.get("quota_requested") or 0
+        capacity = state.get("act446_max_capacity") or 0
+        if quota and capacity and quota > capacity:
+            errors.append("Quota exceeds licensed housing capacity. Reduce quota.")
 
-    # Local ratio <= 33%
-    local = state.get("local_employee_count") or 0
-    foreign = state.get("foreign_employee_count") or 0
-    total = local + foreign
-    if total > 0 and foreign / total > 0.33:
-        errors.append("Foreign worker ratio exceeds 33% cap.")
+        # Local ratio <= 33%
+        local = state.get("local_employee_count") or 0
+        foreign = state.get("foreign_employee_count") or 0
+        total = local + foreign
+        if total > 0 and foreign / total > 0.33:
+            errors.append("Foreign worker ratio exceeds 33% cap.")
 
-    # Nationality from approved source-country list
-    nationality = (state.get("nationality") or "").lower().strip()
-    if nationality and nationality not in _APPROVED_NATIONALITIES:
-        errors.append(f"Nationality '{nationality}' not on JTKSM approved source-country list.")
+        # Nationality from approved source-country list
+        nationality = (state.get("nationality") or "").lower().strip()
+        if nationality and nationality not in _APPROVED_NATIONALITIES:
+            errors.append(f"Nationality '{nationality}' not on JTKSM approved source-country list.")
 
-    # Borang 100 home address (hard stop)
-    if not state.get("borang100_home_address"):
-        errors.append("Borang 100 home address missing.")
+        # Borang 100 home address (hard stop)
+        if not state.get("borang100_home_address"):
+            errors.append("Borang 100 home address missing.")
 
-    # Borang 100 parents names (hard stop)
-    if not state.get("borang100_parents_names"):
-        errors.append("Borang 100 parents' names missing.")
+        # Borang 100 parents names (hard stop)
+        if not state.get("borang100_parents_names"):
+            errors.append("Borang 100 parents' names missing.")
 
-    # Biomedical ref format (hard stop)
-    bio_ref = state.get("biomedical_ref") or ""
-    if not re.fullmatch(r"\d{10,12}", str(bio_ref)):
-        errors.append("Bio-medical reference number must be 10–12 digits.")
+        # Biomedical ref format (hard stop)
+        bio_ref = state.get("biomedical_ref") or ""
+        if not re.fullmatch(r"\d{10,12}", str(bio_ref)):
+            errors.append("Bio-medical reference number must be 10–12 digits.")
 
-    # Employer-side checks via Firestore
-    roc = state.get("roc_number")
-    if roc:
-        company_docs = db.collection("companies").where("roc_number", "==", roc).limit(1).stream()
-        company_doc = next((d.to_dict() for d in company_docs), None)
-        if company_doc:
-            if not company_doc.get("ssm_registration_valid"):
-                errors.append("SSM registration is not active.")
-            act446_expiry = company_doc.get("act_446_expiry_date")
-            if not act446_expiry:
-                errors.append("Act 446 certificate missing.")
-            else:
-                try:
-                    if datetime.fromisoformat(act446_expiry).date() < today:
-                        errors.append("Act 446 housing certificate has expired.")
-                except (ValueError, TypeError):
-                    errors.append("Act 446 expiry date is invalid.")
-            if company_doc.get("jtksm_60k_status") != "approved":
-                errors.append("Section 60K (JTKSM) approval not granted.")
-            sector = (state.get("nature_of_business") or "").lower()
-            quota_balance = company_doc.get("quota_balance", {})
-            if isinstance(quota_balance, dict) and sector and quota_balance.get(sector, 1) <= 0:
-                errors.append(f"Quota exhausted for sector '{sector}'.")
+        # Employer-side checks via Firestore
+        roc = state.get("roc_number")
+        if roc:
+            company_docs = db.collection("companies").where("roc_number", "==", roc).limit(1).stream()
+            company_doc = next((d.to_dict() for d in company_docs), None)
+            if company_doc:
+                if not company_doc.get("ssm_registration_valid"):
+                    errors.append("SSM registration is not active.")
+                act446_expiry = company_doc.get("act_446_expiry_date")
+                if not act446_expiry:
+                    errors.append("Act 446 certificate missing.")
+                else:
+                    try:
+                        if datetime.fromisoformat(act446_expiry).date() < today:
+                            errors.append("Act 446 housing certificate has expired.")
+                    except (ValueError, TypeError):
+                        errors.append("Act 446 expiry date is invalid.")
+                if company_doc.get("jtksm_60k_status") != "approved":
+                    errors.append("Section 60K (JTKSM) approval not granted.")
+                sector = (state.get("nature_of_business") or "").lower()
+                quota_balance = company_doc.get("quota_balance", {})
+                if isinstance(quota_balance, dict) and sector and quota_balance.get(sector, 1) <= 0:
+                    errors.append(f"Quota exhausted for sector '{sector}'.")
 
-    if errors:
-        return {
-            **state,
-            "employer_eligible": False,
-            "housing_compliant": False,
-            "worker_eligible": False,
-            "validation_errors": errors,
-            "quota_flags": flags,
-            "pipeline_status": "failed",
-            "halt_reason": errors[0],
-        }
+        if errors:
+            state = {**state, "employer_eligible": False, "housing_compliant": False,
+                     "worker_eligible": False, "validation_errors": errors,
+                     "quota_flags": flags, "pipeline_status": "failed", "halt_reason": errors[0]}
+            return append_trace(state, "pre_form_validator_node", "completed",
+                                summary=f"Failed: {errors[0]}")
 
-    return {
-        **state,
-        "employer_eligible": True,
-        "housing_compliant": True,
-        "worker_eligible": True,
-        "validation_errors": [],
-        "quota_flags": flags,
-        "pipeline_status": "running",
-    }
+        state = {**state, "employer_eligible": True, "housing_compliant": True,
+                 "worker_eligible": True, "validation_errors": [], "quota_flags": flags,
+                 "pipeline_status": "running"}
+        return append_trace(state, "pre_form_validator_node", "completed",
+                            summary="All validations passed")
+    except Exception as e:
+        state = {**state, "pipeline_status": "failed"}
+        return append_trace(state, "pre_form_validator_node", "failed", error=str(e))
 
 
 # ---------------------------------------------------------------------------
@@ -348,15 +342,16 @@ _SIGNATURE_REQUIREMENTS = [
 
 
 def signature_tracker_node(state: VDRState) -> VDRState:
+    state = append_trace(state, "signature_tracker_node", "running")
     existing = state.get("signatures_required") or []
     if existing:
-        return {**state, "pipeline_status": "running"}
-    return {
-        **state,
-        "signatures_required": _SIGNATURE_REQUIREMENTS,
-        "signatures_completed": state.get("signatures_completed") or [],
-        "pipeline_status": "running",
-    }
+        state = {**state, "pipeline_status": "running"}
+    else:
+        state = {**state, "signatures_required": _SIGNATURE_REQUIREMENTS,
+                 "signatures_completed": state.get("signatures_completed") or [],
+                 "pipeline_status": "running"}
+    return append_trace(state, "signature_tracker_node", "completed",
+                        summary=f"{len(state.get('signatures_required', []))} signature documents tracked")
 
 
 # ---------------------------------------------------------------------------
@@ -376,34 +371,43 @@ _COMPLIANCE_SYSTEM = (
 
 
 def compliance_reasoner_node(state: VDRState) -> VDRState:
-    fomema_status = state.get("fomema_status") or "Pending"
-    if fomema_status == "Unfit":
-        return {**state, "obligations": [], "pipeline_status": "failed",
-                "halt_reason": "FOMEMA result Unfit. Repatriation required."}
+    state = append_trace(state, "compliance_reasoner_node", "running")
+    try:
+        fomema_status = state.get("fomema_status") or "Pending"
+        if fomema_status == "Unfit":
+            state = {**state, "obligations": [], "pipeline_status": "failed",
+                     "halt_reason": "FOMEMA result Unfit. Repatriation required."}
+            return append_trace(state, "compliance_reasoner_node", "completed",
+                                summary="Failed: FOMEMA Unfit")
 
-    sector = (state.get("nature_of_business") or "manufacturing").lower()
-    levy = _LEVY_BY_SECTOR.get(sector, 590)
-    prompt = (
-        f"Worker: {state.get('master_name')}, Passport: {state.get('passport_number')}\n"
-        f"Sector: {sector}, Permit class: PLKS, Today: {TODAY()}, Annual levy: RM {levy}\n"
-        f"FOMEMA status: {fomema_status}\n"
-        "Return a JSON array of obligations. Each: {task_type, task_name, status, depends_on, "
-        "due_date, authority, estimated_cost, notes}. "
-        "FOMEMA-gated tasks have status 'blocked' when FOMEMA is Pending. "
-        "Use master_name on all documents."
-    )
-    result = generate_text(prompt, _COMPLIANCE_SYSTEM)
-    obligations = []
-    if result.get("success"):
-        try:
-            text = result["text"]
-            if "```json" in text:
-                text = text.split("```json")[1].split("```")[0].strip()
-            obligations = json.loads(text) if isinstance(json.loads(text), list) else []
-        except Exception:
-            pass
+        sector = (state.get("nature_of_business") or "manufacturing").lower()
+        levy = _LEVY_BY_SECTOR.get(sector, 590)
+        prompt = (
+            f"Worker: {state.get('master_name')}, Passport: {state.get('passport_number')}\n"
+            f"Sector: {sector}, Permit class: PLKS, Today: {TODAY()}, Annual levy: RM {levy}\n"
+            f"FOMEMA status: {fomema_status}\n"
+            "Return a JSON array of obligations. Each: {task_type, task_name, status, depends_on, "
+            "due_date, authority, estimated_cost, notes}. "
+            "FOMEMA-gated tasks have status 'blocked' when FOMEMA is Pending. "
+            "Use master_name on all documents."
+        )
+        result = generate_text(prompt, _COMPLIANCE_SYSTEM)
+        obligations = []
+        if result.get("success"):
+            try:
+                text = result["text"]
+                if "```json" in text:
+                    text = text.split("```json")[1].split("```")[0].strip()
+                obligations = json.loads(text) if isinstance(json.loads(text), list) else []
+            except Exception:
+                pass
 
-    return {**state, "obligations": obligations, "pipeline_status": "running"}
+        state = {**state, "obligations": obligations, "pipeline_status": "running"}
+        return append_trace(state, "compliance_reasoner_node", "completed",
+                            summary=f"{len(obligations)} obligations generated")
+    except Exception as e:
+        state = {**state, "pipeline_status": "failed"}
+        return append_trace(state, "compliance_reasoner_node", "failed", error=str(e))
 
 
 # ---------------------------------------------------------------------------
@@ -418,35 +422,44 @@ _FOMEMA_SYSTEM = (
 
 
 def fomema_gate_node(state: VDRState) -> VDRState:
-    fomema_status = state.get("fomema_status") or "Pending"
-    if fomema_status == "Pending":
-        return {**state, "pipeline_status": "paused",
-                "halt_reason": "Awaiting FOMEMA report upload."}
+    state = append_trace(state, "fomema_gate_node", "running")
+    try:
+        fomema_status = state.get("fomema_status") or "Pending"
+        if fomema_status == "Pending":
+            state = {**state, "pipeline_status": "paused", "halt_reason": "Awaiting FOMEMA report upload."}
+            return append_trace(state, "fomema_gate_node", "completed", summary="Paused: awaiting FOMEMA")
 
-    result = generate_text(
-        f"FOMEMA status: {fomema_status}, Passport: {state.get('passport_number')}, Today: {TODAY()}",
-        _FOMEMA_SYSTEM,
-    )
-    verified_status = fomema_status
-    if result.get("success"):
-        try:
-            verified_status = json.loads(result["text"]).get("fomema_status", fomema_status)
-        except Exception:
-            pass
+        result = generate_text(
+            f"FOMEMA status: {fomema_status}, Passport: {state.get('passport_number')}, Today: {TODAY()}",
+            _FOMEMA_SYSTEM,
+        )
+        verified_status = fomema_status
+        if result.get("success"):
+            try:
+                verified_status = json.loads(result["text"]).get("fomema_status", fomema_status)
+            except Exception:
+                pass
 
-    if verified_status == "Unfit":
-        return {**state, "fomema_status": "Unfit", "pipeline_status": "failed",
-                "halt_reason": "FOMEMA result Unfit. Generate REPATRIATION obligation."}
-    if verified_status == "Pending":
-        return {**state, "fomema_status": "Pending", "pipeline_status": "paused",
-                "halt_reason": "FOMEMA result still pending. Re-upload when available."}
+        if verified_status == "Unfit":
+            state = {**state, "fomema_status": "Unfit", "pipeline_status": "failed",
+                     "halt_reason": "FOMEMA result Unfit. Generate REPATRIATION obligation."}
+            return append_trace(state, "fomema_gate_node", "completed", summary="Failed: FOMEMA Unfit")
 
-    obligations = [
-        {**ob, "status": "pending"} if ob.get("task_type") == "LEVY_PAYMENT" and ob.get("status") == "blocked"
-        else ob
-        for ob in (state.get("obligations") or [])
-    ]
-    return {**state, "fomema_status": "Fit", "obligations": obligations, "pipeline_status": "running"}
+        if verified_status == "Pending":
+            state = {**state, "fomema_status": "Pending", "pipeline_status": "paused",
+                     "halt_reason": "FOMEMA result still pending. Re-upload when available."}
+            return append_trace(state, "fomema_gate_node", "completed", summary="Paused: FOMEMA pending")
+
+        obligations = [
+            {**ob, "status": "pending"} if ob.get("task_type") == "LEVY_PAYMENT" and ob.get("status") == "blocked"
+            else ob
+            for ob in (state.get("obligations") or [])
+        ]
+        state = {**state, "fomema_status": "Fit", "obligations": obligations, "pipeline_status": "running"}
+        return append_trace(state, "fomema_gate_node", "completed", summary="FOMEMA Fit — gate cleared")
+    except Exception as e:
+        state = {**state, "pipeline_status": "failed"}
+        return append_trace(state, "fomema_gate_node", "failed", error=str(e))
 
 
 # ---------------------------------------------------------------------------
@@ -462,51 +475,75 @@ _VDR_SYSTEM = (
 
 
 def vdr_assembler_node(state: VDRState) -> VDRState:
-    # Gate checks
-    if not (state.get("employer_eligible") and state.get("housing_compliant") and
-            state.get("worker_eligible") and state.get("fomema_status") == "Fit"):
-        return {**state, "pipeline_status": "paused",
-                "halt_reason": "VDR prerequisites not met."}
+    state = append_trace(state, "vdr_assembler_node", "running")
+    try:
+        if not (state.get("employer_eligible") and state.get("housing_compliant") and
+                state.get("worker_eligible") and state.get("fomema_status") == "Fit"):
+            state = {**state, "pipeline_status": "paused", "halt_reason": "VDR prerequisites not met."}
+            return append_trace(state, "vdr_assembler_node", "completed", summary="Paused: prerequisites not met")
 
-    sigs_required = state.get("signatures_required") or []
-    sigs_completed = state.get("signatures_completed") or []
-    completed_docs = {s.get("document") for s in sigs_completed}
-    m_stamp_ok = any(
-        s.get("document") == "Employment Contract" and "m_stamp" in (s.get("special_steps") or [])
-        for s in sigs_completed
-    )
-    pending_sigs = [s["document"] for s in sigs_required if s["document"] not in completed_docs]
-    if pending_sigs or not m_stamp_ok:
-        missing = pending_sigs + ([] if m_stamp_ok else ["Employment Contract M-Stamp"])
-        return {**state, "pipeline_status": "paused",
-                "halt_reason": f"Pending signatures/stamps: {', '.join(missing)}"}
+        sigs_required = state.get("signatures_required") or []
+        sigs_completed = state.get("signatures_completed") or []
+        completed_docs = {s.get("document") for s in sigs_completed}
+        m_stamp_ok = any(
+            s.get("document") == "Employment Contract" and "m_stamp" in (s.get("special_steps") or [])
+            for s in sigs_completed
+        )
+        pending_sigs = [s["document"] for s in sigs_required if s["document"] not in completed_docs]
+        if pending_sigs or not m_stamp_ok:
+            missing = pending_sigs + ([] if m_stamp_ok else ["Employment Contract M-Stamp"])
+            state = {**state, "pipeline_status": "paused",
+                     "halt_reason": f"Pending signatures/stamps: {', '.join(missing)}"}
+            return append_trace(state, "vdr_assembler_node", "completed",
+                                summary=f"Paused: missing {len(missing)} signatures")
 
-    prompt = (
-        f"Verified state:\n"
-        f"master_name={state.get('master_name')}, passport_number={state.get('passport_number')}, "
-        f"passport_expiry={state.get('passport_expiry')}, company_name={state.get('company_name')}, "
-        f"roc_number={state.get('roc_number')}, act446_cert_number={state.get('act446_cert_number')}, "
-        f"biomedical_ref={state.get('biomedical_ref')}, nature_of_business={state.get('nature_of_business')}\n"
-        "Populate all IMM.47/FWCMS fields."
-    )
-    result = generate_text(prompt, _VDR_SYSTEM)
-    form_data = {}
-    if result.get("success"):
-        try:
-            text = result["text"]
-            if "```json" in text:
-                text = text.split("```json")[1].split("```")[0].strip()
-            form_data = json.loads(text)
-        except Exception:
-            pass
+        prompt = (
+            f"Verified state:\n"
+            f"master_name={state.get('master_name')}, passport_number={state.get('passport_number')}, "
+            f"passport_expiry={state.get('passport_expiry')}, company_name={state.get('company_name')}, "
+            f"roc_number={state.get('roc_number')}, act446_cert_number={state.get('act446_cert_number')}, "
+            f"biomedical_ref={state.get('biomedical_ref')}, nature_of_business={state.get('nature_of_business')}\n"
+            "Populate all IMM.47/FWCMS fields."
+        )
+        result = generate_text(prompt, _VDR_SYSTEM)
+        form_data = {}
+        if result.get("success"):
+            try:
+                text = result["text"]
+                if "```json" in text:
+                    text = text.split("```json")[1].split("```")[0].strip()
+                form_data = json.loads(text)
+            except Exception:
+                pass
 
-    submission_ready = form_data.get("submission_ready", False)
-    null_fields = form_data.get("null_fields", [])
-    if null_fields or not submission_ready:
-        return {**state, "vdr_form_data": form_data, "pipeline_status": "paused",
-                "halt_reason": f"Missing required fields: {', '.join(null_fields)}"}
+        submission_ready = form_data.get("submission_ready", False)
+        null_fields = form_data.get("null_fields", [])
+        if null_fields or not submission_ready:
+            state = {**state, "vdr_form_data": form_data, "pipeline_status": "paused",
+                     "halt_reason": f"Missing required fields: {', '.join(null_fields)}"}
+            return append_trace(state, "vdr_assembler_node", "completed",
+                                summary=f"Paused: {len(null_fields)} null fields")
 
-    return {**state, "vdr_form_data": form_data, "pipeline_status": "completed"}
+        # Write pending handoff instead of real API call
+        worker_id = state.get("worker_id")
+        if worker_id:
+            from datetime import timezone as _tz
+            db.collection("pending_handoffs").add({
+                "worker_id": worker_id,
+                "action_type": "submit_imm47",
+                "triggered_by": "vdr_assembler_node",
+                "payload": form_data.get("form_fields", {}),
+                "status": "awaiting_confirmation",
+                "simulated": True,
+                "created_at": datetime.now(_tz.utc).isoformat(),
+            })
+
+        state = {**state, "vdr_form_data": form_data, "pipeline_status": "completed"}
+        return append_trace(state, "vdr_assembler_node", "completed",
+                            summary="IMM.47 assembled — pending handoff confirmation")
+    except Exception as e:
+        state = {**state, "pipeline_status": "failed"}
+        return append_trace(state, "vdr_assembler_node", "failed", error=str(e))
 
 
 # ---------------------------------------------------------------------------
@@ -514,6 +551,7 @@ def vdr_assembler_node(state: VDRState) -> VDRState:
 # ---------------------------------------------------------------------------
 
 def supervisor_node(state: WorkerComplianceState) -> WorkerComplianceState:
+    state = append_trace(state, "supervisor_node", "running")
     observations = state.get("agent_observations", [])
     current_gate = state.get("current_gate")
     if current_gate in {RegulatoryGate.GATE_1_JTKSM, RegulatoryGate.GATE_1_JTKSM.value}:
@@ -531,15 +569,18 @@ def supervisor_node(state: WorkerComplianceState) -> WorkerComplianceState:
     elif state.get("deadlock_detected"):
         next_action = "hitl_review"
     elif len(state.get("pending_obligations", [])) == 0 and state.get("documents_validated"):
-        return {**state, "current_agent": AgentType.SUPERVISOR,
-                "agent_observations": observations, "next_action": None, "workflow_complete": True}
+        result = {**state, "current_agent": AgentType.SUPERVISOR,
+                  "agent_observations": observations, "next_action": None, "workflow_complete": True}
+        return append_trace(result, "supervisor_node", "completed", summary="Workflow complete")
     else:
         next_action = "calculate_strategy"
-    return {**state, "current_agent": AgentType.SUPERVISOR,
-            "agent_observations": observations, "next_action": next_action}
+    result = {**state, "current_agent": AgentType.SUPERVISOR,
+              "agent_observations": observations, "next_action": next_action}
+    return append_trace(result, "supervisor_node", "completed", summary=f"Routing to {next_action}")
 
 
 def auditor_node(state: WorkerComplianceState) -> WorkerComplianceState:
+    state = append_trace(state, "auditor_node", "running")
     observations = state.get("agent_observations", [])
     tool_calls = state.get("tool_calls", [])
     alerts = state.get("alerts", [])
@@ -583,16 +624,18 @@ def auditor_node(state: WorkerComplianceState) -> WorkerComplianceState:
                        "hitl_required": True, "hitl_reason": "permit_expired_requires_immediate_action",
                        "hitl_data": fine}
             post_agent_writeback(updated, {"alerts": alerts})
-            return updated
+            return append_trace(updated, "auditor_node", "completed", summary="HITL: permit expired")
 
     updated = {**state, "current_agent": AgentType.AUDITOR, "agent_observations": observations,
                "tool_calls": tool_calls, "alerts": alerts, "documents_validated": True,
                "missing_documents": missing_docs, "next_action": "calculate_strategy"}
     post_agent_writeback(updated, {"alerts": alerts})
-    return updated
+    return append_trace(updated, "auditor_node", "completed",
+                        summary=f"{len(alerts)} alerts, {len(missing_docs)} missing docs")
 
 
 def strategist_node(state: WorkerComplianceState) -> WorkerComplianceState:
+    state = append_trace(state, "strategist_node", "running")
     observations = state.get("agent_observations", [])
     tool_calls = state.get("tool_calls", [])
     alerts = state.get("alerts", [])
@@ -635,31 +678,35 @@ def strategist_node(state: WorkerComplianceState) -> WorkerComplianceState:
                        "next_action": "hitl_review", "hitl_required": True,
                        "hitl_reason": "compliance_deadlock_detected", "hitl_data": dc}
             post_agent_writeback(updated, {"alerts": alerts})
-            return updated
+            return append_trace(updated, "strategist_node", "completed", summary="HITL: deadlock detected")
 
     updated = {**state, "current_agent": AgentType.STRATEGIST, "agent_observations": observations,
                "tool_calls": tool_calls, "alerts": alerts,
                "pending_obligations": state.get("pending_obligations", []) + pending_obligations,
                "compliance_status": ComplianceStatus.ACTIVE, "next_action": None, "workflow_complete": True}
     post_agent_writeback(updated, {"alerts": alerts})
-    return updated
+    return append_trace(updated, "strategist_node", "completed", summary="Strategy calculated")
 
 
 def filing_node(state: WorkerComplianceState) -> WorkerComplianceState:
+    state = append_trace(state, "filing_node", "running")
     updated = {**state, "current_agent": AgentType.FILING,
                "compliance_status": ComplianceStatus.RENEWAL_PENDING,
                "next_action": None, "workflow_complete": True}
     post_agent_writeback(updated, {"alerts": state.get("alerts", [])})
+    return append_trace(updated, "filing_node", "completed", summary="Renewal pending")
     return updated
 
 
 def hitl_interrupt_node(state: WorkerComplianceState) -> WorkerComplianceState:
+    state = append_trace(state, "hitl_interrupt_node", "running")
     updated = {**state, "current_agent": AgentType.SUPERVISOR, "next_action": "hitl_review"}
     post_agent_writeback(updated, {"alerts": state.get("alerts", [])})
-    return updated
+    return append_trace(updated, "hitl_interrupt_node", "completed", summary="HITL interrupt raised")
 
 
 def company_audit_node(state: WorkerComplianceState) -> WorkerComplianceState:
+    state = append_trace(state, "company_audit_node", "running")
     observations = state.get("agent_observations", [])
     alerts = state.get("alerts", [])
     tool_calls = state.get("tool_calls", [])
@@ -713,10 +760,12 @@ def company_audit_node(state: WorkerComplianceState) -> WorkerComplianceState:
     updated = {**state, "current_agent": AgentType.AUDITOR, "agent_observations": observations,
                "tool_calls": tool_calls, "alerts": alerts, "next_action": "calculate_strategy"}
     post_agent_writeback(updated, {"alerts": alerts})
-    return updated
+    return append_trace(updated, "company_audit_node", "completed",
+                        summary=f"Gate: {gate_result}, {len(blockers)} blockers")
 
 
 def vdr_filing_node(state: WorkerComplianceState) -> WorkerComplianceState:
+    state = append_trace(state, "vdr_filing_node", "running")
     observations = state.get("agent_observations", [])
     alerts = state.get("alerts", [])
     tool_calls = state.get("tool_calls", [])
@@ -756,10 +805,12 @@ def vdr_filing_node(state: WorkerComplianceState) -> WorkerComplianceState:
                "tool_calls": tool_calls, "alerts": alerts,
                "next_action": "prepare_filing" if not blockers else "calculate_strategy"}
     post_agent_writeback(updated, {"alerts": alerts})
-    return updated
+    return append_trace(updated, "vdr_filing_node", "completed",
+                        summary=f"Gate: {gate_result}, {len(blockers)} blockers")
 
 
 def plks_monitor_node(state: WorkerComplianceState) -> WorkerComplianceState:
+    state = append_trace(state, "plks_monitor_node", "running")
     observations = state.get("agent_observations", [])
     alerts = state.get("alerts", [])
     tool_calls = state.get("tool_calls", [])
@@ -807,4 +858,5 @@ def plks_monitor_node(state: WorkerComplianceState) -> WorkerComplianceState:
     updated = {**state, "current_agent": AgentType.STRATEGIST, "agent_observations": observations,
                "tool_calls": tool_calls, "alerts": alerts, "next_action": "calculate_strategy"}
     post_agent_writeback(updated, {"alerts": alerts})
-    return updated
+    return append_trace(updated, "plks_monitor_node", "completed",
+                        summary=f"FOMEMA: {gate_fomema}, PLKS: {gate_plks}")
