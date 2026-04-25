@@ -77,7 +77,7 @@ export async function confirmDocument(documentId, payload) {
 }
 
 export async function createWorkerProfile(payload) {
-	const res = await fetch(`${API_BASE}/workers/create`, {
+	const res = await fetch(`/workers/create`, {
 		method: "POST",
 		headers: {
 			"Content-Type": "application/json",
