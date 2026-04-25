@@ -5,7 +5,7 @@ import FileUpload from "@/components/FileUpload";
 import ParsedForm from "@/components/ParsedForm";
 import { useToast } from "@/components/ui/toast";
 import { useParseJobPolling } from "@/hooks/useParseJobPolling";
-import { ApiError, confirmDocument, startComplianceWorkflow, uploadDocument } from "@/services/api";
+import {ApiError, confirmDocument, createWorkerProfile, startComplianceWorkflow, uploadDocument} from "@/services/api";
 import { useWorkerStore } from "@/store/useWorkerStore";
 
 const PASSPORT_FIELDS = [
@@ -21,6 +21,53 @@ const PASSPORT_FIELDS = [
 function normalizeInitialValues(parsedFields) {
   return Object.fromEntries(
     Object.entries(parsedFields || {}).map(([fieldKey, fieldData]) => [fieldKey, fieldData?.value || ""]),
+  );
+}
+
+function PersonalInput({ label, field, full, formValues, onChange }) {
+  const inputClasses =
+    "w-full rounded-lg border border-slate-200 px-3 py-2 text-sm";
+
+  return (
+    <div className={`space-y-1 ${full ? "sm:col-span-2" : ""}`}>
+      <label
+        htmlFor={`personal-${field}`}
+        className="text-xs font-medium text-slate-600"
+      >
+        {label}
+      </label>
+
+      <input
+        id={`personal-${field}`}
+        name={field}
+        type="text"
+        value={formValues?.[field] || ""}
+        onChange={(e) => onChange(field, e.target.value)}
+        className={inputClasses}
+      />
+    </div>
+  );
+}
+
+function PersonalDemographicForm({ formValues, onChange }) {
+  return (
+    <div className="permit-surface p-5 sm:p-6 space-y-4">
+      <h3 className="text-lg font-semibold text-slate-900">
+        Personal & Demographic Information
+      </h3>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <PersonalInput label="Marital Status" field="marital_status" formValues={formValues} onChange={onChange} />
+        <PersonalInput label="Dependent Details" field="dependent_details" formValues={formValues} onChange={onChange} />
+        <PersonalInput label="Address" field="address" full formValues={formValues} onChange={onChange} />
+        <PersonalInput label="Emergency Contact Name" field="emergency_contact_name" formValues={formValues} onChange={onChange} />
+        <PersonalInput label="Emergency Contact Phone" field="emergency_contact_phone" formValues={formValues} onChange={onChange} />
+        <PersonalInput label="Family Background" field="family_background" full formValues={formValues} onChange={onChange} />
+        <PersonalInput label="Education History" field="education_history" full formValues={formValues} onChange={onChange} />
+        <PersonalInput label="Employment History" field="employment_history" full formValues={formValues} onChange={onChange} />
+        <PersonalInput label="Past Overseas Travel History" field="past_overseas_travel_history" full formValues={formValues} onChange={onChange} />
+      </div>
+    </div>
   );
 }
 
@@ -65,6 +112,7 @@ export default function UploadPage() {
   const [formValues, setFormValues] = useState({});
   const [isUploading, setIsUploading] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
+  const [activeParsingType, setActiveParsingType] = useState(null);
 
   const { isPolling, stepText, error: pollError } = useParseJobPolling(jobId);
 
@@ -100,17 +148,20 @@ export default function UploadPage() {
 
   useEffect(() => {
     if (!parsedFields || Object.keys(parsedFields).length === 0) return;
+    if (!activeParsingType) return;
 
     setParsedFieldsByType((current) => ({
       ...current,
-      [selectedDocumentType]: parsedFields,
+      [activeParsingType]: parsedFields,
     }));
 
     setFormValuesByType((current) => ({
       ...current,
-      [selectedDocumentType]: normalizeInitialValues(parsedFields),
+      [activeParsingType]: normalizeInitialValues(parsedFields),
     }));
-  }, [parsedFields, selectedDocumentType]);
+
+    setActiveParsingType(null);
+  }, [parsedFields, activeParsingType]);
 
   const progressValue = useMemo(() => {
     if (parseJobStatus === "completed") {
@@ -138,10 +189,36 @@ export default function UploadPage() {
       return;
     }
 
+    if (selectedDocumentType === "passport") {
+      setActiveParsingType("passport");
+    }
+
     setIsUploading(true);
 
     try {
       const response = await uploadDocument(selectedFile, selectedDocumentType);
+
+      if (selectedDocumentType === "health_checkup") {
+        setFormValuesByType((current) => ({
+          ...current,
+          health_checkup: {
+            source: "raw_file",
+            document_id: response.document_id,
+            storage_path: response.storage_path,
+            document_type: "medical_record",
+            filename: selectedFile.name,
+            content_type: selectedFile.type,
+          },
+        }));
+
+        toast({
+          title: "Medical file uploaded",
+          description: "File location saved for later access.",
+          variant: "success",
+        });
+
+        return;
+      }
 
       setJobContext({
         jobId: response.job_id,
@@ -165,46 +242,63 @@ export default function UploadPage() {
   };
 
   const handleConfirm = async () => {
-    console.log(formValues)
-    if (!documentId) {
-      return;
-    }
+    const workerPayload = {
+      passport: formValuesByType.passport,
+      medical_information: formValuesByType.health_checkup,
+      general_information: formValuesByType.personal_demographic,
+    };
+
+    console.log("Worker payload:", workerPayload);
 
     setIsConfirming(true);
 
     try {
-      const response = await confirmDocument(documentId, formValues);
+      // 🔥 NEW API
+      const response = await createWorkerProfile(workerPayload);
+      console.log(response)
+
       setWorkerId(response.worker_id);
 
-      // Start backend workflow immediately so the visualizer has live state to show.
+      // 🧠 Start workflow (use flattened values)
       await startComplianceWorkflow(response.worker_id, {
-        ...formValues,
+        ...workerPayload.passport,
+        ...workerPayload.general_information,
         worker_id: response.worker_id,
-        full_name: formValues.full_name || formValues.name || "Unknown Worker",
-        name: formValues.name || formValues.full_name || "Unknown Worker",
-        nationality: formValues.nationality || "Unknown",
+        full_name:
+          workerPayload.passport?.full_name ||
+          workerPayload.general_information?.full_name ||
+          "Unknown Worker",
+        name:
+          workerPayload.passport?.full_name ||
+          "Unknown Worker",
+        nationality:
+          workerPayload.passport?.nationality ||
+          "Unknown",
       });
 
       toast({
         title: "Worker profile created",
-        description: "Obligations generated and workflow started. Opening workflow visualizer...",
+        description:
+          "Obligations generated and workflow started. Opening workflow visualizer...",
         variant: "success",
       });
 
       navigate(`/workflows/${response.worker_id}`);
     } catch (error) {
+      console.error("Create worker error:", error);
+
       if (error instanceof ApiError && error.status === 500) {
         toast({
-          title: "Error",
+          title: "Backend error",
           description:
-            "Failed to start workflow after confirmation. Check backend logs for workflow initialization error.",
+            "Worker created but workflow failed. Check backend logs.",
           variant: "destructive",
           duration: 7000,
         });
       } else {
         toast({
-          title: "Confirmation failed",
-          description: error.message || "Unable to confirm document right now.",
+          title: "Creation failed",
+          description: error.message || "Unable to create worker.",
           variant: "destructive",
         });
       }
@@ -274,25 +368,27 @@ export default function UploadPage() {
           >
             <option value="passport">Passport</option>
             <option value="health_checkup">Health Checkup</option>
-            <option value="personal_demographic">Personal Demographic</option>
+            <option value="personal_demographic">Personal & Demographic</option>
           </select>
         </div>
 
         <div className="space-y-6">
-          <FileUpload
-            file={selectedFile}
-            onFileSelect={(file) =>
-              setSelectedFiles((current) => ({
-                ...current,
-                [selectedDocumentType]: file,
-              }))
-            }
-            onUpload={handleUpload}
-            isUploading={isUploading}
-            isPolling={isPolling}
-            progressValue={progressValue}
-            stepText={stepText}
-          />
+          {selectedDocumentType !== "personal_demographic" && (
+            <FileUpload
+              file={selectedFile}
+              onFileSelect={(file) =>
+                setSelectedFiles((current) => ({
+                  ...current,
+                  [selectedDocumentType]: file,
+                }))
+              }
+              onUpload={handleUpload}
+              isUploading={isUploading}
+              isPolling={isPolling}
+              progressValue={progressValue}
+              stepText={stepText}
+            />
+          )}
           {selectedDocumentType === "passport" && (
             <div className="permit-surface p-5 sm:p-6">
               <h3 className="text-lg font-semibold text-slate-900">
@@ -337,23 +433,46 @@ export default function UploadPage() {
               </div>
             </div>
           )}
-          {selectedDocumentType !== "passport" && (
-            <ParsedForm
-              parsedFields={currentParsedFields}
-              formValues={currentFormValues}
-              onFieldChange={(fieldKey, nextValue) => {
+          {selectedDocumentType === "health_checkup" &&
+            formValuesByType.health_checkup?.storage_path && (
+              <div className="permit-surface p-5 sm:p-6">
+                <h3 className="text-lg font-semibold text-slate-900">
+                  Medical File Saved
+                </h3>
+
+                <p className="mt-2 text-sm text-slate-600">
+                  Filename: {formValuesByType.health_checkup.filename}
+                </p>
+
+                <p className="mt-1 font-mono text-xs text-slate-500">
+                  Storage path: {formValuesByType.health_checkup.storage_path}
+                </p>
+              </div>
+            )}
+          {selectedDocumentType === "personal_demographic" && (
+            <PersonalDemographicForm
+              formValues={formValuesByType.personal_demographic}
+              onChange={(field, value) =>
                 setFormValuesByType((current) => ({
                   ...current,
-                  [selectedDocumentType]: {
-                    ...current[selectedDocumentType],
-                    [fieldKey]: nextValue,
+                  personal_demographic: {
+                    ...current.personal_demographic,
+                    [field]: value,
                   },
-                }));
-              }}
-              onConfirm={handleConfirm}
-              isConfirming={isConfirming}
+                }))
+              }
             />
           )}
+        </div>
+        <div className="flex justify-end pt-4">
+          <button
+            type="button"
+            onClick={handleConfirm}
+            disabled={isConfirming}
+            className="rounded-lg bg-emerald-700 px-6 py-2 text-sm font-semibold text-white transition hover:bg-emerald-800 disabled:opacity-60"
+          >
+            {isConfirming ? "Creating Worker..." : "Create Worker Profile"}
+          </button>
         </div>
 
       </section>

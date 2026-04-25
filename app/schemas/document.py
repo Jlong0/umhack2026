@@ -56,13 +56,13 @@ class ConfirmDocumentData(BaseModel):
 class PassportInfo(BaseModel):
     full_name: Optional[str] = None
     date_of_birth: Optional[date] = None
-    gender: Optional[str] = None
+    sex: Optional[str] = None
     nationality: Optional[str] = None
     passport_number: Optional[str] = None
-    passport_issue_date: Optional[date] = None
-    passport_expiry_date: Optional[str] = None
+    issue_date: Optional[date] = None
+    expiry_date: Optional[str] = None
     document_id: Optional[str] = None
-    source: Literal["parsed", "manual"] = "manual"
+    source: Literal["parsed", "manual"] = "parsed"
 
 class MedicalInformation(BaseModel):
     source: Literal["raw_file"] = "raw_file"
