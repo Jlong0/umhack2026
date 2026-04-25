@@ -51,16 +51,180 @@ function PhaseSection({ label, data }) {
     </div>
   );
 }
+//
+// function ReviewQueueDrawer({ workers, onClose, onSelectWorker }) {
+//   return (
+//     <div className="fixed inset-y-0 right-0 z-50 flex w-[520px] flex-col bg-white shadow-2xl">
+//       <div className="flex items-center justify-between border-b px-6 py-4">
+//         <div>
+//           <h2 className="text-lg font-semibold text-gray-900">
+//             Review Queue
+//           </h2>
+//           <p className="text-xs text-gray-500">
+//             {workers.length} pending submission{workers.length === 1 ? "" : "s"}
+//           </p>
+//         </div>
+//
+//         <button
+//           onClick={onClose}
+//           className="text-xl leading-none text-gray-400 hover:text-gray-600"
+//         >
+//           &times;
+//         </button>
+//       </div>
+//
+//       <div className="flex-1 overflow-y-auto p-4">
+//         {workers.length === 0 ? (
+//           <p className="rounded-lg border border-dashed p-6 text-center text-sm text-gray-400">
+//             No submissions need review.
+//           </p>
+//         ) : (
+//           <div className="space-y-3">
+//             {workers.map((worker) => (
+//               <button
+//                 key={worker.worker_id}
+//                 type="button"
+//                 onClick={() => onSelectWorker(worker)}
+//                 className="w-full rounded-lg border border-gray-200 bg-white p-4 text-left transition hover:border-blue-300 hover:bg-blue-50"
+//               >
+//                 <div className="flex items-start justify-between gap-3">
+//                   <div>
+//                     <p className="font-semibold text-gray-900">
+//                       {worker.full_name || worker.passport?.full_name || "Unnamed Worker"}
+//                     </p>
+//
+//                     <p className="mt-1 text-xs text-gray-500">
+//                       Passport:{" "}
+//                       {worker.passport_number ||
+//                         worker.passport?.passport_number ||
+//                         "—"}
+//                     </p>
+//
+//                     <p className="text-xs text-gray-500">
+//                       Nationality:{" "}
+//                       {worker.nationality ||
+//                         worker.passport?.nationality ||
+//                         "—"}
+//                     </p>
+//                   </div>
+//
+//                   <span className="rounded-full bg-yellow-100 px-2 py-1 text-xs font-medium text-yellow-800">
+//                     Pending
+//                   </span>
+//                 </div>
+//               </button>
+//             ))}
+//           </div>
+//         )}
+//       </div>
+//     </div>
+//   );
+// }
+function InfoSection({ title, data }) {
+  return (
+    <div className="space-y-3">
+      <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
+
+      {Object.keys(data || {}).length === 0 ? (
+        <p className="rounded-lg border border-dashed p-4 text-sm text-gray-400">
+          No data available.
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {Object.entries(data || {}).map(([key, value]) => (
+            <div key={key} className="flex justify-between gap-4 text-sm">
+              <span className="text-gray-500 capitalize">
+                {key.replace(/_/g, " ")}
+              </span>
+              <span className="text-right font-medium text-gray-900">
+                {value ? String(value) : "—"}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function WorkerDrawer({ worker, onClose }) {
+  const [openTab, setOpenTab] = useState("passport");
+
+  const tabs = [
+    { key: "passport", label: "Passport" },
+    { key: "medical_information", label: "Health Checkup" },
+    { key: "general_information", label: "General Info" },
+  ];
+
+  return (
+    <div className="fixed inset-y-0 right-0 w-[520px] bg-white shadow-2xl z-50 flex flex-col">
+      <div className="flex items-center justify-between px-6 py-4 border-b">
+        <div>
+          <p className="font-semibold text-gray-900">
+            {worker.passport?.full_name || "—"}
+          </p>
+          <p className="text-xs text-gray-500">
+            {worker.passport?.passport_number || "—"} ·{" "}
+            {worker.passport?.nationality || "—"}
+          </p>
+        </div>
+
+        <button
+          onClick={onClose}
+          className="text-gray-400 hover:text-gray-600 text-xl leading-none"
+        >
+          &times;
+        </button>
+      </div>
+
+      <div className="flex border-b">
+        {tabs.map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setOpenTab(tab.key)}
+            className={`flex-1 py-2 text-sm font-medium ${
+              openTab === tab.key
+                ? "border-b-2 border-blue-600 text-blue-600"
+                : "text-gray-500"
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-6 py-4">
+        {openTab === "passport" && (
+          <InfoSection title="Passport Information" data={worker.passport} />
+        )}
+
+        {openTab === "medical_information" && (
+          <InfoSection
+            title="Health Checkup / Medical File"
+            data={worker.medical_information}
+          />
+        )}
+
+        {openTab === "general_information" && (
+          <InfoSection
+            title="General Information"
+            data={worker.general_information}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function WorkerDrawerStage1({ worker, onClose }) {
   const [openStage, setOpenStage] = useState("stage_1");
 
   return (
     <div className="fixed inset-y-0 right-0 w-[480px] bg-white shadow-2xl z-50 flex flex-col">
       <div className="flex items-center justify-between px-6 py-4 border-b">
         <div>
-          <p className="font-semibold text-gray-900">{worker.full_name || "—"}</p>
-          <p className="text-xs text-gray-500">{worker.passport_number} · {worker.nationality} · {worker.sector}</p>
+          <p className="font-semibold text-gray-900">{worker.passport?.full_name || "—"}</p>
+          <p className="text-xs text-gray-500">{worker.passport?.passport_number} · {worker.passport?.nationality} · {worker.sector}</p>
         </div>
         <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
       </div>
@@ -111,23 +275,31 @@ export default function WorkersPage() {
 
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(null);
+  const [showReviewQueue, setShowReviewQueue] = useState(false);
 
   const workers = (data?.workers || []).filter((w) => {
     const q = search.toLowerCase();
+    console.log(data?.workers)
     return (
       !q ||
-      (w.full_name || "").toLowerCase().includes(q) ||
-      (w.passport_number || "").toLowerCase().includes(q) ||
-      (w.nationality || "").toLowerCase().includes(q)
+      (w.passport?.full_name || "").toLowerCase().includes(q) ||
+      (w.passport?.passport_number || "").toLowerCase().includes(q) ||
+      (w.passport?.nationality || "").toLowerCase().includes(q)
     );
   });
 
+  const pendingReviews = (data?.workers || []).filter(
+      (w) => w.review_status === "pending_review"
+  );
+
   return (
     <div className="p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-xl font-semibold text-gray-900">Workers</h1>
-        <span className="text-sm text-gray-500">{data?.total ?? 0} total</span>
-      </div>
+
+        <div>
+          <h1 className="text-xl font-semibold text-gray-900">Workers</h1>
+          <p className="text-sm text-gray-500">{data?.total ?? 0} total</p>
+        </div>
+
 
       <input
         type="text"
@@ -148,7 +320,6 @@ export default function WorkersPage() {
                 <th className="px-4 py-3 text-left">Name</th>
                 <th className="px-4 py-3 text-left">Passport</th>
                 <th className="px-4 py-3 text-left">Nationality</th>
-                <th className="px-4 py-3 text-left">Sector</th>
                 <th className="px-4 py-3 text-left">Stage 1</th>
                 <th className="px-4 py-3 text-left">Stage 2</th>
               </tr>
@@ -165,10 +336,9 @@ export default function WorkersPage() {
                   onClick={() => setSelected(w)}
                   className="hover:bg-blue-50 cursor-pointer transition-colors"
                 >
-                  <td className="px-4 py-3 font-medium text-gray-900">{w.full_name || "—"}</td>
-                  <td className="px-4 py-3 text-gray-600">{w.passport_number || "—"}</td>
-                  <td className="px-4 py-3 text-gray-600 capitalize">{w.nationality || "—"}</td>
-                  <td className="px-4 py-3 text-gray-600">{w.sector || "—"}</td>
+                  <td className="px-4 py-3 font-medium text-gray-900">{w.passport?.full_name || "—"}</td>
+                  <td className="px-4 py-3 text-gray-600">{w.passport?.passport_number || "—"}</td>
+                  <td className="px-4 py-3 text-gray-600 capitalize">{w.passport?.nationality || "—"}</td>
                   <td className="px-4 py-3">
                     <Badge status={stageStatus(w.stage_1 || {}, w.validation_errors)} />
                   </td>
@@ -180,6 +350,23 @@ export default function WorkersPage() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {showReviewQueue && (
+        <>
+          <div
+            className="fixed inset-0 z-40 bg-black/30"
+            onClick={() => setShowReviewQueue(false)}
+          />
+          <ReviewQueueDrawer
+            workers={pendingReviews}
+            onClose={() => setShowReviewQueue(false)}
+            onSelectWorker={(worker) => {
+              setShowReviewQueue(false);
+              setSelected(worker);
+            }}
+          />
+        </>
       )}
 
       {selected && (
