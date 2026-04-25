@@ -56,6 +56,16 @@ export default function WorkerLayout() {
             >
               Application Status
             </button>
+            <button
+              onClick={() => navigate("/worker/contracts")}
+              className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
+                location.pathname.includes("contracts")
+                  ? "border-indigo-300 bg-indigo-50 text-indigo-900"
+                  : "border-slate-200 bg-white text-slate-700 hover:border-indigo-200 hover:text-indigo-800"
+              }`}
+            >
+              My Contracts
+            </button>
           </nav>
         </div>
       </header>
