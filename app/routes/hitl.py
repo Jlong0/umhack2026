@@ -20,6 +20,10 @@ class FieldUpdate(BaseModel):
     fields: Dict[str, str]
 
 
+class MedicalResult(BaseModel):
+    result: str
+
+
 # Mock data — replace with Firestore query when workers collection is ready.
 # Structure mirrors: workers/{worker_id}, documents/{doc_id} (worker_id, document_type, storage_path)
 _MOCK_WORKERS = [
@@ -55,6 +59,12 @@ _MOCK_WORKERS = [
         "medical_form_url": None,
     },
 ]
+
+
+@router.get("/workers")
+async def get_workers():
+    """Return mock workers for HITL UI."""
+    return {"workers": _MOCK_WORKERS}
 
 
 @router.patch("/workers/{worker_id}/resolve-fields")

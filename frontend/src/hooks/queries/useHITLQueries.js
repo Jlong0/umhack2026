@@ -14,6 +14,7 @@ export function useHITLWorkers() {
     queryKey: ["hitlWorkers"],
     queryFn: listHITLWorkers,
     refetchInterval: 10 * 1000,
+    retry: false,
   });
 }
 
