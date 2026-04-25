@@ -77,21 +77,10 @@ export async function confirmDocument(documentId, payload) {
 }
 
 export async function createWorkerProfile(payload) {
-	const res = await fetch(`/workers/create`, {
+	return apiRequest("/workers/create", {
 		method: "POST",
-		headers: {
-			"Content-Type": "application/json",
-		},
 		body: JSON.stringify(payload),
 	});
-
-	const data = await res.json();
-
-	if (!res.ok) {
-		throw new Error(data.detail || "Worker creation failed");
-	}
-
-	return data;
 }
 
 export async function getWorkerTasks(workerId) {
