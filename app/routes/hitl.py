@@ -24,6 +24,36 @@ class HITLDecision(BaseModel):
     modified_data: Optional[Dict] = None
 
 
+MOCK_WORKERS = [
+    {
+        "worker_id": "W001",
+        "full_name": "Ahmad bin Razak",
+        "status": "pending",
+        "interrupt_type": "missing_field",
+        "reason": "Missing field: FOMEMA health certificate not uploaded.",
+    },
+    {
+        "worker_id": "W002",
+        "full_name": "Nguyen Van Minh",
+        "status": "pending",
+        "interrupt_type": "health_check",
+        "reason": "Admin health inspection not yet completed.",
+    },
+    {
+        "worker_id": "W003",
+        "full_name": "Suresh Kumar",
+        "status": "complete",
+        "interrupt_type": None,
+        "reason": None,
+    },
+]
+
+
+@router.get("/workers")
+async def list_workers():
+    return {"workers": MOCK_WORKERS}
+
+
 @router.get("/interrupts")
 async def list_pending_interrupts():
     try:

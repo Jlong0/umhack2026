@@ -159,6 +159,10 @@ export async function getAlertDashboard() {
 }
 
 // HITL APIs
+export async function listHITLWorkers() {
+	return apiRequest("/hitl/workers", { method: "GET" });
+}
+
 export async function listPendingInterrupts() {
 	return apiRequest("/hitl/interrupts", { method: "GET" });
 }

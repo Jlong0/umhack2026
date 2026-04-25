@@ -13,7 +13,7 @@
 
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { usePendingInterrupts, useInterruptDetails, useResolveInterrupt } from "@/hooks/queries/useHITLQueries";
+import { useHITLWorkers, usePendingInterrupts, useInterruptDetails, useResolveInterrupt } from "@/hooks/queries/useHITLQueries";
 import { useUIStore } from "@/store/useUIStore";
 import { useAuditLogStore } from "@/store/useAuditLogStore";
 import ConfidenceBadge from "@/components/ConfidenceBadge";
@@ -22,15 +22,17 @@ import { AlertCircle, CheckCircle, XCircle, Edit3, Eye, Shield } from "lucide-re
 export default function HITLPage() {
 	const navigate = useNavigate();
 	const [selectedWorkerId, setSelectedWorkerId] = useState(null);
+	const [reasonWorker, setReasonWorker] = useState(null);
 	const [notes, setNotes] = useState("");
 	const openIntentPreview = useUIStore((s) => s.openIntentPreview);
 	const appendEntry = useAuditLogStore((s) => s.appendEntry);
 
-	const { data: interruptData, isLoading } = usePendingInterrupts();
+	const { data: workersData, isLoading } = useHITLWorkers();
 	const { data: selectedInterrupt } = useInterruptDetails(selectedWorkerId);
 	const resolveMutation = useResolveInterrupt(selectedWorkerId);
 
-	const interrupts = interruptData?.interrupts || [];
+	const workers = workersData?.workers || [];
+	const interrupts = workers.filter((w) => w.status === "pending");
 
 	function handleSelectInterrupt(workerId) {
 		setSelectedWorkerId(workerId);
@@ -121,54 +123,69 @@ export default function HITLPage() {
 							Pending Interrupts
 						</h2>
 					</div>
-					<div className="max-h-[600px] space-y-2 overflow-y-auto p-4">
-						{interrupts.length === 0 ? (
+					<div className="overflow-y-auto p-4">
+						{workers.length === 0 ? (
 							<div className="text-center py-12 text-gray-500">
 								<CheckCircle className="w-10 h-10 mx-auto mb-3 text-green-500" />
-								<p className="font-medium">All clear</p>
-								<p className="text-xs mt-1">No pending interrupts</p>
+								<p className="font-medium">No workers</p>
 							</div>
 						) : (
-							interrupts.map((interrupt) => (
-								<button
-									key={interrupt.worker_id}
-									onClick={() => handleSelectInterrupt(interrupt.worker_id)}
-									className={`w-full text-left rounded-xl border p-4 transition-all ${
-										selectedWorkerId === interrupt.worker_id
-											? "border-blue-400 bg-blue-50 shadow-sm"
-											: "border-gray-100 hover:border-blue-200 hover:bg-gray-50"
-									}`}
-								>
-									<div className="flex items-start justify-between">
-										<div className="flex items-start gap-3">
-											<AlertCircle className={`w-5 h-5 mt-0.5 ${
-												interrupt.interrupt_type === "compliance_breach"
-													? "text-red-500"
-													: "text-amber-500"
-											}`} />
-											<div>
-												<div className="font-semibold text-gray-900 text-sm">
-													{interrupt.worker_id}
-												</div>
-												<div className="text-xs text-gray-500 mt-0.5">
-													{interrupt.interrupt_type?.replace(/_/g, " ")}
-												</div>
-											</div>
-										</div>
-										{interrupt.confidence_score != null && (
-											<ConfidenceBadge
-												score={interrupt.confidence_score}
-												reasoning={interrupt.reason}
-											/>
-										)}
-									</div>
-									<div className="mt-2 text-xs text-gray-400">
-										{new Date(interrupt.created_at).toLocaleString()}
-									</div>
-								</button>
-							))
+							<table className="w-full text-sm">
+								<thead>
+									<tr className="text-xs text-gray-400 border-b border-gray-100">
+										<th className="text-left pb-2 font-medium">Name</th>
+										<th className="text-left pb-2 font-medium">Status</th>
+										<th className="pb-2" />
+									</tr>
+								</thead>
+								<tbody>
+									{workers.map((worker) => (
+										<tr key={worker.worker_id} className="border-b border-gray-50 last:border-0">
+											<td className="py-3 font-medium text-gray-900">{worker.full_name}</td>
+											<td className="py-3">
+												{worker.status === "pending" ? (
+													<span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">
+														Pending
+													</span>
+												) : (
+													<span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700">
+														<CheckCircle className="w-3 h-3" /> Complete
+													</span>
+												)}
+											</td>
+											<td className="py-3 text-right">
+												{worker.status === "pending" && (
+													<button
+														onClick={() => setReasonWorker(worker)}
+														className="rounded-full p-1 text-amber-500 hover:bg-amber-50"
+														title="View reason"
+													>
+														<AlertCircle className="w-4 h-4" />
+													</button>
+												)}
+											</td>
+										</tr>
+									))}
+								</tbody>
+							</table>
 						)}
 					</div>
+
+					{/* Reason modal */}
+					{reasonWorker && (
+						<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onClick={() => setReasonWorker(null)}>
+							<div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full mx-4" onClick={(e) => e.stopPropagation()}>
+								<h3 className="font-semibold text-gray-900 mb-1">{reasonWorker.full_name}</h3>
+								<p className="text-xs text-gray-400 mb-3 capitalize">{reasonWorker.interrupt_type?.replace(/_/g, " ")}</p>
+								<div className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-900">
+									{reasonWorker.reason}
+								</div>
+								<button onClick={() => setReasonWorker(null)} className="mt-4 w-full rounded-lg bg-gray-100 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200">
+									Close
+								</button>
+							</div>
+						</div>
+					)}
 				</div>
 
 				{/* Right Pane: Interrupt Details & Resolution */}

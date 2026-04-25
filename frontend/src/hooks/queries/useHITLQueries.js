@@ -1,10 +1,19 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
+  listHITLWorkers,
   listPendingInterrupts,
   getInterruptDetails,
   resolveInterrupt,
   getInterruptStatistics,
 } from "@/services/api";
+
+export function useHITLWorkers() {
+  return useQuery({
+    queryKey: ["hitlWorkers"],
+    queryFn: listHITLWorkers,
+    refetchInterval: 10 * 1000,
+  });
+}
 import { useAuditLogStore } from "@/store/useAuditLogStore";
 
 export function usePendingInterrupts() {
