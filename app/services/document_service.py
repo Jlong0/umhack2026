@@ -1,3 +1,5 @@
+import os
+from pathlib import Path
 from uuid import uuid4
 from datetime import datetime, timezone
 from app.config import REQUIRED_WORKER_FIELDS
@@ -7,6 +9,8 @@ from app.services.worker_service import create_worker
 from app.services.task_service import create_tasks_from_obligations
 from app.services.compliance_reasoning_service import generate_compliance_obligations
 
+LOCAL_UPLOAD_DIR = Path("uploads")
+
 
 async def save_uploaded_document(file, worker_id=None, document_type=None):
     ext = file.filename.split(".")[-1]
@@ -15,8 +19,23 @@ async def save_uploaded_document(file, worker_id=None, document_type=None):
 
     contents = await file.read()
 
-    blob = bucket.blob(storage_path)
-    blob.upload_from_string(contents, content_type=file.content_type)
+    # Try Firebase Storage, fall back to local disk
+    if bucket is not None:
+        try:
+            blob = bucket.blob(storage_path)
+            blob.upload_from_string(contents, content_type=file.content_type)
+        except Exception:
+            bucket_ok = False
+        else:
+            bucket_ok = True
+    else:
+        bucket_ok = False
+
+    if not bucket_ok:
+        LOCAL_UPLOAD_DIR.mkdir(exist_ok=True)
+        local_path = LOCAL_UPLOAD_DIR / filename
+        local_path.write_bytes(contents)
+        storage_path = str(local_path)
 
     doc_data = {
         "filename": file.filename,

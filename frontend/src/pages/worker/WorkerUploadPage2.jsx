@@ -176,7 +176,7 @@ function PhotoUpload({
     const interval = setInterval(async () => {
       try {
         const res = await fetch(
-          `http://127.0.0.1:8000/documents/jobs/${jobId}`
+          `http://127.0.0.1:8001/documents/jobs/${jobId}`
         );
         const data = await res.json();
 
@@ -226,37 +226,21 @@ function PhotoUpload({
   }, [jobId]);
 
 
+  const [isUploading, setIsUploading] = useState(false);
+
   const handleUpload = async () => {
-    if (!selectedFile) {
-      toast({
-        title: "No file selected",
-        description: "Please select a file before uploading.",
-        variant: "destructive",
-      });
+    if (!file) {
+      toast({ title: "No file selected", description: "Please select a file before uploading.", variant: "destructive" });
       return;
     }
-
     setIsUploading(true);
-
     try {
-      const response = await uploadDocument(selectedFile, selectedDocumentType);
-
-      setJobContext({
-        jobId: response.job_id,
-        documentId: response.document_id,
-      });
-
-      toast({
-        title: "Document uploaded",
-        description: `${selectedDocumentType} parsing job queued.`,
-        variant: "success",
-      });
+      const response = await uploadDocument(file, docType);
+      setJobId(response.job_id);
+      setIsPolling(true);
+      toast({ title: "Document uploaded", description: `${docType} parsing job queued.`, variant: "success" });
     } catch (error) {
-      toast({
-        title: "Upload failed",
-        description: error.message || "Could not upload document.",
-        variant: "destructive",
-      });
+      toast({ title: "Upload failed", description: error.message || "Could not upload document.", variant: "destructive" });
     } finally {
       setIsUploading(false);
     }

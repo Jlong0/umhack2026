@@ -27,8 +27,8 @@ export default function UploadPage() {
   const setParsedFields = useWorkerStore((state) => state.setParsedFields);
   const setWorkerId = useWorkerStore((state) => state.setWorkerId);
   const setDocumentPreviewUrl = useWorkerStore((state) => state.setDocumentPreviewUrl);
-  const updateParsedField = useWorkerStore((state) => state.updateParsedField);
 
+  const [docType, setDocType] = useState("passport");
   const [selectedFile, setSelectedFile] = useState(null);
   const [formValues, setFormValues] = useState({});
   const [isUploading, setIsUploading] = useState(false);
@@ -48,13 +48,9 @@ export default function UploadPage() {
       setDocumentPreviewUrl(null);
       return undefined;
     }
-
     const objectUrl = URL.createObjectURL(selectedFile);
     setDocumentPreviewUrl(objectUrl);
-
-    return () => {
-      URL.revokeObjectURL(objectUrl);
-    };
+    return () => URL.revokeObjectURL(objectUrl);
   }, [selectedFile, setDocumentPreviewUrl]);
 
   useEffect(() => {
@@ -62,10 +58,7 @@ export default function UploadPage() {
   }, [parsedFields]);
 
   useEffect(() => {
-    if (!pollError) {
-      return;
-    }
-
+    if (!pollError) return;
     toast({
       title: "Polling error",
       description: "Unable to read parse job status. Please retry the upload.",
@@ -73,85 +66,37 @@ export default function UploadPage() {
     });
   }, [pollError, toast]);
 
-  useEffect(() => {
-    if (!parsedFields || Object.keys(parsedFields).length === 0) return;
-
-    setParsedFieldsByType((current) => ({
-      ...current,
-      [selectedDocumentType]: parsedFields,
-    }));
-
-    setFormValuesByType((current) => ({
-      ...current,
-      [selectedDocumentType]: normalizeInitialValues(parsedFields),
-    }));
-  }, [parsedFields, selectedDocumentType]);
-
   const progressValue = useMemo(() => {
-    if (parseJobStatus === "completed") {
-      return 100;
-    }
-
-    if (isPolling) {
-      return 70;
-    }
-
-    if (isUploading) {
-      return 24;
-    }
-
+    if (parseJobStatus === "completed") return 100;
+    if (isPolling) return 70;
+    if (isUploading) return 24;
     return 0;
   }, [isPolling, isUploading, parseJobStatus]);
 
   const handleUpload = async () => {
     if (!selectedFile) {
-      toast({
-        title: "No file selected",
-        description: "Please select a file before uploading.",
-        variant: "destructive",
-      });
+      toast({ title: "No file selected", description: "Please select a file before uploading.", variant: "destructive" });
       return;
     }
-
     setIsUploading(true);
-
     try {
-      const response = await uploadDocument(selectedFile, "passport");
+      const response = await uploadDocument(selectedFile, docType);
       setParsedFields({});
-      setJobContext({
-        jobId: response.job_id,
-        documentId: response.document_id,
-      });
-
-      toast({
-        title: "Document uploaded",
-        description: `${selectedDocumentType} parsing job queued.`,
-        variant: "success",
-      });
+      setJobContext({ jobId: response.job_id, documentId: response.document_id });
+      toast({ title: "Document uploaded", description: `${docType} parsing job queued.`, variant: "success" });
     } catch (error) {
-      toast({
-        title: "Upload failed",
-        description: error.message || "Could not upload document.",
-        variant: "destructive",
-      });
+      toast({ title: "Upload failed", description: error.message || "Could not upload document.", variant: "destructive" });
     } finally {
       setIsUploading(false);
     }
   };
 
   const handleConfirm = async () => {
-    console.log(formValues)
-    if (!documentId) {
-      return;
-    }
-
+    if (!documentId) return;
     setIsConfirming(true);
-
     try {
       const response = await confirmDocument(documentId, formValues);
       setWorkerId(response.worker_id);
-
-      // Start backend workflow immediately so the visualizer has live state to show.
       await startComplianceWorkflow(response.worker_id, {
         ...formValues,
         worker_id: response.worker_id,
@@ -159,29 +104,13 @@ export default function UploadPage() {
         name: formValues.name || formValues.full_name || "Unknown Worker",
         nationality: formValues.nationality || "Unknown",
       });
-
-      toast({
-        title: "Worker profile created",
-        description: "Obligations generated and workflow started. Opening workflow visualizer...",
-        variant: "success",
-      });
-
+      toast({ title: "Worker profile created", description: "Obligations generated and workflow started. Opening workflow visualizer...", variant: "success" });
       navigate(`/workflows/${response.worker_id}`);
     } catch (error) {
       if (error instanceof ApiError && error.status === 500) {
-        toast({
-          title: "Error",
-          description:
-            "Failed to start workflow after confirmation. Check backend logs for workflow initialization error.",
-          variant: "destructive",
-          duration: 7000,
-        });
+        toast({ title: "Error", description: "Failed to start workflow after confirmation. Check backend logs for workflow initialization error.", variant: "destructive", duration: 7000 });
       } else {
-        toast({
-          title: "Confirmation failed",
-          description: error.message || "Unable to confirm document right now.",
-          variant: "destructive",
-        });
+        toast({ title: "Confirmation failed", description: error.message || "Unable to confirm document right now.", variant: "destructive" });
       }
     } finally {
       setIsConfirming(false);
@@ -196,24 +125,10 @@ export default function UploadPage() {
         </div>
       );
     }
-
     if (selectedFile?.type === "application/pdf") {
-      return (
-        <iframe
-          title="Document preview"
-          src={previewUrl}
-          className="h-[420px] w-full rounded-xl border border-slate-200"
-        />
-      );
+      return <iframe title="Document preview" src={previewUrl} className="h-[420px] w-full rounded-xl border border-slate-200" />;
     }
-
-    return (
-      <img
-        src={previewUrl}
-        alt="Uploaded document preview"
-        className="h-[420px] w-full rounded-xl border border-slate-200 object-contain bg-white"
-      />
-    );
+    return <img src={previewUrl} alt="Uploaded document preview" className="h-[420px] w-full rounded-xl border border-slate-200 object-contain bg-white" />;
   })();
 
   return (
@@ -236,21 +151,6 @@ export default function UploadPage() {
           <p className="mt-1 text-sm text-slate-600">Left pane mirrors the uploaded artifact for side-by-side triage.</p>
           <div className="mt-4">{previewContent}</div>
         </article>
-
-        <div className="permit-surface p-5 sm:p-6">
-          <label className="text-sm font-medium text-slate-700">
-            Select document type
-          </label>
-
-          <select
-            value={selectedDocumentType}
-            onChange={(e) => setSelectedDocumentType(e.target.value)}
-            className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-          >
-            <option value="passport">Passport</option>
-            <option value="health_checkup">Health Checkup</option>
-          </select>
-        </div>
 
         <div className="space-y-6">
           <section className="permit-surface p-5 sm:p-6">
@@ -289,12 +189,7 @@ export default function UploadPage() {
 
           <FileUpload
             file={selectedFile}
-            onFileSelect={(file) =>
-              setSelectedFiles((current) => ({
-                ...current,
-                [selectedDocumentType]: file,
-              }))
-            }
+            onFileSelect={setSelectedFile}
             onUpload={handleUpload}
             isUploading={isUploading}
             isPolling={isPolling}
@@ -303,17 +198,11 @@ export default function UploadPage() {
           />
 
           <ParsedForm
-            parsedFields={currentParsedFields}
-            formValues={currentFormValues}
-            onFieldChange={(fieldKey, nextValue) => {
-              setFormValuesByType((current) => ({
-                ...current,
-                [selectedDocumentType]: {
-                  ...current[selectedDocumentType],
-                  [fieldKey]: nextValue,
-                },
-              }));
-            }}
+            parsedFields={parsedFields}
+            formValues={formValues}
+            onFieldChange={(fieldKey, nextValue) =>
+              setFormValues((current) => ({ ...current, [fieldKey]: nextValue }))
+            }
             onConfirm={handleConfirm}
             isConfirming={isConfirming}
           />

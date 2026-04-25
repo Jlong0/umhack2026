@@ -16,56 +16,198 @@ REASONING_MODEL = os.getenv("GEMINI_REASONING_MODEL", "gemini-2.5-flash")
 _client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 DOCUMENT_PROMPTS = {
-    "passport": (
-        "You are a document extraction agent for Malaysian PLKS immigration compliance.\n"
-        "Document type: passport\n"
-        "MRZ line 1: P<COUNTRY SURNAME<<GIVEN_NAMES\n"
-        "MRZ line 2: PASSPORT_NUMBER(1-9) CHECK NATIONALITY(11-13) DOB_YYMMDD(14-19) CHECK SEX(21) EXPIRY_YYMMDD(22-27) CHECK ...\n"
-        "Extract:\n"
-        "- master_name: from MRZ line 1 only. Replace all '<' with spaces, collapse double spaces. Format: SURNAME GIVEN_NAMES\n"
-        "- passport_number: MRZ line 2 chars 1-9\n"
-        "- nationality: MRZ line 2 chars 11-13 (3-letter country code)\n"
-        "- dob: MRZ line 2 chars 14-19 (YYMMDD)\n"
-        "- expiry_date: MRZ line 2 chars 22-27 (YYMMDD)\n"
-        "master_name MUST come from MRZ line 1, never the visual name field.\n"
-        'Return JSON: { "<field>": { "value": <val>, "confidence": 0.0-1.0 } }'
-    ),
-    "ssm_profile": (
-        "You are a document extraction agent for Malaysian PLKS immigration compliance.\n"
-        "Document type: ssm_profile\n"
-        "Extract: company_name, roc_number, nature_of_business.\n"
-        'Return JSON: { "<field>": { "value": <val>, "confidence": 0.0-1.0 } }'
-    ),
-    "act446_certificate": (
-        "You are a document extraction agent for Malaysian PLKS immigration compliance.\n"
-        "Document type: act446_certificate\n"
-        "Extract: cert_number, max_capacity (integer number of beds).\n"
-        'Return JSON: { "<field>": { "value": <val>, "confidence": 0.0-1.0 } }'
-    ),
-    "epf_socso_statement": (
-        "You are a document extraction agent for Malaysian PLKS immigration compliance.\n"
-        "Document type: epf_socso_statement\n"
-        "Extract: local_employee_count (integer), foreign_employee_count (integer).\n"
-        'Return JSON: { "<field>": { "value": <val>, "confidence": 0.0-1.0 } }'
-    ),
-    "biomedical_slip": (
-        "You are a document extraction agent for Malaysian PLKS immigration compliance.\n"
-        "Document type: biomedical_slip\n"
-        "Extract: reference_number (10-12 digit string).\n"
-        'Return JSON: { "<field>": { "value": <val>, "confidence": 0.0-1.0 } }'
-    ),
-    "borang100": (
-        "You are a document extraction agent for Malaysian PLKS immigration compliance.\n"
-        "Document type: borang100\n"
-        "Extract: home_country_address, parents_names (list of two strings).\n"
-        'Return JSON: { "<field>": { "value": <val>, "confidence": 0.0-1.0 } }'
-    ),
-    "fomema_report": (
-        "You are a document extraction agent for Malaysian PLKS immigration compliance.\n"
-        "Document type: fomema_report\n"
-        'Extract: worker_name, passport_number, result ("Fit" or "Unfit"), exam_date.\n'
-        'Return JSON: { "<field>": { "value": <val>, "confidence": 0.0-1.0 } }'
-    ),
+    "passport": """
+Analyze this passport document and extract the following information in JSON format:
+- passport_number
+- full_name
+- nationality
+- sex
+- date_of_birth
+- issue_date
+- expiry_date
+- issuing_country
+
+Check if the passport has less than 12 months validity remaining.
+If yes, flag it as "renewal_required": true.
+
+Return only valid JSON.
+""",
+    "fomema_report": """
+Analyze this FOMEMA medical report and extract:
+- worker_name
+- passport_number
+- examination_date
+- medical_status (Suitable/Unsuitable)
+- conditions_detected (list of medical conditions)
+- clinic_name
+- doctor_name
+
+If status is "Unsuitable", identify if the condition is:
+- Category 1 (Communicable - TB, HIV, Hepatitis B, Malaria)
+- Category 2 (NCD - Diabetes, Hypertension)
+- Category 3 (Other - Psychiatric, Pregnancy)
+
+Return only valid JSON.
+""",
+    "permit": """
+Analyze this work permit (PLKS/EP) and extract:
+- permit_number
+- worker_name
+- passport_number
+- permit_class (PLKS, EP Category I/II/III)
+- sector
+- employer_name
+- issue_date
+- expiry_date
+- salary_rm (if Employment Pass)
+
+Calculate days until expiry from today's date.
+
+Return only valid JSON.
+""",
+    "tenancy_agreement": """
+Analyze this tenancy agreement for Act 446 housing compliance:
+- property_address
+- landlord_name
+- tenant_name (employer)
+- lease_start_date
+- lease_end_date
+- monthly_rent_rm
+- number_of_rooms
+- estimated_bed_capacity
+
+Return only valid JSON.
+""",
+    "ssm_profile": """
+Analyze this SSM company profile document and extract:
+- company_name
+- roc_number
+- nature_of_business
+
+Return only valid JSON.
+""",
+    "act446_certificate": """
+Analyze this Act 446 certificate and extract:
+- cert_number
+- max_capacity (integer number of beds)
+
+Return only valid JSON.
+""",
+    "epf_socso_statement": """
+Analyze this EPF/SOCSO statement and extract:
+- local_employee_count (integer)
+- foreign_employee_count (integer)
+
+Return only valid JSON.
+""",
+    "biomedical_slip": """
+Analyze this biomedical slip and extract:
+- reference_number (10-12 digit string)
+
+Return only valid JSON.
+""",
+    "borang100": """
+Analyze this Borang 100 document and extract:
+- home_country_address
+- parents_names (list of two strings)
+
+Return only valid JSON.
+""",
+}
+
+LETTER_PROMPTS = {
+    "quota_application": lambda worker_data, context: f"""
+You are an expert in Malaysian foreign worker compliance regulations and formal government correspondence.
+
+Draft a justification letter to the Ministry of Home Affairs (KDN) for a foreign worker quota application.
+
+Worker Details:
+- Nationality: {worker_data.get('nationality')}
+- Sector: {worker_data.get('sector')}
+- Position: {worker_data.get('position', 'General Worker')}
+
+Context:
+- Company has advertised on MYFutureJobs for {context.get('myfuturejobs_days', 30)} days
+- Number of local applicants: {context.get('local_applicants', 0)}
+- Reason for rejection of local candidates: {context.get('rejection_reason', 'Insufficient experience')}
+
+Draft a formal, detailed justification letter explaining:
+1. Why the company needs this foreign worker
+2. Evidence of local hiring attempts
+3. Specific skills or experience required
+4. How this aligns with 13MP automation goals
+
+Use formal Malaysian government correspondence style.
+""",
+    "fomema_appeal": lambda worker_data, context: f"""
+You are an expert in Malaysian foreign worker compliance regulations and formal government correspondence.
+
+Draft a FOMEMA medical appeal letter.
+
+Worker Details:
+- Name: {worker_data.get('full_name')}
+- Passport: {worker_data.get('passport_number')}
+- Medical Condition: {context.get('medical_condition')}
+
+The worker was flagged as "Unsuitable" for: {context.get('medical_condition')}
+This is a Category 2 NCD (Non-Communicable Disease) eligible for monitoring.
+
+Draft a formal appeal letter to FOMEMA requesting enrollment in the NCD Monitoring Programme. Include:
+1. Acknowledgment of the medical finding
+2. Request for 6-month monitoring period
+3. Commitment to employer-funded treatment
+4. Reference to WellXS app tracking
+
+Use formal medical appeal language.
+""",
+    "special_pass": lambda worker_data, context: f"""
+You are an expert in Malaysian foreign worker compliance regulations and formal government correspondence.
+
+Draft a Special Pass application to Immigration (JIM).
+
+Worker Details:
+- Name: {worker_data.get('full_name')}
+- Passport: {worker_data.get('passport_number')}
+- Current Permit Expiry: {worker_data.get('permit_expiry_date')}
+
+Reason for Special Pass:
+{context.get('reason', 'FOMEMA appeal pending while permit expires')}
+
+Draft a formal letter requesting a Special Pass to bridge the compliance gap.
+Explain the administrative deadlock and proposed resolution timeline.
+""",
+    "com_request_letter": lambda worker_data, context: f"""
+You are an expert in Malaysian foreign worker compliance regulations and formal government correspondence.
+
+Draft a formal cover letter from an employer to the Malaysian Immigration Department (Jabatan Imigresen Malaysia / JIM)
+requesting the issuance of a Check Out Memo (COM) for a foreign worker declared medically unfit.
+
+Company / Employer:
+- Company Name: {context.get('employer_name', 'N/A')}
+- Company Registration: {context.get('company_registration', 'N/A')}
+
+Worker Details:
+- Full Name: {worker_data.get('full_name', 'N/A')}
+- Passport Number: {worker_data.get('passport_number', 'N/A')}
+- Nationality: {worker_data.get('nationality', 'N/A')}
+- Sector: {worker_data.get('sector', 'N/A')}
+
+Reason for Repatriation:
+- The worker has undergone mandatory FOMEMA examination and been declared UNFIT (Tidak Layak).
+- FOMEMA Result Date: {context.get('fomema_result_date', 'N/A')}
+- Medical Condition Category: {context.get('condition_category', 'Category 1 — Communicable Disease')}
+
+Draft a formal letter that:
+1. Is addressed to "Pengarah, Jabatan Imigresen Malaysia"
+2. States the company is notifying JIM of the FOMEMA UNFIT result
+3. Formally requests issuance of a Check Out Memo (COM) for lawful repatriation
+4. Confirms the employer will bear repatriation costs
+5. Requests cancellation of any pending visa/permit application
+6. Includes a polite closing with space for company stamp and authorized signature
+
+Use formal Malaysian government correspondence style in English.
+Include "Ref:" and "Date:" headers at the top.
+""",
 }
 
 
@@ -121,3 +263,28 @@ def generate_text(prompt: str, system_prompt: Optional[str] = None) -> Dict:
                 "timestamp": datetime.now().isoformat()}
     except Exception as e:
         return {"success": False, "error": str(e)}
+
+
+def generate_justification_letter(worker_data: Dict, application_type: str, context: Dict) -> Dict:
+    prompt_fn = LETTER_PROMPTS.get(application_type)
+    if not prompt_fn:
+        prompt = "Draft a formal compliance letter."
+    else:
+        prompt = prompt_fn(worker_data, context)
+
+    try:
+        response = _client.models.generate_content(
+            model=REASONING_MODEL,
+            contents=prompt,
+            config=types.GenerateContentConfig(temperature=0.3, max_output_tokens=2000),
+        )
+        return {
+            "success": True,
+            "application_type": application_type,
+            "letter": response.text,
+            "model": REASONING_MODEL,
+            "timestamp": datetime.now().isoformat(),
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e), "application_type": application_type,
+                "timestamp": datetime.now().isoformat()}

@@ -32,7 +32,12 @@ class DocumentTriageService:
     async def _parse_with_gemini(self, document_id: str, storage_path: str,
                                   document_type: str, triage_level: str, content_type: str = "image/jpeg") -> Dict:
         try:
-            image_bytes = bucket.blob(storage_path).download_as_bytes()
+            from pathlib import Path
+            local = Path(storage_path)
+            if local.exists():
+                image_bytes = local.read_bytes()
+            else:
+                image_bytes = bucket.blob(storage_path).download_as_bytes()
             mime = content_type if content_type in ("image/jpeg", "image/png", "application/pdf") else "image/jpeg"
             image_url = f"data:{mime};base64,{base64.b64encode(image_bytes).decode()}"
             result = parse_document(image_url, document_type, mime_type=mime)
