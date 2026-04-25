@@ -17,10 +17,130 @@ import { usePendingInterrupts, useInterruptDetails, useResolveInterrupt } from "
 import { useUIStore } from "@/store/useUIStore";
 import { useAuditLogStore } from "@/store/useAuditLogStore";
 import ConfidenceBadge from "@/components/ConfidenceBadge";
-import { AlertCircle, CheckCircle, XCircle, Edit3, Eye, Shield } from "lucide-react";
+import { AlertCircle, CheckCircle, XCircle, Edit3, Eye, Shield, FileText } from "lucide-react";
+import { useContracts, useReviewContract, useContractPdfUrl } from "@/hooks/queries/useContractQueries";
+
+function ContractReviewTab() {
+	const [selectedContract, setSelectedContract] = useState(null);
+	const { data } = useContracts("signed");
+	const reviewMutation = useReviewContract();
+	const { data: pdfUrl } = useContractPdfUrl(selectedContract?.contract_id);
+	const [passportUrl, setPassportUrl] = useState(null);
+
+	async function handleSelect(contract) {
+		setSelectedContract(contract);
+		setPassportUrl(null);
+		try {
+			const docsRes = await fetch(
+				`http://127.0.0.1:8001/documents?worker_id=${contract.worker_id}&document_type=passport`,
+			);
+			const docsData = await docsRes.json();
+			const passport = docsData?.documents?.[0];
+			if (passport?.document_id) {
+				const urlRes = await fetch(
+					`http://127.0.0.1:8001/documents/${passport.document_id}/url`,
+				).catch(() => null);
+				const urlData = urlRes ? await urlRes.json().catch(() => null) : null;
+				setPassportUrl(urlData?.url || null);
+			}
+		} catch {
+			// passport image optional
+		}
+	}
+
+	const contracts = data?.contracts || [];
+
+	return (
+		<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+			<div className="rounded-xl border border-gray-200 bg-white shadow-sm">
+				<div className="border-b border-gray-100 px-5 py-4">
+					<h2 className="text-lg font-bold text-gray-900">Signed Contracts</h2>
+				</div>
+				<div className="max-h-[600px] overflow-y-auto p-4 space-y-2">
+					{contracts.length === 0 ? (
+						<div className="text-center py-12 text-gray-500">
+							<CheckCircle className="w-10 h-10 mx-auto mb-3 text-green-500" />
+							<p className="font-medium">No signed contracts pending review</p>
+						</div>
+					) : contracts.map((c) => (
+						<button
+							key={c.contract_id}
+							onClick={() => handleSelect(c)}
+							className={`w-full text-left rounded-xl border p-4 transition-all ${
+								selectedContract?.contract_id === c.contract_id
+									? "border-indigo-400 bg-indigo-50"
+									: "border-gray-100 hover:border-indigo-200 hover:bg-gray-50"
+							}`}
+						>
+							<div className="flex items-center gap-3">
+								<FileText className="w-5 h-5 text-amber-500" />
+								<div>
+									<p className="font-semibold text-gray-900 text-sm">{c.worker_name}</p>
+									<p className="text-xs text-gray-400 mt-0.5">
+										Signed {c.signed_at ? new Date(c.signed_at).toLocaleDateString() : "—"}
+									</p>
+								</div>
+							</div>
+						</button>
+					))}
+				</div>
+			</div>
+
+			<div className="rounded-xl border border-gray-200 bg-white shadow-sm">
+				<div className="border-b border-gray-100 px-5 py-4">
+					<h2 className="text-lg font-bold text-gray-900">Review</h2>
+				</div>
+				{!selectedContract ? (
+					<div className="flex h-96 items-center justify-center text-gray-400">
+						<div className="text-center">
+							<Eye className="w-8 h-8 mx-auto mb-2 opacity-40" />
+							<p className="text-sm">Select a contract to review</p>
+						</div>
+					</div>
+				) : (
+					<div className="p-5 space-y-4">
+						<div>
+							<p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Signed Contract</p>
+							{pdfUrl ? (
+								<iframe src={pdfUrl} className="w-full h-64 rounded-lg border border-gray-200" title="Signed contract" />
+							) : (
+								<div className="h-64 rounded-lg border border-dashed border-gray-200 flex items-center justify-center text-gray-400 text-sm">
+									Loading PDF...
+								</div>
+							)}
+						</div>
+						<div>
+							<p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Passport Image</p>
+							{passportUrl ? (
+								<img src={passportUrl} alt="Passport" className="w-full max-h-48 object-contain rounded-lg border border-gray-200" />
+							) : (
+								<div className="h-32 rounded-lg border border-dashed border-gray-200 flex items-center justify-center text-gray-400 text-sm">
+									No passport image found
+								</div>
+							)}
+						</div>
+						<button
+							onClick={() =>
+								reviewMutation.mutate(selectedContract.contract_id, {
+									onSuccess: () => setSelectedContract(null),
+								})
+							}
+							disabled={reviewMutation.isPending}
+							className="w-full flex items-center justify-center gap-2 rounded-lg bg-emerald-600 py-2.5 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-50 transition"
+						>
+							<CheckCircle className="w-4 h-4" />
+							{reviewMutation.isPending ? "Updating..." : "Update — Mark Reviewed"}
+						</button>
+					</div>
+				)}
+			</div>
+		</div>
+	);
+}
 
 export default function HITLPage() {
 	const navigate = useNavigate();
+	const [activeTab, setActiveTab] = useState("interrupts");
 	const [selectedWorkerId, setSelectedWorkerId] = useState(null);
 	const [notes, setNotes] = useState("");
 	const openIntentPreview = useUIStore((s) => s.openIntentPreview);
@@ -102,7 +222,7 @@ export default function HITLPage() {
 		<div className="space-y-6">
 			<div className="flex items-center justify-between">
 				<div>
-					<h1 className="text-2xl font-bold text-gray-900">Human-in-the-Loop Interrupts</h1>
+					<h1 className="text-2xl font-bold text-gray-900">Human-in-the-Loop</h1>
 					<p className="text-sm text-gray-600 mt-1">
 						High-stakes compliance decisions requiring human approval
 					</p>
@@ -113,6 +233,23 @@ export default function HITLPage() {
 				</div>
 			</div>
 
+			{/* Tab bar */}
+			<div className="flex gap-2 border-b border-gray-200">
+				<button
+					onClick={() => setActiveTab("interrupts")}
+					className={`px-4 py-2 text-sm font-medium border-b-2 transition ${activeTab === "interrupts" ? "border-indigo-600 text-indigo-700" : "border-transparent text-gray-500 hover:text-gray-700"}`}
+				>
+					Workflow Interrupts
+				</button>
+				<button
+					onClick={() => setActiveTab("contracts")}
+					className={`px-4 py-2 text-sm font-medium border-b-2 transition ${activeTab === "contracts" ? "border-indigo-600 text-indigo-700" : "border-transparent text-gray-500 hover:text-gray-700"}`}
+				>
+					Contract Review
+				</button>
+			</div>
+
+			{activeTab === "contracts" ? <ContractReviewTab /> : (
 			<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 				{/* Left Pane: Interrupt Queue */}
 				<div className="rounded-xl border border-gray-200 bg-white shadow-sm">
@@ -296,6 +433,7 @@ export default function HITLPage() {
 					)}
 				</div>
 			</div>
+			)}
 		</div>
 	);
 }

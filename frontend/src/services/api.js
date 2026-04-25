@@ -206,3 +206,32 @@ export async function getMTLMTierStructure() {
 export async function getEPSalaryThresholds() {
 	return apiRequest("/simulator/ep-salary-thresholds", { method: "GET" });
 }
+
+// Contract APIs
+export async function generateContracts(templateFile) {
+	const body = new FormData();
+	body.append("template", templateFile);
+	return apiRequest("/contracts/generate", { method: "POST", body });
+}
+
+export async function listContracts(status, workerId) {
+	const params = new URLSearchParams();
+	if (status) params.set("status", status);
+	if (workerId) params.set("worker_id", workerId);
+	const qs = params.toString() ? `?${params}` : "";
+	return apiRequest(`/contracts${qs}`, { method: "GET" });
+}
+
+export async function getContractPdfUrl(contractId) {
+	return apiRequest(`/contracts/${contractId}/pdf`, { method: "GET" });
+}
+
+export async function uploadSignedContract(contractId, file) {
+	const body = new FormData();
+	body.append("file", file);
+	return apiRequest(`/contracts/${contractId}/upload-signed`, { method: "POST", body });
+}
+
+export async function reviewContract(contractId) {
+	return apiRequest(`/contracts/${contractId}/review`, { method: "PATCH" });
+}
