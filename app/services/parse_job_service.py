@@ -45,6 +45,9 @@ async def process_parse_job(job_id: str, document_id: str):
         )
 
         if parse_result["success"]:
+            # Convert extracted data to field format with confidence
+            extracted_data = parse_result.get("extracted_data", {})
+            print(extracted_data)
             confidence = parse_result.get("confidence", 0.85)
             raw = parse_result.get("extracted_data", {})
             # Gemini returns {field: {value, confidence}} — use as-is; only wrap flat values

@@ -30,7 +30,6 @@ export default function UploadPage() {
   const updateParsedField = useWorkerStore((state) => state.updateParsedField);
 
   const [selectedFile, setSelectedFile] = useState(null);
-  const [docType, setDocType] = useState("passport");
   const [formValues, setFormValues] = useState({});
   const [isUploading, setIsUploading] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
@@ -74,6 +73,20 @@ export default function UploadPage() {
     });
   }, [pollError, toast]);
 
+  useEffect(() => {
+    if (!parsedFields || Object.keys(parsedFields).length === 0) return;
+
+    setParsedFieldsByType((current) => ({
+      ...current,
+      [selectedDocumentType]: parsedFields,
+    }));
+
+    setFormValuesByType((current) => ({
+      ...current,
+      [selectedDocumentType]: normalizeInitialValues(parsedFields),
+    }));
+  }, [parsedFields, selectedDocumentType]);
+
   const progressValue = useMemo(() => {
     if (parseJobStatus === "completed") {
       return 100;
@@ -92,13 +105,18 @@ export default function UploadPage() {
 
   const handleUpload = async () => {
     if (!selectedFile) {
+      toast({
+        title: "No file selected",
+        description: "Please select a file before uploading.",
+        variant: "destructive",
+      });
       return;
     }
 
     setIsUploading(true);
 
     try {
-      const response = await uploadDocument(selectedFile, docType);
+      const response = await uploadDocument(selectedFile, "passport");
       setParsedFields({});
       setJobContext({
         jobId: response.job_id,
@@ -107,7 +125,7 @@ export default function UploadPage() {
 
       toast({
         title: "Document uploaded",
-        description: "Parsing job queued. Agent extraction has started.",
+        description: `${selectedDocumentType} parsing job queued.`,
         variant: "success",
       });
     } catch (error) {
@@ -122,6 +140,7 @@ export default function UploadPage() {
   };
 
   const handleConfirm = async () => {
+    console.log(formValues)
     if (!documentId) {
       return;
     }
@@ -218,6 +237,21 @@ export default function UploadPage() {
           <div className="mt-4">{previewContent}</div>
         </article>
 
+        <div className="permit-surface p-5 sm:p-6">
+          <label className="text-sm font-medium text-slate-700">
+            Select document type
+          </label>
+
+          <select
+            value={selectedDocumentType}
+            onChange={(e) => setSelectedDocumentType(e.target.value)}
+            className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+          >
+            <option value="passport">Passport</option>
+            <option value="health_checkup">Health Checkup</option>
+          </select>
+        </div>
+
         <div className="space-y-6">
           <section className="permit-surface p-5 sm:p-6">
             <h3 className="text-lg font-semibold text-slate-900">Document Type</h3>
@@ -255,7 +289,12 @@ export default function UploadPage() {
 
           <FileUpload
             file={selectedFile}
-            onFileSelect={setSelectedFile}
+            onFileSelect={(file) =>
+              setSelectedFiles((current) => ({
+                ...current,
+                [selectedDocumentType]: file,
+              }))
+            }
             onUpload={handleUpload}
             isUploading={isUploading}
             isPolling={isPolling}
@@ -264,11 +303,16 @@ export default function UploadPage() {
           />
 
           <ParsedForm
-            parsedFields={parsedFields}
-            formValues={formValues}
+            parsedFields={currentParsedFields}
+            formValues={currentFormValues}
             onFieldChange={(fieldKey, nextValue) => {
-              setFormValues((current) => ({ ...current, [fieldKey]: nextValue }));
-              updateParsedField(fieldKey, nextValue);
+              setFormValuesByType((current) => ({
+                ...current,
+                [selectedDocumentType]: {
+                  ...current[selectedDocumentType],
+                  [fieldKey]: nextValue,
+                },
+              }));
             }}
             onConfirm={handleConfirm}
             isConfirming={isConfirming}
