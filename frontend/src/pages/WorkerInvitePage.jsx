@@ -1,63 +1,168 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { UserPlus, Send, Copy, Check, KeyRound, Mail, Phone, User } from "lucide-react";
-import { listWorkers, inviteWorker } from "@/services/api";
+import {
+  UserPlus, Send, Copy, Check, KeyRound, Mail, Phone, User,
+  RefreshCw, AlertCircle, Sparkles,
+} from "lucide-react";
+import { listWorkers, inviteWorker, assignAllLoginCodes, updateWorkerContact } from "@/services/api";
 import { useAuthStore } from "@/store/useAuthStore";
+
+// ── helpers ──────────────────────────────────────────────────────────────────
+
+function workerDisplayName(w) {
+  return w.full_name || w.passport?.full_name || w.name || w.worker_id;
+}
 
 function buildWhatsAppUrl(whatsapp, name, workerId, loginCode) {
   const phone = whatsapp.replace(/[^0-9]/g, "");
   const message =
     `Hello ${name}!\n\n` +
-    `Your PermitIQ Worker Portal credentials:\n` +
+    `Your PermitIQ Worker Portal login credentials:\n` +
     `• Worker ID: ${workerId}\n` +
     `• Login Code: ${loginCode}\n\n` +
-    `Login at: ${window.location.origin}/login/worker`;
+    `Log in at: ${window.location.origin}/login/worker\n\n` +
+    `Keep these details safe. Do not share with anyone.`;
   return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
 }
 
-function CopyButton({ text }) {
+// ── CopyButton ────────────────────────────────────────────────────────────────
+
+function CopyButton({ text, label }) {
   const [copied, setCopied] = useState(false);
-  const handleCopy = () => {
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  };
   return (
     <button
-      onClick={handleCopy}
-      title="Copy"
-      className="rounded p-1 text-slate-400 hover:text-slate-700 transition"
+      onClick={() => {
+        navigator.clipboard.writeText(text);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      }}
+      title={`Copy ${label || text}`}
+      className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition"
     >
-      {copied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+      {copied ? <Check className="h-3 w-3 text-emerald-500" /> : <Copy className="h-3 w-3" />}
     </button>
   );
 }
 
-function WorkerCredentialRow({ worker }) {
-  const name =
-    worker.full_name ||
-    worker.passport?.full_name ||
-    worker.name ||
-    worker.worker_id;
+// ── WhatsApp inline editor ────────────────────────────────────────────────────
 
-  if (!worker.login_code) return null;
+function WhatsAppEditor({ workerId, onSaved }) {
+  const qc = useQueryClient();
+  const [val, setVal] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState("");
+
+  const save = async () => {
+    const trimmed = val.trim();
+    if (!trimmed) { setErr("Enter a number"); return; }
+    setSaving(true);
+    setErr("");
+    try {
+      await updateWorkerContact(workerId, { whatsapp: trimmed });
+      qc.invalidateQueries({ queryKey: ["workers-invite-list"] });
+      onSaved?.();
+    } catch {
+      setErr("Failed to save");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
-    <tr className="border-b border-slate-100 last:border-0 hover:bg-slate-50 transition">
+    <div className="flex flex-col gap-1">
+      <div className="flex items-center gap-1">
+        <input
+          type="text"
+          value={val}
+          onChange={(e) => setVal(e.target.value)}
+          placeholder="+601XXXXXXXX"
+          className="w-36 rounded border border-slate-200 px-2 py-1 text-xs text-slate-700 focus:border-indigo-400 focus:outline-none"
+          onKeyDown={(e) => e.key === "Enter" && save()}
+        />
+        <button
+          onClick={save}
+          disabled={saving}
+          className="rounded bg-indigo-600 px-2 py-1 text-xs font-medium text-white hover:bg-indigo-500 disabled:opacity-50 transition"
+        >
+          {saving ? "…" : "Save"}
+        </button>
+      </div>
+      {err && <p className="text-xs text-rose-500">{err}</p>}
+    </div>
+  );
+}
+
+// ── Single worker row ─────────────────────────────────────────────────────────
+
+function WorkerRow({ worker, onAssignCode }) {
+  const [editingWA, setEditingWA] = useState(false);
+  const qc = useQueryClient();
+
+  const name = workerDisplayName(worker);
+  const hasCode = !!worker.login_code;
+  const hasWA = !!worker.whatsapp;
+  const canSend = hasCode && hasWA;
+
+  return (
+    <tr className="border-b border-slate-100 last:border-0 hover:bg-slate-50/60 transition">
+      {/* Name + ID */}
       <td className="px-4 py-3">
-        <p className="text-sm font-medium text-slate-900">{name}</p>
-        <p className="text-xs text-slate-400">{worker.worker_id}</p>
-      </td>
-      <td className="px-4 py-3">
-        <div className="flex items-center gap-1">
-          <span className="font-mono text-sm text-slate-700">{worker.login_code}</span>
-          <CopyButton text={worker.login_code} />
+        <p className="text-sm font-semibold text-slate-900">{name}</p>
+        <div className="mt-0.5 flex items-center gap-1">
+          <span className="font-mono text-xs text-slate-400">{worker.worker_id}</span>
+          <CopyButton text={worker.worker_id} label="Worker ID" />
         </div>
       </td>
-      <td className="px-4 py-3 text-sm text-slate-500">{worker.email || "—"}</td>
-      <td className="px-4 py-3 text-sm text-slate-500">{worker.whatsapp || "—"}</td>
+
+      {/* Login code */}
       <td className="px-4 py-3">
-        {worker.whatsapp && worker.login_code ? (
+        {hasCode ? (
+          <div className="flex items-center gap-1">
+            <span className="rounded-md bg-slate-100 px-2 py-0.5 font-mono text-sm font-medium text-slate-800">
+              {worker.login_code}
+            </span>
+            <CopyButton text={worker.login_code} label="Login Code" />
+          </div>
+        ) : (
+          <button
+            onClick={() => onAssignCode(worker.worker_id)}
+            className="inline-flex items-center gap-1 rounded-lg border border-dashed border-indigo-300 bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-100 transition"
+          >
+            <Sparkles className="h-3 w-3" />
+            Assign code
+          </button>
+        )}
+      </td>
+
+      {/* WhatsApp */}
+      <td className="px-4 py-3">
+        {hasWA && !editingWA ? (
+          <div className="flex items-center gap-1">
+            <span className="text-sm text-slate-600">{worker.whatsapp}</span>
+            <button
+              onClick={() => setEditingWA(true)}
+              className="rounded px-1 text-xs text-slate-400 hover:text-indigo-600 transition"
+              title="Edit"
+            >
+              ✎
+            </button>
+          </div>
+        ) : editingWA ? (
+          <WhatsAppEditor
+            workerId={worker.worker_id}
+            onSaved={() => setEditingWA(false)}
+          />
+        ) : (
+          <WhatsAppEditor workerId={worker.worker_id} />
+        )}
+      </td>
+
+      {/* Email */}
+      <td className="px-4 py-3 text-sm text-slate-500">{worker.email || "—"}</td>
+
+      {/* Send action */}
+      <td className="px-4 py-3">
+        {canSend ? (
           <a
             href={buildWhatsAppUrl(worker.whatsapp, name, worker.worker_id, worker.login_code)}
             target="_blank"
@@ -68,12 +173,17 @@ function WorkerCredentialRow({ worker }) {
             Send via WhatsApp
           </a>
         ) : (
-          <span className="text-xs text-slate-400">No WhatsApp</span>
+          <span className="inline-flex items-center gap-1 text-xs text-slate-400">
+            <AlertCircle className="h-3 w-3" />
+            {!hasCode ? "Need login code" : "Need WhatsApp no."}
+          </span>
         )}
       </td>
     </tr>
   );
 }
+
+// ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function WorkerInvitePage() {
   const selectedCompanyId = useAuthStore((s) => s.selectedCompanyId);
@@ -81,6 +191,7 @@ export default function WorkerInvitePage() {
 
   const [form, setForm] = useState({ name: "", email: "", whatsapp: "" });
   const [justAdded, setJustAdded] = useState(null);
+  const [bulkResult, setBulkResult] = useState(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["workers-invite-list"],
@@ -88,12 +199,16 @@ export default function WorkerInvitePage() {
     refetchInterval: 15000,
   });
 
-  const workers = (data?.workers || []).filter(
-    (w) => !selectedCompanyId || w.company_id === selectedCompanyId,
-  );
+  const workers = (data?.workers || [])
+    .filter((w) => !selectedCompanyId || w.company_id === selectedCompanyId)
+    .sort((a, b) => (a.worker_id || "").localeCompare(b.worker_id || ""));
 
-  const mutation = useMutation({
-    mutationFn: (payload) => inviteWorker(payload),
+  const withCode = workers.filter((w) => w.login_code).length;
+  const withoutCode = workers.length - withCode;
+
+  // ── Add new worker ──
+  const addMutation = useMutation({
+    mutationFn: inviteWorker,
     onSuccess: (result) => {
       setJustAdded(result);
       setForm({ name: "", email: "", whatsapp: "" });
@@ -101,11 +216,26 @@ export default function WorkerInvitePage() {
     },
   });
 
+  // ── Bulk assign codes ──
+  const bulkMutation = useMutation({
+    mutationFn: assignAllLoginCodes,
+    onSuccess: (result) => {
+      setBulkResult(result);
+      qc.invalidateQueries({ queryKey: ["workers-invite-list"] });
+    },
+  });
+
+  // ── Assign code to single worker (via bulk endpoint, idempotent) ──
+  const handleAssignSingle = async (targetWorkerId) => {
+    await bulkMutation.mutateAsync();
+    qc.invalidateQueries({ queryKey: ["workers-invite-list"] });
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     const { name, email, whatsapp } = form;
     if (!name.trim() || !email.trim() || !whatsapp.trim()) return;
-    mutation.mutate({
+    addMutation.mutate({
       name: name.trim(),
       email: email.trim(),
       whatsapp: whatsapp.trim(),
@@ -113,7 +243,7 @@ export default function WorkerInvitePage() {
     });
   };
 
-  const fields = [
+  const inputFields = [
     { key: "name", label: "Full Name", placeholder: "Ahmad Bin Razali", icon: User },
     { key: "email", label: "Email", placeholder: "ahmad@example.com", type: "email", icon: Mail },
     { key: "whatsapp", label: "WhatsApp Number", placeholder: "+60123456789", icon: Phone },
@@ -121,12 +251,39 @@ export default function WorkerInvitePage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Invite Workers</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Add a worker to generate their login credentials, then send them via WhatsApp.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Invite Workers</h1>
+          <p className="mt-1 text-sm text-slate-500">
+            Add workers and send their login credentials via WhatsApp.
+          </p>
+        </div>
+
+        {/* Bulk assign button */}
+        {withoutCode > 0 && (
+          <button
+            onClick={() => bulkMutation.mutate()}
+            disabled={bulkMutation.isPending}
+            className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-sm font-semibold text-indigo-700 hover:bg-indigo-100 disabled:opacity-60 transition"
+          >
+            <RefreshCw className={`h-4 w-4 ${bulkMutation.isPending ? "animate-spin" : ""}`} />
+            {bulkMutation.isPending ? "Assigning…" : `Assign codes to ${withoutCode} worker${withoutCode > 1 ? "s" : ""}`}
+          </button>
+        )}
       </div>
+
+      {/* Bulk result banner */}
+      {bulkResult && (
+        <div className="flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+          <p className="text-sm text-emerald-800">
+            <span className="font-semibold">{bulkResult.assigned}</span> workers received new login codes.{" "}
+            <span className="text-emerald-600">{bulkResult.already_had_code} already had codes.</span>
+          </p>
+          <button onClick={() => setBulkResult(null)} className="text-xs text-emerald-600 hover:underline">
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {/* Add worker form */}
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -136,7 +293,7 @@ export default function WorkerInvitePage() {
         </h2>
 
         <form onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-3">
-          {fields.map(({ key, label, placeholder, type = "text", icon: Icon }) => (
+          {inputFields.map(({ key, label, placeholder, type = "text", icon: Icon }) => (
             <div key={key}>
               <label className="mb-1.5 block text-xs font-medium text-slate-500">{label}</label>
               <div className="relative">
@@ -156,26 +313,26 @@ export default function WorkerInvitePage() {
           <div className="flex items-end sm:col-span-3">
             <button
               type="submit"
-              disabled={mutation.isPending}
+              disabled={addMutation.isPending}
               className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-60 transition"
             >
               <UserPlus className="h-4 w-4" />
-              {mutation.isPending ? "Adding..." : "Add Worker & Generate Credentials"}
+              {addMutation.isPending ? "Adding…" : "Add Worker & Generate Credentials"}
             </button>
           </div>
         </form>
 
-        {mutation.isError && (
+        {addMutation.isError && (
           <p className="mt-3 text-sm text-rose-600">
-            Failed to add worker. {mutation.error?.message}
+            Failed to add worker. {addMutation.error?.message}
           </p>
         )}
       </div>
 
-      {/* Credentials card shown immediately after adding */}
+      {/* Flash card after add */}
       {justAdded && (
         <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <p className="text-sm font-semibold text-emerald-800">
                 Worker added — credentials generated
@@ -183,16 +340,16 @@ export default function WorkerInvitePage() {
               <p className="mt-1 text-xs text-emerald-700">
                 Share these with <strong>{justAdded.name}</strong>:
               </p>
-              <div className="mt-2 flex flex-wrap gap-4 text-sm">
-                <span className="text-slate-700">
-                  Worker ID:{" "}
+              <div className="mt-2 flex flex-wrap items-center gap-4 text-sm">
+                <span className="flex items-center gap-1 text-slate-700">
+                  Worker ID:&nbsp;
                   <span className="font-mono font-semibold">{justAdded.worker_id}</span>
-                  <CopyButton text={justAdded.worker_id} />
+                  <CopyButton text={justAdded.worker_id} label="Worker ID" />
                 </span>
-                <span className="text-slate-700">
-                  Login Code:{" "}
+                <span className="flex items-center gap-1 text-slate-700">
+                  Login Code:&nbsp;
                   <span className="font-mono font-semibold">{justAdded.login_code}</span>
-                  <CopyButton text={justAdded.login_code} />
+                  <CopyButton text={justAdded.login_code} label="Login Code" />
                 </span>
               </div>
             </div>
@@ -222,23 +379,30 @@ export default function WorkerInvitePage() {
         </div>
       )}
 
-      {/* Worker credentials table */}
+      {/* All workers credentials table */}
       <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
           <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-800">
             <KeyRound className="h-4 w-4 text-slate-400" />
-            Worker Credentials
+            All Worker Credentials
           </h2>
-          <span className="text-xs text-slate-400">
-            {workers.filter((w) => w.login_code).length} workers with credentials
-          </span>
+          <div className="flex items-center gap-3 text-xs text-slate-400">
+            <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 font-medium text-emerald-700">
+              {withCode} with code
+            </span>
+            {withoutCode > 0 && (
+              <span className="rounded-full bg-amber-50 px-2.5 py-0.5 font-medium text-amber-700">
+                {withoutCode} without code
+              </span>
+            )}
+          </div>
         </div>
 
         {isLoading ? (
-          <p className="px-5 py-8 text-center text-sm text-slate-400">Loading…</p>
-        ) : workers.filter((w) => w.login_code).length === 0 ? (
-          <p className="px-5 py-8 text-center text-sm text-slate-400">
-            No workers with credentials yet. Add a worker above.
+          <p className="px-5 py-10 text-center text-sm text-slate-400">Loading workers…</p>
+        ) : workers.length === 0 ? (
+          <p className="px-5 py-10 text-center text-sm text-slate-400">
+            No workers found. Add one above.
           </p>
         ) : (
           <div className="overflow-x-auto">
@@ -247,17 +411,19 @@ export default function WorkerInvitePage() {
                 <tr className="border-b border-slate-100 bg-slate-50 text-xs font-medium uppercase tracking-wide text-slate-500">
                   <th className="px-4 py-3">Worker</th>
                   <th className="px-4 py-3">Login Code</th>
-                  <th className="px-4 py-3">Email</th>
                   <th className="px-4 py-3">WhatsApp</th>
+                  <th className="px-4 py-3">Email</th>
                   <th className="px-4 py-3">Action</th>
                 </tr>
               </thead>
               <tbody>
-                {workers
-                  .filter((w) => w.login_code)
-                  .map((w) => (
-                    <WorkerCredentialRow key={w.worker_id} worker={w} />
-                  ))}
+                {workers.map((w) => (
+                  <WorkerRow
+                    key={w.worker_id}
+                    worker={w}
+                    onAssignCode={handleAssignSingle}
+                  />
+                ))}
               </tbody>
             </table>
           </div>

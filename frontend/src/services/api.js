@@ -224,6 +224,17 @@ export async function getWorkerCredentials(workerId) {
 	return apiRequest(`/workers/${workerId}/credentials`, { method: "GET" });
 }
 
+export async function assignAllLoginCodes() {
+	return apiRequest("/workers/assign-login-codes", { method: "POST" });
+}
+
+export async function updateWorkerContact(workerId, payload) {
+	return apiRequest(`/workers/${workerId}/update-contact`, {
+		method: "PATCH",
+		body: JSON.stringify(payload),
+	});
+}
+
 export async function listWorkerObligations(workerId) {
 	return apiRequest(`/workers/${workerId}/obligations`, { method: "GET" });
 }

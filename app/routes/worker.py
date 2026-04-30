@@ -161,6 +161,77 @@ def get_worker_credentials(worker_id: str):
     }
 
 
+@router.post("/workers/assign-login-codes")
+def assign_all_login_codes():
+    """Backfill login codes for every worker that doesn't have one. Idempotent."""
+    now = datetime.now(timezone.utc).isoformat()
+    assigned = []
+    skipped = []
+
+    for doc in db.collection("workers").stream():
+        data = doc.to_dict() or {}
+        if data.get("login_code"):
+            name = (
+                data.get("full_name")
+                or (data.get("passport") or {}).get("full_name")
+                or data.get("master_name", doc.id)
+            )
+            skipped.append({
+                "worker_id": doc.id,
+                "name": name,
+                "login_code": data["login_code"],
+                "email": data.get("email"),
+                "whatsapp": data.get("whatsapp"),
+            })
+            continue
+
+        name = (
+            data.get("full_name")
+            or (data.get("passport") or {}).get("full_name")
+            or data.get("master_name", doc.id)
+        )
+        code = _generate_login_code(name)
+        db.collection("workers").document(doc.id).update({
+            "login_code": code,
+            "updated_at": now,
+        })
+        assigned.append({
+            "worker_id": doc.id,
+            "name": name,
+            "login_code": code,
+            "email": data.get("email"),
+            "whatsapp": data.get("whatsapp"),
+        })
+
+    all_workers = assigned + skipped
+    all_workers.sort(key=lambda w: w["worker_id"])
+    return {
+        "assigned": len(assigned),
+        "already_had_code": len(skipped),
+        "workers": all_workers,
+    }
+
+
+class UpdateContactRequest(BaseModel):
+    email: str = ""
+    whatsapp: str = ""
+
+
+@router.patch("/workers/{worker_id}/update-contact")
+def update_worker_contact(worker_id: str, payload: UpdateContactRequest):
+    """Update email and/or WhatsApp number for an existing worker."""
+    doc_ref = db.collection("workers").document(worker_id)
+    if not doc_ref.get().exists:
+        raise HTTPException(status_code=404, detail="Worker not found")
+    update: dict = {"updated_at": datetime.now(timezone.utc).isoformat()}
+    if payload.email:
+        update["email"] = payload.email
+    if payload.whatsapp:
+        update["whatsapp"] = payload.whatsapp
+    doc_ref.update(update)
+    return {"worker_id": worker_id, **update}
+
+
 @router.post("/workers")
 def add_worker(worker: WorkerCreate):
     worker_dict = worker.model_dump()
