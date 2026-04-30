@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { listWorkers } from "@/services/api";
+import { useAuthStore } from "@/store/useAuthStore";
 
 const STATUS_COLORS = {
   complete: "bg-green-100 text-green-800",
@@ -267,6 +268,8 @@ function WorkerDrawerStage1({ worker, onClose }) {
 }
 
 export default function WorkersPage() {
+  const selectedCompanyId = useAuthStore((state) => state.selectedCompanyId);
+  const companyName = useAuthStore((state) => state.user?.name);
   const { data, isLoading, error } = useQuery({
     queryKey: ["workersList"],
     queryFn: listWorkers,
@@ -277,9 +280,12 @@ export default function WorkersPage() {
   const [selected, setSelected] = useState(null);
   const [showReviewQueue, setShowReviewQueue] = useState(false);
 
-  const workers = (data?.workers || []).filter((w) => {
+  const companyWorkers = (data?.workers || []).filter((worker) => {
+    return !selectedCompanyId || worker.company_id === selectedCompanyId;
+  });
+
+  const workers = companyWorkers.filter((w) => {
     const q = search.toLowerCase();
-    console.log(data?.workers)
     return (
       !q ||
       (w.passport?.full_name || "").toLowerCase().includes(q) ||
@@ -288,7 +294,7 @@ export default function WorkersPage() {
     );
   });
 
-  const pendingReviews = (data?.workers || []).filter(
+  const pendingReviews = companyWorkers.filter(
       (w) => w.review_status === "pending_review"
   );
 
@@ -297,7 +303,10 @@ export default function WorkersPage() {
 
         <div>
           <h1 className="text-xl font-semibold text-gray-900">Workers</h1>
-          <p className="text-sm text-gray-500">{data?.total ?? 0} total</p>
+          <p className="text-sm text-gray-500">
+            {workers.length} worker{workers.length === 1 ? "" : "s"}
+            {companyName ? ` · ${companyName}` : ""}
+          </p>
         </div>
 
 

@@ -1,7 +1,8 @@
-import { Activity, LayoutDashboard, Wrench, Workflow, AlertCircle, Users, Calculator, Columns, GitBranch, ScrollText, FileSignature, CalendarIcon, Network, Building2 } from "lucide-react";
+import { Activity, LayoutDashboard, Wrench, Workflow, AlertCircle, Users, Calculator, Columns, GitBranch, ScrollText, FileSignature, CalendarIcon, Network, Building2, LogOut } from "lucide-react";
 import { createElement } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { useAuthStore } from "@/store/useAuthStore";
 import { useWorkerStore } from "@/store/useWorkerStore";
 import { useUIStore } from "@/store/useUIStore";
 import ComplianceBreachBanner from "@/components/ComplianceBreachBanner";
@@ -102,7 +103,21 @@ export default function AppLayout() {
   const parseJobStatus = useWorkerStore((state) => state.parseJobStatus);
   const workerId = useWorkerStore((state) => state.workerId);
   const toggleAuditLog = useUIStore((s) => s.toggleAuditLog);
+  const logout = useAuthStore((state) => state.logout);
+  const companyName = useAuthStore((state) => state.user?.name);
   const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate("/", { replace: true });
+  };
+
+  const handleRoleSwitch = (role) => {
+    if (role === "worker") {
+      logout();
+      navigate("/login/worker", { replace: true });
+    }
+  };
 
   return (
     <div className="relative min-h-screen">
@@ -113,6 +128,7 @@ export default function AppLayout() {
           <div>
             <p className="font-heading text-xs uppercase tracking-[0.24em] text-indigo-700">PermitIQ</p>
             <h1 className="font-heading text-xl font-semibold text-slate-950">Agentic Workflow Console</h1>
+            {companyName && <p className="text-xs text-slate-500">{companyName}</p>}
           </div>
 
           <div className="flex items-center gap-4">
@@ -121,7 +137,7 @@ export default function AppLayout() {
               <select
                 className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-300"
                 value="staff"
-                onChange={(e) => { if (e.target.value === "worker") navigate("/worker/upload"); }}
+                onChange={(e) => handleRoleSwitch(e.target.value)}
               >
                 <option value="staff">Staff</option>
                 <option value="worker">Worker</option>
@@ -136,6 +152,13 @@ export default function AppLayout() {
               <ScrollText className="h-3.5 w-3.5" />
               Audit Log
             </button>
+            <button
+              onClick={handleLogout}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 shadow-soft transition hover:border-rose-200 hover:text-rose-700"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+              Sign out
+            </button>
             <div className="flex items-center gap-4 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs text-slate-600 shadow-soft">
               <Activity className="h-4 w-4 text-indigo-600" />
               <span className={cn("font-medium capitalize", statusTone(parseJobStatus))}>
@@ -143,7 +166,7 @@ export default function AppLayout() {
               </span>
               <span className="hidden text-slate-400 sm:inline">|</span>
               <span className="font-mono text-[11px] text-slate-500">
-                Worker: {workerId || "demo-worker-001"}
+                Worker: {workerId || "not-selected"}
               </span>
             </div>
           </div>

@@ -35,6 +35,8 @@ def list_workers_detail():
 
         result.append({
             "worker_id": wid,
+            "company_id": w.get("company_id"),
+            "company_name": company.get("company_name") or company.get("name"),
 
             # keep full nested data for frontend/admin review
             "passport": passport,
@@ -58,6 +60,21 @@ def list_workers_detail():
             "validation_errors": comp.get("flags", []),
         })
     return {"workers": result, "total": len(result)}
+
+
+@router.get("/workers/{worker_id}/obligations")
+def list_worker_obligations(worker_id: str):
+    try:
+        docs = db.collection("worker_obligations").where("worker_id", "==", worker_id).stream()
+        obligations = []
+        for doc in docs:
+            data = doc.to_dict() or {}
+            obligations.append({"id": doc.id, **data})
+
+        obligations.sort(key=lambda item: item.get("date") or "")
+        return {"worker_id": worker_id, "obligations": obligations, "total": len(obligations)}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to list obligations: {exc}")
 
 
 @router.post("/workers")

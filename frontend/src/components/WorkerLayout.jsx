@@ -1,11 +1,22 @@
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
+import { LogOut } from "lucide-react";
+import { useAuthStore } from "@/store/useAuthStore";
 
 export default function WorkerLayout() {
   const navigate = useNavigate();
   const location = useLocation();
+  const logout = useAuthStore((state) => state.logout);
 
   const handleRoleSwitch = (role) => {
-    if (role === "staff") navigate("/dashboard");
+    if (role === "staff") {
+      logout();
+      navigate("/login/admin", { replace: true });
+    }
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate("/", { replace: true });
   };
 
   return (
@@ -31,6 +42,13 @@ export default function WorkerLayout() {
                 <option value="staff">Staff</option>
               </select>
             </div>
+            <button
+              onClick={handleLogout}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 shadow-sm transition hover:border-rose-200 hover:text-rose-700"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+              Sign out
+            </button>
           </div>
         </div>
 

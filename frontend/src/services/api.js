@@ -213,6 +213,14 @@ export async function listWorkers() {
 	return apiRequest("/workers", { method: "GET" });
 }
 
+export async function listWorkerObligations(workerId) {
+	return apiRequest(`/workers/${workerId}/obligations`, { method: "GET" });
+}
+
+export async function listCompanies() {
+	return apiRequest("/companies", { method: "GET" });
+}
+
 export async function getDocumentFields(documentType) {
 	return apiRequest(`/documents/fields/${documentType}`, { method: "GET" });
 }

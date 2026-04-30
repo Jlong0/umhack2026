@@ -16,7 +16,13 @@ async def get_demo_worker():
     if not docs:
         raise HTTPException(status_code=404, detail="No workers found")
     data = docs[0].to_dict()
-    return {"worker_id": docs[0].id, "worker_name": data.get("full_name") or data.get("name", "Worker")}
+    worker_name = (
+        data.get("full_name")
+        or (data.get("passport") or {}).get("full_name")
+        or data.get("master_name")
+        or data.get("name", "Worker")
+    )
+    return {"worker_id": docs[0].id, "worker_name": worker_name}
 
 
 @router.post("/generate")

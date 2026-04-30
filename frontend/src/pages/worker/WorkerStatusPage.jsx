@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { listWorkers } from "@/services/api";
-import { useWorkerStore } from "@/store/useWorkerStore";
+import { useAuthStore } from "@/store/useAuthStore";
 
 const STAGE_LABELS = {
   gate_1_jtksm:          "Gate 1 — JTKSM Approval",
@@ -43,7 +43,8 @@ function PhaseRow({ phaseKey, data }) {
 }
 
 export default function WorkerStatusPage() {
-  const workerId = useWorkerStore((s) => s.workerId);
+  const user = useAuthStore((s) => s.user);
+  const workerId = user?.id;
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["workersList"],
@@ -57,7 +58,7 @@ export default function WorkerStatusPage() {
   if (!workerId) {
     return (
       <div className="permit-surface px-5 py-12 text-center text-sm text-slate-500">
-        No active worker session. Please upload a document first.
+        No active worker session.
       </div>
     );
   }

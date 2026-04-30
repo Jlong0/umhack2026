@@ -1,8 +1,8 @@
 import { useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { FileText, Download, Upload, CheckCircle, Clock } from "lucide-react";
 import { useContracts, useUploadSigned } from "@/hooks/queries/useContractQueries";
-import { getContractPdfUrl, getDemoWorkerId } from "@/services/api";
+import { getContractPdfUrl } from "@/services/api";
+import { useAuthStore } from "@/store/useAuthStore";
 
 const STATUS_LABEL = {
   generated: { label: "Awaiting your signature", color: "text-amber-600 bg-amber-50" },
@@ -79,12 +79,9 @@ function ContractRow({ contract }) {
 }
 
 export default function WorkerContractPage() {
-  const { data: demoData } = useQuery({
-    queryKey: ["demo-worker"],
-    queryFn: getDemoWorkerId,
-  });
-  const workerId = demoData?.worker_id;
-  const workerName = demoData?.worker_name;
+  const user = useAuthStore((s) => s.user);
+  const workerId = user?.id;
+  const workerName = user?.name;
   const { data, isLoading } = useContracts(null, workerId);
   const contracts = data?.contracts || [];
 

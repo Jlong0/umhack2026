@@ -7,6 +7,7 @@ import { useFirestoreStream } from "@/hooks/useFirestoreStream";
 import { cn } from "@/lib/utils";
 import { isStatusActive, isStatusBlocked, statusLabel } from "@/services/taskAdapter";
 import { useWorkerStore } from "@/store/useWorkerStore";
+import { useAuthStore } from "@/store/useAuthStore";
 import ConfidenceBadge from "@/components/ConfidenceBadge";
 import { useQuery } from "@tanstack/react-query";
 import { listWorkers } from "@/services/api";
@@ -136,9 +137,12 @@ export default function WorkerProfilePage() {
   const storeTasks = useWorkerStore((state) => state.tasks);
   const ruminationLines = useWorkerStore((state) => state.ruminationLines);
   const setRuminationLines = useWorkerStore((state) => state.setRuminationLines);
+  const selectedCompanyId = useAuthStore((state) => state.selectedCompanyId);
 
   const { data: workersData } = useQuery({ queryKey: ["workers"], queryFn: listWorkers });
-  const workerList = workersData?.workers || [];
+  const workerList = (workersData?.workers || []).filter((worker) => {
+    return !selectedCompanyId || worker.company_id === selectedCompanyId;
+  });
 
   const [chatInput, setChatInput] = useState("");
   const [chatMessages, setChatMessages] = useState([]);
@@ -146,7 +150,7 @@ export default function WorkerProfilePage() {
   const chatEndRef = useRef(null);
 
   // Real-time Firestore stream for live AI updates
-  const { latestEvent, isConnected } = useFirestoreStream(workerId);
+  const { isConnected } = useFirestoreStream(workerId);
 
   useWorkerTasksPolling(workerId, {
     enabled: Boolean(workerId),
@@ -402,4 +406,3 @@ function generatePlaceholderResponse(question, workerId, tasks) {
   }
   return `I can help with compliance status, permit expiry, transfer rights, and Section 55B fine calculations for ${workerId || "this worker"}. What would you like to know?`;
 }
-

@@ -1,6 +1,11 @@
 import os
+from pathlib import Path
+
 from dotenv import load_dotenv
-load_dotenv()
+
+_ENV_PATH = Path(__file__).resolve().parents[1] / ".env"
+load_dotenv(dotenv_path=_ENV_PATH)
+
 # Ensure LangSmith tracing env is set before any agent imports
 os.environ.setdefault("LANGCHAIN_TRACING_V2", "true")
 

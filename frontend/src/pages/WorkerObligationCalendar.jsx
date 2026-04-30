@@ -8,7 +8,8 @@ import {
   HeartPulse,
   IdCard,
 } from "lucide-react";
-import { listWorkers } from "@/services/api";
+import { listWorkerObligations, listWorkers } from "@/services/api";
+import { useAuthStore } from "@/store/useAuthStore";
 
 const obligationTypes = {
   passport: {
@@ -84,75 +85,43 @@ function addMonths(date, months) {
   return next;
 }
 
-function buildMockObligations(worker) {
-  const today = new Date();
-
-  const passportExpiry = toDate(worker.passport?.expiry_date);
-  const permitExpiry = toDate(worker.permit_expiry_date);
-
-  const fallbackSeed = worker.id || worker.worker_id || worker.passport_number || "worker";
-  const seedOffset = fallbackSeed.length % 8;
-
-  const mockHealthDate = addMonths(today, seedOffset + 1);
-  mockHealthDate.setDate(10 + seedOffset);
-
-  const obligations = [];
-
-  if (passportExpiry) {
-    obligations.push({
-      id: "passport-renewal",
-      type: "passport",
-      title: "Passport renewal",
-      date: passportExpiry,
-      status: passportExpiry < today ? "Overdue" : "Upcoming",
-      description: "Renew worker passport before expiry.",
-    });
-  }
-
-  if (permitExpiry) {
-    obligations.push({
-      id: "permit-renewal",
-      type: "permit",
-      title: "Permit renewal",
-      date: permitExpiry,
-      status: permitExpiry < today ? "Overdue" : "Upcoming",
-      description: "Renew work permit / PLKS before expiry.",
-    });
-  }
-
-  obligations.push({
-    id: "annual-health-checkup",
-    type: "health",
-    title: "Annual health checkup",
-    date: mockHealthDate,
-    status: "Mock",
-    description: "Mock annual medical checkup obligation.",
-  });
-
-  return obligations.sort((a, b) => a.date - b.date);
+function normalizeObligation(item) {
+  return {
+    id: item.id,
+    type: item.type,
+    title: item.title,
+    date: toDate(item.date),
+    status: item.status || "Upcoming",
+    description: item.description || "",
+  };
 }
 
 function ObligationBadge({ obligation }) {
   const config = obligationTypes[obligation.type];
-  const Icon = config.icon;
+  const Icon = config?.icon || ClipboardCheck;
+  const className = config?.className || "bg-slate-50 text-slate-700 border-slate-200";
 
   return (
     <div
-      className={`mt-1 flex items-center gap-1 rounded-md border px-1.5 py-1 text-[11px] font-medium ${config.className}`}
+      className={`mt-1 flex items-center gap-1 rounded-md border px-1.5 py-1 text-[11px] font-medium ${className}`}
       title={obligation.title}
     >
       <Icon className="h-3 w-3 shrink-0" />
-      <span className="truncate">{config.label}</span>
+      <span className="truncate">{config?.label || obligation.title}</span>
     </div>
   );
 }
 
 export default function WorkerObligationCalendar() {
+  const selectedCompanyId = useAuthStore((state) => state.selectedCompanyId);
   const [workers, setWorkers] = useState([]);
   const [selectedWorkerId, setSelectedWorkerId] = useState("");
   const [monthDate, setMonthDate] = useState(new Date());
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [obligations, setObligations] = useState([]);
+  const [obligationsLoading, setObligationsLoading] = useState(false);
+  const [obligationsError, setObligationsError] = useState("");
 
   useEffect(() => {
     async function loadWorkers() {
@@ -164,11 +133,16 @@ export default function WorkerObligationCalendar() {
         const workerList = Array.isArray(response)
           ? response
           : response.workers || response.data || [];
+        const companyWorkers = workerList.filter((worker) => {
+          return !selectedCompanyId || worker.company_id === selectedCompanyId;
+        });
 
-        setWorkers(workerList);
+        setWorkers(companyWorkers);
 
-        if (workerList.length > 0) {
-          setSelectedWorkerId(workerList[0].id || workerList[0].worker_id);
+        if (companyWorkers.length > 0) {
+          setSelectedWorkerId(companyWorkers[0].id || companyWorkers[0].worker_id);
+        } else {
+          setSelectedWorkerId("");
         }
       } catch (err) {
         setError(err.message || "Unable to load workers.");
@@ -178,7 +152,7 @@ export default function WorkerObligationCalendar() {
     }
 
     loadWorkers();
-  }, []);
+  }, [selectedCompanyId]);
 
   const selectedWorker = useMemo(() => {
     return workers.find(
@@ -187,10 +161,33 @@ export default function WorkerObligationCalendar() {
     );
   }, [workers, selectedWorkerId]);
 
-  const obligations = useMemo(() => {
-    if (!selectedWorker) return [];
-    return buildMockObligations(selectedWorker);
-  }, [selectedWorker]);
+  useEffect(() => {
+    if (!selectedWorkerId) {
+      queueMicrotask(() => setObligations([]));
+      return;
+    }
+
+    async function loadObligations() {
+      setObligationsLoading(true);
+      setObligationsError("");
+
+      try {
+        const response = await listWorkerObligations(selectedWorkerId);
+        const items = (response?.obligations || [])
+          .map((item) => normalizeObligation(item))
+          .filter((item) => item.date);
+        items.sort((a, b) => a.date - b.date);
+        setObligations(items);
+      } catch (err) {
+        setObligationsError(err.message || "Unable to load obligations.");
+        setObligations([]);
+      } finally {
+        setObligationsLoading(false);
+      }
+    }
+
+    loadObligations();
+  }, [selectedWorkerId]);
 
   const monthDays = useMemo(() => getMonthDays(monthDate), [monthDate]);
 
@@ -239,6 +236,12 @@ export default function WorkerObligationCalendar() {
       {error && (
         <section className="permit-surface border border-rose-200 bg-rose-50 p-6 text-sm text-rose-700">
           {error}
+        </section>
+      )}
+
+      {obligationsError && (
+        <section className="permit-surface border border-amber-200 bg-amber-50 p-6 text-sm text-amber-700">
+          {obligationsError}
         </section>
       )}
 
@@ -352,14 +355,17 @@ export default function WorkerObligationCalendar() {
               </h3>
 
               <div className="mt-4 space-y-3">
-                {upcomingObligations.length === 0 ? (
+                {obligationsLoading ? (
+                  <p className="text-sm text-slate-500">Loading obligations...</p>
+                ) : upcomingObligations.length === 0 ? (
                   <p className="text-sm text-slate-500">
                     No upcoming obligations found.
                   </p>
                 ) : (
                   upcomingObligations.map((item) => {
-                    const config = obligationTypes[item.type];
-                    const Icon = config.icon;
+                    const config = obligationTypes[item.type] || {};
+                    const Icon = config.icon || ClipboardCheck;
+                    const badgeClass = config.className || "bg-slate-50 text-slate-700 border-slate-200";
 
                     return (
                       <div
@@ -367,7 +373,7 @@ export default function WorkerObligationCalendar() {
                         className="rounded-xl border border-slate-200 bg-white p-3"
                       >
                         <div className="flex items-start gap-3">
-                          <div className={`rounded-lg border p-2 ${config.className}`}>
+                          <div className={`rounded-lg border p-2 ${badgeClass}`}>
                             <Icon className="h-4 w-4" />
                           </div>
 

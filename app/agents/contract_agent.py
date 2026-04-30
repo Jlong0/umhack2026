@@ -1,14 +1,29 @@
+from __future__ import annotations
+
 import json
 import re
 from uuid import uuid4
 from datetime import datetime, timezone
 from pathlib import Path
 
-import fitz  # pymupdf
-
 from app.firebase_config import db, bucket
 
 LOCAL_UPLOAD_DIR = Path("uploads")
+_FITZ = None
+
+
+def _get_fitz():
+    global _FITZ
+    if _FITZ is None:
+        try:
+            import fitz  # pymupdf
+        except Exception as exc:
+            raise RuntimeError(
+                "PyMuPDF is unavailable. Install the correct package with `pip install PyMuPDF` "
+                "and remove any conflicting `fitz` package."
+            ) from exc
+        _FITZ = fitz
+    return _FITZ
 
 # Maps search phrases in the PDF to worker field keys
 LABEL_TO_FIELD = [
@@ -40,7 +55,7 @@ def _flatten_worker(worker: dict) -> dict:
     }
 
 
-def _fill_name_blank(page: fitz.Page, name: str):
+def _fill_name_blank(page, name: str):
     """Find the blank line for the employee name (before 'the Employee') and fill it."""
     # Search for all occurrences — pick the one near "the Employee", not "the Company"
     employee_hits = page.search_for("the Employee")
@@ -62,26 +77,27 @@ def _fill_name_blank(page: fitz.Page, name: str):
             break
 
     if target:
-        insert_point = fitz.Point(target.x0 + 2, target.y0 + target.height * 0.8)
+        insert_point = _get_fitz().Point(target.x0 + 2, target.y0 + target.height * 0.8)
     else:
         # Fallback: insert just to the left of "the Employee" text
-        insert_point = fitz.Point(72, emp_rect.y0 + emp_rect.height * 0.8)
+        insert_point = _get_fitz().Point(72, emp_rect.y0 + emp_rect.height * 0.8)
 
     page.insert_text(insert_point, name, fontsize=10, color=(0, 0, 0))
 
 
-def _insert_after_label(page: fitz.Page, label: str, value: str):
+def _insert_after_label(page, label: str, value: str):
     """Find label text on page and insert value right after it on the same baseline."""
     hits = page.search_for(label)
     if not hits:
         return
     rect = hits[0]
-    insert_point = fitz.Point(rect.x1 + 4, rect.y0 + rect.height * 0.8)
+    insert_point = _get_fitz().Point(rect.x1 + 4, rect.y0 + rect.height * 0.8)
     page.insert_text(insert_point, value, fontsize=10, color=(0, 0, 0))
 
 
 def fill_contract_for_worker(template_bytes: bytes, worker: dict) -> bytes:
     flat = _flatten_worker(worker)
+    fitz = _get_fitz()
     doc = fitz.open(stream=template_bytes, filetype="pdf")
 
     for page in doc:
@@ -114,7 +130,7 @@ def _save_pdf_bytes(pdf_bytes: bytes, storage_path: str) -> bool:
 
 def generate_contracts_for_all_workers(template_bytes: bytes, job_id: str):
     """Background task: generate one contract PDF per worker."""
-    workers = db.collection("workers").limit(2).stream()
+    workers = db.collection("workers").stream()
     worker_list = [(w.id, w.to_dict()) for w in workers]
 
     db.collection("contract_jobs").document(job_id).set({
@@ -128,6 +144,7 @@ def generate_contracts_for_all_workers(template_bytes: bytes, job_id: str):
     errors = []
     for worker_id, worker in worker_list:
         try:
+            flat = _flatten_worker(worker)
             pdf_bytes = fill_contract_for_worker(template_bytes, worker)
             filename = f"{uuid4()}.pdf"
             storage_path = f"contracts/{filename}"
@@ -135,7 +152,7 @@ def generate_contracts_for_all_workers(template_bytes: bytes, job_id: str):
 
             db.collection("contracts").add({
                 "worker_id": worker_id,
-                "worker_name": worker.get("full_name") or worker.get("name", "Unknown"),
+                "worker_name": flat["full_name"] or "Unknown",
                 "generated_pdf_path": storage_path,
                 "signed_pdf_path": None,
                 "status": "generated",
