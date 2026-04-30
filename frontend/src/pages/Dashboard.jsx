@@ -95,9 +95,9 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       <section className="permit-surface px-5 py-4 sm:px-6">
-        <h2 className="text-xl font-semibold">Executive Dashboard & System Overview</h2>
+        <h2 className="text-xl font-semibold">Overview</h2>
         <p className="mt-1 text-sm text-slate-600">
-          Real-time compliance monitoring, agent workflows, and task tracking.
+          Real-time compliance monitoring, worker workflows, and task tracking.
         </p>
         <p className="mt-2 text-xs text-slate-500">
           Source: {taskSource} | Last refresh: {lastUpdatedAt ? new Date(lastUpdatedAt).toLocaleTimeString() : "Not yet polled"}
@@ -121,7 +121,7 @@ export default function Dashboard() {
         />
         <HealthCard
           icon={Users}
-          label="HITL Interrupts"
+          label="Approvals Queue"
           value={pendingInterrupts}
           tone="amber"
           onClick={() => navigate("/hitl")}

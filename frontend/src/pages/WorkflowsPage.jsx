@@ -46,8 +46,8 @@ export default function WorkflowsPage() {
 		<div className="space-y-6">
 			<div className="flex justify-between items-center">
 				<div>
-					<h1 className="text-3xl font-bold text-gray-900">Compliance Workflows</h1>
-					<p className="text-gray-600 mt-1">Agentic compliance processing status</p>
+					<h1 className="text-3xl font-bold text-gray-900">Worker Workflows</h1>
+					<p className="text-gray-600 mt-1">Automated compliance processing status for each worker</p>
 				</div>
 				<div className="text-sm text-gray-500">
 					Total: {workflows.length} workflows

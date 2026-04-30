@@ -9,31 +9,32 @@ import ComplianceBreachBanner from "@/components/ComplianceBreachBanner";
 import IntentPreviewModal from "@/components/IntentPreviewModal";
 import AuditLogDrawer from "@/components/AuditLogDrawer";
 import AutonomyDial from "@/components/AutonomyDial";
+import AICommandConsole from "@/components/AICommandConsole";
 
 const NAV_ITEMS = [
   {
     to: "/dashboard",
-    label: "Executive Dashboard",
+    label: "Overview",
     icon: LayoutDashboard,
   },
   {
     to: "/graph",
-    label: "Agent Graph",
+    label: "Workflow Diagram",
     icon: Network,
   },
   {
     to: "/workflows",
-    label: "Agent Workflows",
+    label: "Worker Workflows",
     icon: Workflow,
   },
   {
     to: "/pipeline",
-    label: "Gate Pipeline",
+    label: "Permit Stages Board",
     icon: Columns,
   },
   {
     to: "/alerts",
-    label: "Compliance Alerts",
+    label: "Alerts",
     icon: AlertCircle,
   },
   {
@@ -43,42 +44,42 @@ const NAV_ITEMS = [
   },
   {
     to: "/hitl",
-    label: "HITL Interrupts",
+    label: "Approvals Queue",
     icon: Users,
   },
   {
     to: "/contract-generation",
-    label: "Contracts",
+    label: "Contract Generator",
     icon: FileSignature,
   },
   {
     to: "/gov-portal",
-    label: "Gov Portal Demo",
+    label: "Gov Portal (Demo)",
     icon: Building2,
   },
   {
     to: "/dual-sync",
-    label: "F&B Dual Sync",
+    label: "Sync With Gov Records",
     icon: GitBranch,
   },
   {
     to: "/simulator",
-    label: "What-If Simulator",
+    label: "Cost Simulator",
     icon: Calculator,
   },
   {
     to: "/worker-visualizer",
-    label: "Worker Visualizer",
+    label: "Worker Compliance Graph",
     icon: Workflow,
   },
   {
     to: "/tool-handoff",
-    label: "Tool Handoff",
+    label: "Action Approvals",
     icon: Wrench,
   },
   {
     to: "/worker-calendar",
-    label: "Worker Obligation Calendar",
+    label: "Renewal Calendar",
     icon: CalendarIcon,
   },
   {
@@ -132,7 +133,7 @@ export default function AppLayout() {
         <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
           <div>
             <p className="font-heading text-xs uppercase tracking-[0.24em] text-indigo-700">PermitIQ</p>
-            <h1 className="font-heading text-xl font-semibold text-slate-950">Agentic Workflow Console</h1>
+            <h1 className="font-heading text-xl font-semibold text-slate-950">Admin Console</h1>
             {companyName && <p className="text-xs text-slate-500">{companyName}</p>}
           </div>
 
@@ -212,6 +213,7 @@ export default function AppLayout() {
 
       <IntentPreviewModal />
       <AuditLogDrawer />
+      <AICommandConsole />
     </div>
   );
 }

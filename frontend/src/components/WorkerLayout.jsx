@@ -62,7 +62,7 @@ export default function WorkerLayout() {
                   : "border-slate-200 bg-white text-slate-700 hover:border-indigo-200 hover:text-indigo-800"
               }`}
             >
-              Document Upload
+              Upload Documents
             </button>
             <button
               onClick={() => navigate("/worker/status")}
@@ -72,7 +72,7 @@ export default function WorkerLayout() {
                   : "border-slate-200 bg-white text-slate-700 hover:border-indigo-200 hover:text-indigo-800"
               }`}
             >
-              Application Status
+              My Status
             </button>
             <button
               onClick={() => navigate("/worker/contracts")}

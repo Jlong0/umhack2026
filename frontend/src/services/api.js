@@ -282,6 +282,21 @@ export async function getSyncCheck() {
 	return apiRequest("/agents/sync-check", { method: "GET" });
 }
 
+// Chat / AI Command Console APIs
+export async function sendChatMessage(message, history = [], pendingToolResult = null) {
+	return apiRequest("/chat/command", {
+		method: "POST",
+		body: JSON.stringify({ message, history, pending_tool_result: pendingToolResult }),
+	});
+}
+
+export async function executeToolCall(toolName, args = {}) {
+	return apiRequest("/chat/execute-tool", {
+		method: "POST",
+		body: JSON.stringify({ tool_name: toolName, args }),
+	});
+}
+
 export async function resolveSyncConflict(workerId, field) {
 	return apiRequest(`/agents/sync-check/${workerId}/resolve?field=${encodeURIComponent(field)}`, { method: "POST" });
 }

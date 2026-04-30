@@ -130,7 +130,7 @@ export default function GraphVisualizerPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-100 flex items-center gap-3">
             <Network className="h-7 w-7 text-indigo-400" />
-            Agent Graph Visualizer
+            Workflow Diagram
           </h1>
           <p className="text-sm text-gray-500 mt-1">
             Live multi-agent workflow topology — equivalent to <code className="text-indigo-400 text-xs">app.get_graph().draw_mermaid_png()</code>

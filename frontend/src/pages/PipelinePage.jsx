@@ -168,9 +168,9 @@ export default function PipelinePage() {
     <div className="space-y-6">
       {/* Page Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-100">Macro Gate Pipeline</h1>
+        <h1 className="text-2xl font-bold text-gray-100">Permit Stages Board</h1>
         <p className="text-sm text-gray-500">
-          Real-time compliance gate tracker — cards move autonomously based on AI verifications
+          Real-time permit stage tracker — cards move autonomously as AI verifies each step
         </p>
       </div>
 
