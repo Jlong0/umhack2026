@@ -1,4 +1,4 @@
-import { Activity, LayoutDashboard, Wrench, Workflow, AlertCircle, Users, Calculator, Columns, GitBranch, ScrollText, FileSignature, CalendarIcon} from "lucide-react";
+import { Activity, LayoutDashboard, Wrench, Workflow, AlertCircle, Users, Calculator, Columns, GitBranch, ScrollText, FileSignature, CalendarIcon, Network, Building2 } from "lucide-react";
 import { createElement } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -14,6 +14,11 @@ const NAV_ITEMS = [
     to: "/dashboard",
     label: "Executive Dashboard",
     icon: LayoutDashboard,
+  },
+  {
+    to: "/graph",
+    label: "Agent Graph",
+    icon: Network,
   },
   {
     to: "/workflows",
@@ -44,6 +49,11 @@ const NAV_ITEMS = [
     to: "/contract-generation",
     label: "Contracts",
     icon: FileSignature,
+  },
+  {
+    to: "/gov-portal",
+    label: "Gov Portal Demo",
+    icon: Building2,
   },
   {
     to: "/dual-sync",

@@ -1,7 +1,7 @@
 from langgraph.graph import StateGraph, END
-from langgraph.checkpoint.memory import MemorySaver
 from typing import Literal
 
+from app.agents.firebase_checkpointer import FirestoreCheckpointer
 from app.agents.state import VDRState, WorkerComplianceState, AgentType, ComplianceStatus, RegulatoryGate
 from app.agents.nodes import (
     document_parser_node,
@@ -42,7 +42,7 @@ def build_graph():
     g.add_conditional_edges("compliance", should_continue, {"continue": "fomema",     END: END})
     g.add_conditional_edges("fomema",     should_continue, {"continue": "assemble",   END: END})
     g.add_edge("assemble", END)
-    return g.compile()
+    return g.compile(checkpointer=FirestoreCheckpointer("vdr_checkpoints"))
 
 
 vdr_graph = build_graph()
@@ -99,7 +99,7 @@ def _build_legacy_graph():
     for node in ("auditor", "strategist", "filing", "company_audit", "vdr_filing", "plks_monitor"):
         w.add_edge(node, "supervisor")
     w.add_conditional_edges("hitl", route_after_hitl, {"supervisor": "supervisor", "end": END})
-    return w.compile(checkpointer=MemorySaver())
+    return w.compile(checkpointer=FirestoreCheckpointer())
 
 
 compliance_graph = _build_legacy_graph()

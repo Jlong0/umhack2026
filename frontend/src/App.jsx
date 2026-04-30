@@ -17,6 +17,8 @@ import WorkerStatusPage from "@/pages/worker/WorkerStatusPage";
 import WorkerContractPage from "@/pages/worker/WorkerContractPage";
 import ContractGenerationPage from "@/pages/ContractGenerationPage";
 import WorkerObligationCalendar from "@/pages/WorkerObligationCalendar";
+import GraphVisualizerPage from "@/pages/GraphVisualizerPage";
+import MockGovPortalPage from "@/pages/MockGovPortalPage";
 
 
 import MedicalReviewPage from "@/pages/MedicalReviewPage";
@@ -26,6 +28,7 @@ function App() {
     <Routes>
       <Route element={<AppLayout />}>
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/graph" element={<GraphVisualizerPage />} />
         <Route path="/worker-visualizer" element={<WorkerProfilePage />} />
         <Route path="/tool-handoff" element={<ConfirmPage />} />
         <Route path="/workflows" element={<WorkflowsPage />} />
@@ -38,6 +41,7 @@ function App() {
         <Route path="/workers" element={<WorkersPage />} />
         <Route path="/dual-sync" element={<DualSyncPage />} />
         <Route path="/contract-generation" element={<ContractGenerationPage />} />
+        <Route path="/gov-portal" element={<MockGovPortalPage />} />
         <Route path="/worker-calendar" element={<WorkerObligationCalendar />} />
       </Route>
       <Route element={<WorkerLayout />}>

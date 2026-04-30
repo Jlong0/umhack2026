@@ -5,24 +5,36 @@ import firebase_admin
 from firebase_admin import credentials, firestore, storage
 from dotenv import load_dotenv
 
-load_dotenv()
+_ENV_PATH = Path(__file__).resolve().parents[1] / ".env"
+load_dotenv(dotenv_path=_ENV_PATH)
 
-USE_MOCK = os.getenv("USE_MOCK_FIREBASE", "false").lower() == "true"
+
+def _env_bool(name: str, default: str = "false") -> bool:
+    val = os.getenv(name, default)
+    return str(val).strip().lower() in ("1", "true", "yes")
+
+
+USE_MOCK = _env_bool("USE_MOCK_FIREBASE", "false")
 FIREBASE_STORAGE_BUCKET = os.getenv("FIREBASE_STORAGE_BUCKET", "umhack-493907.firebasestorage.app")
 
 
 def _resolve_credentials_path() -> Path:
     env_path = os.getenv("FIREBASE_CREDENTIALS_PATH")
+    google_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+    repo_root = Path(__file__).resolve().parents[1]
     candidate_paths = [
         env_path,
+        google_path,
         "secrets/firebase-service-account.json",
         "serviceAccountKey.json",
+        "serviceAccountkey.json",
     ]
 
     for candidate in candidate_paths:
         if not candidate:
             continue
-        resolved = Path(candidate).expanduser().resolve()
+        candidate_path = Path(candidate).expanduser()
+        resolved = (repo_root / candidate_path).resolve() if not candidate_path.is_absolute() else candidate_path.resolve()
         if resolved.exists():
             return resolved
 

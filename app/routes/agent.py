@@ -446,3 +446,112 @@ async def resolve_sync_conflict(worker_id: str, field: str):
     db.collection("mock_gov_records").document(worker_id).set(
         {field: internal_value, "last_updated": datetime.now().isoformat()}, merge=True)
     return {"worker_id": worker_id, "field": field, "resolved_to": internal_value}
+
+
+# ---------------------------------------------------------------------------
+# Graph definition endpoint — live Mermaid diagram for website rendering
+# ---------------------------------------------------------------------------
+
+MASTER_MERMAID = """graph TD
+    User["👤 User Input"] --> Orchestrator["🧠 Orchestrator Agent"]
+    Orchestrator --> Router{"🔀 Route Decision"}
+    Router -->|"VDR Workflow"| VDR_SUB["📋 VDR Pipeline"]
+    Router -->|"Compliance Audit"| COMP_SUB["🔍 Compliance Pipeline"]
+    Router -->|"Simulation"| SIM["📊 Simulator Tools"]
+    Router -->|"Get Status"| STATUS["📌 Status Check"]
+
+    subgraph VDR["VDR Pipeline"]
+        direction TB
+        parse["📄 Document Parser"] --> validate["✅ Pre-Form Validator"]
+        validate --> signatures["✍️ Signature Tracker"]
+        signatures --> comp_reason["⚖️ Compliance Reasoner"]
+        comp_reason --> fomema["🏥 FOMEMA Gate"]
+        fomema --> assemble["📦 VDR Assembler"]
+    end
+
+    subgraph COMP["Compliance Pipeline"]
+        direction TB
+        supervisor["🎯 Supervisor"] --> auditor["📋 Auditor"]
+        supervisor --> company_audit["🏢 Company Audit"]
+        supervisor --> vdr_filing["📁 VDR Filing"]
+        supervisor --> plks_monitor["📡 PLKS Monitor"]
+        supervisor --> strategist["🧮 Strategist"]
+        supervisor --> filing["📝 Filing"]
+        supervisor --> hitl["👤 HITL Review"]
+        auditor --> supervisor
+        company_audit --> supervisor
+        vdr_filing --> supervisor
+        plks_monitor --> supervisor
+        strategist --> supervisor
+        filing --> supervisor
+        hitl --> supervisor
+    end
+
+    VDR_SUB --> VDR
+    COMP_SUB --> COMP
+
+    assemble -->|"Submit"| GOV["🏛️ Mock Gov Portal"]
+    hitl -->|"Human Decision"| supervisor
+
+    style User fill:#6366f1,stroke:#4f46e5,color:#fff
+    style Orchestrator fill:#8b5cf6,stroke:#7c3aed,color:#fff
+    style Router fill:#f59e0b,stroke:#d97706,color:#fff
+    style GOV fill:#10b981,stroke:#059669,color:#fff"""
+
+
+@router.get("/graph-definition")
+async def get_graph_definition():
+    """Return Mermaid diagram definitions for live rendering in the browser.
+
+    Equivalent to app.get_graph().draw_mermaid_png() but served as text
+    for the frontend Mermaid renderer.
+    """
+    from app.agents.graph import vdr_graph, compliance_graph
+    from app.agents.master_graph import master_graph
+
+    vdr_mermaid = None
+    compliance_mermaid = None
+    master_mermaid_result = None
+
+    try:
+        master_mermaid_result = master_graph.get_graph().draw_mermaid()
+    except Exception:
+        master_mermaid_result = MASTER_MERMAID
+
+    try:
+        vdr_mermaid = vdr_graph.get_graph().draw_mermaid()
+    except Exception:
+        # Fallback static definition
+        vdr_mermaid = """graph TD
+    parse["Document Parser"] --> validate["Pre-Form Validator"]
+    validate --> signatures["Signature Tracker"]
+    signatures --> compliance["Compliance Reasoner"]
+    compliance --> fomema["FOMEMA Gate"]
+    fomema --> assemble["VDR Assembler"]
+    assemble --> END["__end__"]"""
+
+    try:
+        compliance_mermaid = compliance_graph.get_graph().draw_mermaid()
+    except Exception:
+        compliance_mermaid = """graph TD
+    supervisor["Supervisor"] --> auditor["Auditor"]
+    supervisor --> strategist["Strategist"]
+    supervisor --> filing["Filing"]
+    supervisor --> company_audit["Company Audit"]
+    supervisor --> vdr_filing["VDR Filing"]
+    supervisor --> plks_monitor["PLKS Monitor"]
+    supervisor --> hitl["HITL Review"]
+    auditor --> supervisor
+    strategist --> supervisor
+    filing --> supervisor
+    company_audit --> supervisor
+    vdr_filing --> supervisor
+    plks_monitor --> supervisor
+    hitl --> supervisor"""
+
+    return {
+        "master_mermaid": master_mermaid_result,
+        "vdr_mermaid": vdr_mermaid,
+        "compliance_mermaid": compliance_mermaid,
+    }
+

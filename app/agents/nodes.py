@@ -6,6 +6,7 @@ from dateutil.relativedelta import relativedelta
 
 from app.agents.state import VDRState, WorkerComplianceState, AgentType, ComplianceStatus, RegulatoryGate
 from app.agents.trace import append_trace
+from app.agents.langsmith_trace import trace_node
 from app.firebase_config import db
 from app.services.gemini_service import parse_document, generate_text
 from app.services.realtime_service import realtime_dashboard_manager
@@ -88,6 +89,7 @@ def _low_confidence_fields(extracted: dict, threshold: float = 0.75) -> list:
     ]
 
 
+@trace_node("document_parser_node", "vdr")
 def document_parser_node(state: VDRState) -> VDRState:
     state = append_trace(state, "document_parser_node", "running")
     try:
@@ -163,6 +165,7 @@ def document_parser_node(state: VDRState) -> VDRState:
 # Agent 2 — Pre-Form Validator
 # ---------------------------------------------------------------------------
 
+@trace_node("pre_form_validator_node", "vdr")
 def pre_form_validator_node(state: VDRState) -> VDRState:
     state = append_trace(state, "pre_form_validator_node", "running")
     try:
@@ -341,6 +344,7 @@ _SIGNATURE_REQUIREMENTS = [
 ]
 
 
+@trace_node("signature_tracker_node", "vdr")
 def signature_tracker_node(state: VDRState) -> VDRState:
     state = append_trace(state, "signature_tracker_node", "running")
     existing = state.get("signatures_required") or []
@@ -370,6 +374,7 @@ _COMPLIANCE_SYSTEM = (
 )
 
 
+@trace_node("compliance_reasoner_node", "vdr")
 def compliance_reasoner_node(state: VDRState) -> VDRState:
     state = append_trace(state, "compliance_reasoner_node", "running")
     try:
@@ -421,6 +426,7 @@ _FOMEMA_SYSTEM = (
 )
 
 
+@trace_node("fomema_gate_node", "vdr")
 def fomema_gate_node(state: VDRState) -> VDRState:
     state = append_trace(state, "fomema_gate_node", "running")
     try:
@@ -474,6 +480,7 @@ _VDR_SYSTEM = (
 )
 
 
+@trace_node("vdr_assembler_node", "vdr")
 def vdr_assembler_node(state: VDRState) -> VDRState:
     state = append_trace(state, "vdr_assembler_node", "running")
     try:
@@ -550,6 +557,7 @@ def vdr_assembler_node(state: VDRState) -> VDRState:
 # Legacy nodes (WorkerComplianceState pipeline — kept for existing routes)
 # ---------------------------------------------------------------------------
 
+@trace_node("supervisor_node", "compliance")
 def supervisor_node(state: WorkerComplianceState) -> WorkerComplianceState:
     state = append_trace(state, "supervisor_node", "running")
     observations = state.get("agent_observations", [])
@@ -579,6 +587,7 @@ def supervisor_node(state: WorkerComplianceState) -> WorkerComplianceState:
     return append_trace(result, "supervisor_node", "completed", summary=f"Routing to {next_action}")
 
 
+@trace_node("auditor_node", "compliance")
 def auditor_node(state: WorkerComplianceState) -> WorkerComplianceState:
     state = append_trace(state, "auditor_node", "running")
     observations = state.get("agent_observations", [])
@@ -634,6 +643,7 @@ def auditor_node(state: WorkerComplianceState) -> WorkerComplianceState:
                         summary=f"{len(alerts)} alerts, {len(missing_docs)} missing docs")
 
 
+@trace_node("strategist_node", "compliance")
 def strategist_node(state: WorkerComplianceState) -> WorkerComplianceState:
     state = append_trace(state, "strategist_node", "running")
     observations = state.get("agent_observations", [])
@@ -688,6 +698,7 @@ def strategist_node(state: WorkerComplianceState) -> WorkerComplianceState:
     return append_trace(updated, "strategist_node", "completed", summary="Strategy calculated")
 
 
+@trace_node("filing_node", "compliance")
 def filing_node(state: WorkerComplianceState) -> WorkerComplianceState:
     state = append_trace(state, "filing_node", "running")
     updated = {**state, "current_agent": AgentType.FILING,
@@ -698,6 +709,7 @@ def filing_node(state: WorkerComplianceState) -> WorkerComplianceState:
     return updated
 
 
+@trace_node("hitl_interrupt_node", "compliance")
 def hitl_interrupt_node(state: WorkerComplianceState) -> WorkerComplianceState:
     state = append_trace(state, "hitl_interrupt_node", "running")
     updated = {**state, "current_agent": AgentType.SUPERVISOR, "next_action": "hitl_review"}
@@ -705,6 +717,7 @@ def hitl_interrupt_node(state: WorkerComplianceState) -> WorkerComplianceState:
     return append_trace(updated, "hitl_interrupt_node", "completed", summary="HITL interrupt raised")
 
 
+@trace_node("company_audit_node", "compliance")
 def company_audit_node(state: WorkerComplianceState) -> WorkerComplianceState:
     state = append_trace(state, "company_audit_node", "running")
     observations = state.get("agent_observations", [])
@@ -764,6 +777,7 @@ def company_audit_node(state: WorkerComplianceState) -> WorkerComplianceState:
                         summary=f"Gate: {gate_result}, {len(blockers)} blockers")
 
 
+@trace_node("vdr_filing_node", "compliance")
 def vdr_filing_node(state: WorkerComplianceState) -> WorkerComplianceState:
     state = append_trace(state, "vdr_filing_node", "running")
     observations = state.get("agent_observations", [])
@@ -809,6 +823,7 @@ def vdr_filing_node(state: WorkerComplianceState) -> WorkerComplianceState:
                         summary=f"Gate: {gate_result}, {len(blockers)} blockers")
 
 
+@trace_node("plks_monitor_node", "compliance")
 def plks_monitor_node(state: WorkerComplianceState) -> WorkerComplianceState:
     state = append_trace(state, "plks_monitor_node", "running")
     observations = state.get("agent_observations", [])
