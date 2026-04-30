@@ -1,4 +1,4 @@
-import { Activity, LayoutDashboard, Wrench, Workflow, AlertCircle, Users, Calculator, Columns, GitBranch, ScrollText, FileSignature, CalendarIcon, Network, Building2, LogOut } from "lucide-react";
+import { Activity, LayoutDashboard, Wrench, Workflow, AlertCircle, Users, Calculator, Columns, GitBranch, ScrollText, FileSignature, CalendarIcon, Network, Building2, LogOut, UserPlus } from "lucide-react";
 import { createElement } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -80,6 +80,11 @@ const NAV_ITEMS = [
     to: "/worker-calendar",
     label: "Worker Obligation Calendar",
     icon: CalendarIcon,
+  },
+  {
+    to: "/worker-invite",
+    label: "Invite Workers",
+    icon: UserPlus,
   },
 ];
 

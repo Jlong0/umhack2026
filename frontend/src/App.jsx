@@ -19,6 +19,7 @@ import WorkerStatusPage from "@/pages/worker/WorkerStatusPage";
 import WorkerContractPage from "@/pages/worker/WorkerContractPage";
 import ContractGenerationPage from "@/pages/ContractGenerationPage";
 import WorkerObligationCalendar from "@/pages/WorkerObligationCalendar";
+import WorkerInvitePage from "@/pages/WorkerInvitePage";
 import GraphVisualizerPage from "@/pages/GraphVisualizerPage";
 import MockGovPortalPage from "@/pages/MockGovPortalPage";
 import WorkerLoginPage from "@/pages/WorkerLoginPage";
@@ -99,6 +100,7 @@ function App() {
         <Route path="/contract-generation" element={<ContractGenerationPage />} />
         <Route path="/gov-portal" element={<MockGovPortalPage />} />
         <Route path="/worker-calendar" element={<WorkerObligationCalendar />} />
+        <Route path="/worker-invite" element={<WorkerInvitePage />} />
       </Route>
       <Route
         element={

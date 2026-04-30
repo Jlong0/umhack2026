@@ -213,6 +213,17 @@ export async function listWorkers() {
 	return apiRequest("/workers", { method: "GET" });
 }
 
+export async function inviteWorker(payload) {
+	return apiRequest("/workers/invite", {
+		method: "POST",
+		body: JSON.stringify(payload),
+	});
+}
+
+export async function getWorkerCredentials(workerId) {
+	return apiRequest(`/workers/${workerId}/credentials`, { method: "GET" });
+}
+
 export async function listWorkerObligations(workerId) {
 	return apiRequest(`/workers/${workerId}/obligations`, { method: "GET" });
 }

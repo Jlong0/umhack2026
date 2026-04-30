@@ -1,4 +1,9 @@
+import random
+import string
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 
 from app.schemas.document import ConfirmDocumentResponse, WorkerCreateRequest
 from app.schemas.worker import WorkerCreate
@@ -8,6 +13,20 @@ from app.firebase_config import db
 from app.constants.application_fields import STAGE_1_PHASES, STAGE_2_PHASES
 
 router = APIRouter()
+
+
+class WorkerInviteRequest(BaseModel):
+    name: str
+    email: str
+    whatsapp: str
+    company_id: str = "demo-company"
+
+
+def _generate_login_code(name: str) -> str:
+    first = name.split()[0].lower()
+    first = "".join(c for c in first if c.isalnum())
+    digits = "".join(random.choices(string.digits, k=4))
+    return f"{first}{digits}"
 
 
 @router.get("/workers")
@@ -49,6 +68,10 @@ def list_workers_detail():
             "nationality": passport.get("nationality") or w.get("nationality"),
             "sector": general.get("sector") or w.get("sector"),
 
+            "email": w.get("email"),
+            "whatsapp": w.get("whatsapp"),
+            "login_code": w.get("login_code"),
+
             "review_status": w.get("review_status"),
             "workflow_status": w.get("workflow_status"),
             "data_status": w.get("data_status"),
@@ -75,6 +98,67 @@ def list_worker_obligations(worker_id: str):
         return {"worker_id": worker_id, "obligations": obligations, "total": len(obligations)}
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to list obligations: {exc}")
+
+
+@router.post("/workers/invite")
+def invite_worker(payload: WorkerInviteRequest):
+    existing = list(db.collection("workers").stream())
+    next_num = len(existing) + 1
+    worker_id = f"worker-{next_num:03d}"
+    while db.collection("workers").document(worker_id).get().exists:
+        next_num += 1
+        worker_id = f"worker-{next_num:03d}"
+
+    login_code = _generate_login_code(payload.name)
+    now = datetime.now(timezone.utc).isoformat()
+
+    db.collection("workers").document(worker_id).set({
+        "worker_id": worker_id,
+        "company_id": payload.company_id,
+        "full_name": payload.name,
+        "master_name": payload.name,
+        "email": payload.email,
+        "whatsapp": payload.whatsapp,
+        "login_code": login_code,
+        "passport": {"full_name": payload.name},
+        "general_information": {},
+        "medical_information": {},
+        "review_status": "pending",
+        "workflow_status": "not_started",
+        "data_status": "incomplete",
+        "missing_fields": ["passport_number", "nationality", "sector", "permit_class", "permit_expiry_date"],
+        "invited_at": now,
+        "created_at": now,
+        "updated_at": now,
+    })
+
+    return {
+        "worker_id": worker_id,
+        "name": payload.name,
+        "login_code": login_code,
+        "email": payload.email,
+        "whatsapp": payload.whatsapp,
+    }
+
+
+@router.get("/workers/{worker_id}/credentials")
+def get_worker_credentials(worker_id: str):
+    doc = db.collection("workers").document(worker_id).get()
+    if not doc.exists:
+        raise HTTPException(status_code=404, detail="Worker not found")
+    data = doc.to_dict()
+    name = (
+        data.get("full_name")
+        or (data.get("passport") or {}).get("full_name")
+        or data.get("master_name", "")
+    )
+    return {
+        "worker_id": worker_id,
+        "name": name,
+        "login_code": data.get("login_code"),
+        "email": data.get("email"),
+        "whatsapp": data.get("whatsapp"),
+    }
 
 
 @router.post("/workers")

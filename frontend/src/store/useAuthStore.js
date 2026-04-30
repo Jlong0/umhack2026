@@ -131,8 +131,8 @@ export const useAuthStore = create((set) => ({
     }
   },
 
-  // Worker portal entry: choose a worker profile from Firebase; no Firebase Auth is used.
-  loginAsWorker: async (workerId) => {
+  // Worker portal entry: verify worker_id + login_code credentials.
+  loginAsWorker: async (workerId, loginCode) => {
     set({ isLoading: true, loginError: null });
     try {
       const response = await listWorkers();
@@ -140,28 +140,34 @@ export const useAuthStore = create((set) => ({
       const matchedWorker = workers.find((worker) => {
         return worker.worker_id === workerId || worker.id === workerId;
       });
-      const workerData = matchedWorker ? normalizeWorker(matchedWorker.worker_id || matchedWorker.id, matchedWorker) : null;
 
-      if (workerData) {
-        set({
-          user: {
-            id: workerData.worker_id,
-            name: workerData.name,
-            nationality: workerData.nationality,
-            sector: workerData.sector,
-            companyId: workerData.company_id,
-          },
-          role: "worker",
-          selectedCompanyId: workerData.company_id || null,
-          isAuthenticated: true,
-          loginError: null,
-          isLoading: false,
-        });
-        return true;
+      if (!matchedWorker) {
+        set({ loginError: "Worker ID not found.", isLoading: false });
+        return false;
       }
 
-      set({ loginError: "Invalid worker ID", isLoading: false });
-      return false;
+      if (matchedWorker.login_code && matchedWorker.login_code !== loginCode) {
+        set({ loginError: "Incorrect login code. Please check your credentials.", isLoading: false });
+        return false;
+      }
+
+      const workerData = normalizeWorker(matchedWorker.worker_id || matchedWorker.id, matchedWorker);
+
+      set({
+        user: {
+          id: workerData.worker_id,
+          name: workerData.name,
+          nationality: workerData.nationality,
+          sector: workerData.sector,
+          companyId: workerData.company_id,
+        },
+        role: "worker",
+        selectedCompanyId: workerData.company_id || null,
+        isAuthenticated: true,
+        loginError: null,
+        isLoading: false,
+      });
+      return true;
     } catch (err) {
       console.error("Worker login error:", err);
       set({ loginError: "Failed to open worker portal. Is the backend running?", isLoading: false });
