@@ -7,6 +7,7 @@ from dateutil.relativedelta import relativedelta
 from app.agents.state import VDRState, WorkerComplianceState, AgentType, ComplianceStatus, RegulatoryGate
 from app.agents.trace import append_trace
 from app.agents.langsmith_trace import trace_node
+from app.agents.trace_emitter import emit
 from app.firebase_config import db
 from app.services.gemini_service import parse_document, generate_text
 from app.services.realtime_service import realtime_dashboard_manager
@@ -20,6 +21,27 @@ from app.tools.compliance_tools import (
 )
 
 TODAY = date.today
+
+
+def safe_json_parse(text: str) -> tuple[dict, str | None]:
+    try:
+        if "```json" in text:
+            text = text.split("```json")[1].split("```")[0].strip()
+        parsed = json.loads(text)
+        if not isinstance(parsed, dict):
+            return {}, f"Expected object, got {type(parsed).__name__}"
+        return parsed, None
+    except json.JSONDecodeError as e:
+        return {}, str(e)
+
+
+def is_workflow_complete(state: WorkerComplianceState) -> bool:
+    return (
+        state.get("workflow_stage") == "ready_to_complete"
+        and state.get("deadlock_detected") is False
+        and state.get("hitl_required") is False
+    )
+
 
 _APPROVED_NATIONALITIES = {
     "bangladesh", "indonesia", "nepal", "myanmar", "vietnam",
@@ -399,11 +421,14 @@ def compliance_reasoner_node(state: VDRState) -> VDRState:
         result = generate_text(prompt, _COMPLIANCE_SYSTEM)
         obligations = []
         if result.get("success"):
+            parsed, _ = safe_json_parse('{"items":' + result["text"] + '}')
+            raw = parsed.get("items", result["text"])
             try:
-                text = result["text"]
-                if "```json" in text:
-                    text = text.split("```json")[1].split("```")[0].strip()
-                obligations = json.loads(text) if isinstance(json.loads(text), list) else []
+                if isinstance(raw, str):
+                    if "```json" in raw:
+                        raw = raw.split("```json")[1].split("```")[0].strip()
+                    raw = json.loads(raw)
+                obligations = raw if isinstance(raw, list) else []
             except Exception:
                 pass
 
@@ -513,21 +538,16 @@ def vdr_assembler_node(state: VDRState) -> VDRState:
             "Populate all IMM.47/FWCMS fields."
         )
         result = generate_text(prompt, _VDR_SYSTEM)
-        form_data = {}
+        form_data, parse_err = {}, None
         if result.get("success"):
-            try:
-                text = result["text"]
-                if "```json" in text:
-                    text = text.split("```json")[1].split("```")[0].strip()
-                form_data = json.loads(text)
-            except Exception:
-                pass
+            form_data, parse_err = safe_json_parse(result["text"])
 
         submission_ready = form_data.get("submission_ready", False)
         null_fields = form_data.get("null_fields", [])
-        if null_fields or not submission_ready:
+        if parse_err or null_fields or not submission_ready:
+            reason = parse_err or f"Missing required fields: {', '.join(null_fields)}"
             state = {**state, "vdr_form_data": form_data, "pipeline_status": "paused",
-                     "halt_reason": f"Missing required fields: {', '.join(null_fields)}"}
+                     "halt_reason": reason}
             return append_trace(state, "vdr_assembler_node", "completed",
                                 summary=f"Paused: {len(null_fields)} null fields")
 
@@ -559,29 +579,35 @@ def vdr_assembler_node(state: VDRState) -> VDRState:
 
 @trace_node("supervisor_node", "compliance")
 def supervisor_node(state: WorkerComplianceState) -> WorkerComplianceState:
+    state = emit("supervisor", "running", "Routing workflow...", state)
     state = append_trace(state, "supervisor_node", "running")
     observations = state.get("agent_observations", [])
     current_gate = state.get("current_gate")
+    workflow_stage = state.get("workflow_stage", "init")
+
     if current_gate in {RegulatoryGate.GATE_1_JTKSM, RegulatoryGate.GATE_1_JTKSM.value}:
         next_action = "company_audit"
     elif current_gate in {RegulatoryGate.GATE_2_KDN, RegulatoryGate.GATE_2_KDN.value}:
         next_action = "vdr_filing"
     elif current_gate in {RegulatoryGate.GATE_3_JIM, RegulatoryGate.GATE_3_JIM.value}:
         next_action = "plks_monitor"
-    elif not state.get("documents_validated"):
+    elif workflow_stage == "init":
         next_action = "audit_documents"
-    elif state.get("compliance_status") == ComplianceStatus.ONBOARDING:
+    elif workflow_stage == "docs_validated":
         next_action = "calculate_strategy"
-    elif state.get("compliance_status") == ComplianceStatus.RENEWAL_PENDING:
-        next_action = "prepare_filing"
+    elif workflow_stage == "strategy_done":
+        if state.get("deadlock_detected"):
+            next_action = "hitl_review"
+        else:
+            result = {**state, "current_agent": AgentType.SUPERVISOR,
+                      "agent_observations": observations, "next_action": None,
+                      "workflow_stage": "ready_to_complete", "workflow_complete": True}
+            return append_trace(result, "supervisor_node", "completed", summary="Workflow complete")
     elif state.get("deadlock_detected"):
         next_action = "hitl_review"
-    elif len(state.get("pending_obligations", [])) == 0 and state.get("documents_validated"):
-        result = {**state, "current_agent": AgentType.SUPERVISOR,
-                  "agent_observations": observations, "next_action": None, "workflow_complete": True}
-        return append_trace(result, "supervisor_node", "completed", summary="Workflow complete")
     else:
         next_action = "calculate_strategy"
+
     result = {**state, "current_agent": AgentType.SUPERVISOR,
               "agent_observations": observations, "next_action": next_action}
     return append_trace(result, "supervisor_node", "completed", summary=f"Routing to {next_action}")
@@ -589,6 +615,7 @@ def supervisor_node(state: WorkerComplianceState) -> WorkerComplianceState:
 
 @trace_node("auditor_node", "compliance")
 def auditor_node(state: WorkerComplianceState) -> WorkerComplianceState:
+    state = emit("auditor", "running", "Auditing documents...", state)
     state = append_trace(state, "auditor_node", "running")
     observations = state.get("agent_observations", [])
     tool_calls = state.get("tool_calls", [])
@@ -637,7 +664,8 @@ def auditor_node(state: WorkerComplianceState) -> WorkerComplianceState:
 
     updated = {**state, "current_agent": AgentType.AUDITOR, "agent_observations": observations,
                "tool_calls": tool_calls, "alerts": alerts, "documents_validated": True,
-               "missing_documents": missing_docs, "next_action": "calculate_strategy"}
+               "missing_documents": missing_docs, "next_action": "calculate_strategy",
+               "workflow_stage": "docs_validated"}
     post_agent_writeback(updated, {"alerts": alerts})
     return append_trace(updated, "auditor_node", "completed",
                         summary=f"{len(alerts)} alerts, {len(missing_docs)} missing docs")
@@ -645,6 +673,7 @@ def auditor_node(state: WorkerComplianceState) -> WorkerComplianceState:
 
 @trace_node("strategist_node", "compliance")
 def strategist_node(state: WorkerComplianceState) -> WorkerComplianceState:
+    state = emit("strategist", "running", "Calculating compliance strategy...", state)
     state = append_trace(state, "strategist_node", "running")
     observations = state.get("agent_observations", [])
     tool_calls = state.get("tool_calls", [])
@@ -652,11 +681,12 @@ def strategist_node(state: WorkerComplianceState) -> WorkerComplianceState:
     pending_obligations = []
     now = datetime.now().isoformat()
 
+    mtlm_levy_rm = state.get("mtlm_levy_rm")
     if state.get("sector"):
         levy = calculate_mtlm_levy(sector=state["sector"], current_foreign_count=1,
                                    current_local_count=10, new_foreign_workers=0)
         tool_calls.append({"tool": "calculate_mtlm_levy", "result": levy, "timestamp": now})
-        state["mtlm_levy_rm"] = levy["levy_per_worker_rm"]
+        mtlm_levy_rm = levy["levy_per_worker_rm"]
 
     if state.get("permit_class", "").startswith("EP_") and state.get("current_salary_rm"):
         renewal = datetime.fromisoformat(state["permit_expiry_date"]) if state.get("permit_expiry_date") else datetime.now()
@@ -691,26 +721,28 @@ def strategist_node(state: WorkerComplianceState) -> WorkerComplianceState:
             return append_trace(updated, "strategist_node", "completed", summary="HITL: deadlock detected")
 
     updated = {**state, "current_agent": AgentType.STRATEGIST, "agent_observations": observations,
-               "tool_calls": tool_calls, "alerts": alerts,
+               "tool_calls": tool_calls, "alerts": alerts, "mtlm_levy_rm": mtlm_levy_rm,
                "pending_obligations": state.get("pending_obligations", []) + pending_obligations,
-               "compliance_status": ComplianceStatus.ACTIVE, "next_action": None, "workflow_complete": True}
+               "compliance_status": ComplianceStatus.ACTIVE, "next_action": None,
+               "workflow_stage": "strategy_done"}
     post_agent_writeback(updated, {"alerts": alerts})
     return append_trace(updated, "strategist_node", "completed", summary="Strategy calculated")
 
 
 @trace_node("filing_node", "compliance")
 def filing_node(state: WorkerComplianceState) -> WorkerComplianceState:
+    state = emit("filing", "running", "Preparing renewal filing...", state)
     state = append_trace(state, "filing_node", "running")
     updated = {**state, "current_agent": AgentType.FILING,
                "compliance_status": ComplianceStatus.RENEWAL_PENDING,
                "next_action": None, "workflow_complete": True}
     post_agent_writeback(updated, {"alerts": state.get("alerts", [])})
     return append_trace(updated, "filing_node", "completed", summary="Renewal pending")
-    return updated
 
 
 @trace_node("hitl_interrupt_node", "compliance")
 def hitl_interrupt_node(state: WorkerComplianceState) -> WorkerComplianceState:
+    state = emit("hitl", "running", "Human review required...", state)
     state = append_trace(state, "hitl_interrupt_node", "running")
     updated = {**state, "current_agent": AgentType.SUPERVISOR, "next_action": "hitl_review"}
     post_agent_writeback(updated, {"alerts": state.get("alerts", [])})
@@ -719,6 +751,7 @@ def hitl_interrupt_node(state: WorkerComplianceState) -> WorkerComplianceState:
 
 @trace_node("company_audit_node", "compliance")
 def company_audit_node(state: WorkerComplianceState) -> WorkerComplianceState:
+    state = emit("company_audit", "running", "Auditing company gate (JTKSM)...", state)
     state = append_trace(state, "company_audit_node", "running")
     observations = state.get("agent_observations", [])
     alerts = state.get("alerts", [])
@@ -779,6 +812,7 @@ def company_audit_node(state: WorkerComplianceState) -> WorkerComplianceState:
 
 @trace_node("vdr_filing_node", "compliance")
 def vdr_filing_node(state: WorkerComplianceState) -> WorkerComplianceState:
+    state = emit("vdr_filing", "running", "Checking VDR filing prerequisites...", state)
     state = append_trace(state, "vdr_filing_node", "running")
     observations = state.get("agent_observations", [])
     alerts = state.get("alerts", [])
@@ -825,6 +859,7 @@ def vdr_filing_node(state: WorkerComplianceState) -> WorkerComplianceState:
 
 @trace_node("plks_monitor_node", "compliance")
 def plks_monitor_node(state: WorkerComplianceState) -> WorkerComplianceState:
+    state = emit("plks_monitor", "running", "Monitoring PLKS post-arrival gates...", state)
     state = append_trace(state, "plks_monitor_node", "running")
     observations = state.get("agent_observations", [])
     alerts = state.get("alerts", [])

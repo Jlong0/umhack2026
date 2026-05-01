@@ -1,9 +1,12 @@
 """
 API routes for agent operations and compliance workflows.
 """
+from langsmith import traceable
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional, Dict, List
+import asyncio
 from app.agents.graph import compliance_graph
 from app.agents.state import create_initial_worker_state, WorkerComplianceState
 from app.firebase_config import db
@@ -32,6 +35,9 @@ class WorkflowStatusResponse(BaseModel):
     alerts: List[Dict]
     observations: List[str]
 
+@traceable(name="compliance_workflow_start")
+def run_compliance_graph(state, config):
+    return compliance_graph.invoke(state, config)
 
 @router.post("/workflows/start")
 async def start_compliance_workflow(request: StartWorkflowRequest):
@@ -72,8 +78,9 @@ async def start_compliance_workflow(request: StartWorkflowRequest):
             }
         }
 
-        # Invoke the graph
-        result = compliance_graph.invoke(initial_state, config)
+        # Invoke the graph#result = compliance_graph.invoke(initial_state, config)
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(None, run_compliance_graph, initial_state, config)
 
         # Save workflow state to Firestore
         workflow_ref = db.collection("workflows").document(request.worker_id)
@@ -165,7 +172,9 @@ async def resume_workflow_after_hitl(worker_id: str, request: ResumeWorkflowRequ
             }
         }
 
-        result = compliance_graph.invoke(current_state, config)
+        #result = compliance_graph.invoke(current_state, config)
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(None, run_compliance_graph, current_state, config)
 
         # Update Firestore
         workflow_ref.update({

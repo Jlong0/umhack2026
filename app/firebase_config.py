@@ -118,3 +118,8 @@ else:
     else:
         db = firestore.client()
     bucket = storage.bucket()
+
+
+def safe_update(doc_ref, data: dict) -> None:
+    """Merge-update a Firestore doc without overwriting unrelated fields."""
+    doc_ref.set(data, merge=True)
