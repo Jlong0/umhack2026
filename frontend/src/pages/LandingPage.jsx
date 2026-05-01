@@ -129,28 +129,14 @@ export default function LandingPage() {
             <span className="font-semibold text-red-500 dark:text-red-400">RM 10,000–50,000 fines</span> or criminal prosecution.
           </p>
 
-          {/* CTA buttons */}
-          <div className="mb-8 flex items-center gap-3">
-            <button
-              onClick={() => navigate("/login/admin")}
-              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-7 py-3.5 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-500/20 hover:-translate-y-0.5"
-            >
-              <Shield className="h-4 w-4" />
-              Admin Portal
-            </button>
-            <button
-              onClick={() => navigate("/login/worker")}
-              className="inline-flex items-center gap-2 rounded-xl border border-emerald-500/40 bg-emerald-600 px-7 py-3.5 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-emerald-700 hover:shadow-lg hover:shadow-emerald-500/20 hover:-translate-y-0.5"
-            >
-              <Users className="h-4 w-4" />
-              Worker Portal
-            </button>
+          {/* CTA button */}
+          <div className="mb-8 flex items-center justify-center">
             <button
               onClick={scrollToFeatures}
-              className="inline-flex items-center gap-2 rounded-xl border border-border bg-card/50 px-7 py-3.5 text-sm font-semibold text-muted-foreground backdrop-blur-sm transition-all duration-200 hover:border-blue-500/30 hover:text-foreground"
+              className="inline-flex items-center gap-3 rounded-2xl border border-border bg-card/60 px-12 py-5 text-lg font-semibold text-foreground backdrop-blur-sm transition-all duration-300 hover:border-blue-500/40 hover:bg-card hover:shadow-xl hover:shadow-blue-500/10 hover:-translate-y-1"
             >
               Learn more
-              <ChevronDown className="h-4 w-4" />
+              <ChevronDown className="h-5 w-5 animate-bounce" />
             </button>
           </div>
         </div>

@@ -8,6 +8,8 @@ import { listWorkers, inviteWorker, assignAllLoginCodes, updateWorkerContact } f
 import { useAuthStore } from "@/store/useAuthStore";
 import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -397,11 +399,19 @@ export default function WorkerInvitePage() {
         </div>
 
         {isLoading ? (
-          <p className="px-5 py-10 text-center text-sm text-muted-foreground">Loading workers…</p>
+          <div className="px-5 py-10 space-y-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-12 w-full" />
+            ))}
+          </div>
         ) : workers.length === 0 ? (
-          <p className="px-5 py-10 text-center text-sm text-muted-foreground">
-            No workers found. Add one above.
-          </p>
+          <div className="p-6">
+            <EmptyState
+              icon={UserPlus}
+              title="No workers found"
+              description="Add a worker above to get started."
+            />
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left">

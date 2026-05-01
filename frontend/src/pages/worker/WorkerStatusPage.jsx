@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { listWorkers } from "@/services/api";
 import { useAuthStore } from "@/store/useAuthStore";
+import { PageSkeleton } from "@/components/ui/page-skeleton";
+import { ErrorState } from "@/components/ui/error-state";
 
 const STAGE_LABELS = {
   gate_1_jtksm:          "Gate 1 — JTKSM Approval",
@@ -64,15 +66,11 @@ export default function WorkerStatusPage() {
   }
 
   if (isLoading) {
-    return <div className="permit-surface px-5 py-12 text-center text-sm text-muted-foreground">Loading status…</div>;
+    return <PageSkeleton variant="detail" />;
   }
 
   if (error || !worker) {
-    return (
-      <div className="permit-surface px-5 py-12 text-center text-sm text-red-500">
-        Unable to load application status.
-      </div>
-    );
+    return <ErrorState title="Unable to load status" message="We couldn't retrieve your application status. Please try again later." />;
   }
 
   return (

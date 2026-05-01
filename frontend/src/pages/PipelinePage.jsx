@@ -15,6 +15,7 @@ import { useUIStore } from "@/store/useUIStore";
 import { GATE_ORDER, GATE_LABELS, NATIONALITY_FLAGS } from "@/types/worker";
 import ConfidenceBadge from "@/components/ConfidenceBadge";
 import { PageHeader } from "@/components/ui/page-header";
+import { ErrorState } from "@/components/ui/error-state";
 
 const GATE_COLORS = {
   JTKSM: "border-t-violet-500/60",
@@ -184,10 +185,10 @@ export default function PipelinePage() {
           ))}
         </div>
       ) : error ? (
-        <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-6 text-center">
-          <p className="text-sm text-red-400">Failed to load pipeline data</p>
-          <p className="mt-1 text-xs text-red-400/60">{error.message}</p>
-        </div>
+        <ErrorState
+          title="Failed to load pipeline data"
+          message={error.message}
+        />
       ) : (
         <div className="flex gap-4 overflow-x-auto pb-4">
           {GATE_ORDER.map((gate) => (

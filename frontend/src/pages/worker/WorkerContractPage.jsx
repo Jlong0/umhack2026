@@ -3,6 +3,8 @@ import { FileText, Download, Upload, CheckCircle, Clock } from "lucide-react";
 import { useContracts, useUploadSigned } from "@/hooks/queries/useContractQueries";
 import { getContractPdfUrl } from "@/services/api";
 import { useAuthStore } from "@/store/useAuthStore";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
 
 const STATUS_LABEL = {
   generated: { label: "Awaiting your signature", color: "text-amber-600 bg-amber-50" },
@@ -96,12 +98,17 @@ export default function WorkerContractPage() {
       </div>
 
       {isLoading ? (
-        <div className="text-sm text-muted-foreground">Loading...</div>
-      ) : contracts.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border p-12 text-center text-muted-foreground">
-          <FileText className="w-10 h-10 mx-auto mb-3 opacity-30" />
-          <p className="text-sm">No contracts available yet.</p>
+        <div className="space-y-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-16 w-full rounded-xl" />
+          ))}
         </div>
+      ) : contracts.length === 0 ? (
+        <EmptyState
+          icon={FileText}
+          title="No contracts available yet"
+          description="Your employer will generate your employment contract once your application is processed."
+        />
       ) : (
         <div className="space-y-3">
           {contracts.map((c) => <ContractRow key={c.contract_id} contract={c} />)}

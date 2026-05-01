@@ -11,6 +11,8 @@ import {
 import { listWorkerObligations, listWorkers } from "@/services/api";
 import { useAuthStore } from "@/store/useAuthStore";
 import { PageHeader } from "@/components/ui/page-header";
+import { PageSkeleton } from "@/components/ui/page-skeleton";
+import { ErrorState } from "@/components/ui/error-state";
 
 const obligationTypes = {
   passport: {
@@ -221,21 +223,15 @@ export default function WorkerObligationCalendar() {
       />
 
       {isLoading && (
-        <section className="permit-surface p-6 text-sm text-muted-foreground">
-          Loading workers...
-        </section>
+        <PageSkeleton variant="table" />
       )}
 
       {error && (
-        <section className="permit-surface border border-rose-200 bg-rose-50 p-6 text-sm text-rose-700">
-          {error}
-        </section>
+        <ErrorState compact message={error} />
       )}
 
       {obligationsError && (
-        <section className="permit-surface border border-amber-200 bg-amber-50 p-6 text-sm text-amber-700">
-          {obligationsError}
-        </section>
+        <ErrorState compact message={obligationsError} />
       )}
 
       {!isLoading && !error && selectedWorker && (

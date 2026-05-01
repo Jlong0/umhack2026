@@ -9,6 +9,8 @@ import { patchWorkerTask, listPendingHandoffs, confirmHandoff, rejectHandoff } f
 import { areDependenciesCompleted, isStatusAwaitingApproval } from "@/services/taskAdapter";
 import { useWorkerStore } from "@/store/useWorkerStore";
 import { PageHeader } from "@/components/ui/page-header";
+import { PageSkeleton } from "@/components/ui/page-skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
 
 function ToolApprovalModal({ open, task, payload, onApprove, onDismiss, isApproving }) {
   const approveButtonRef = useRef(null);
@@ -206,7 +208,7 @@ export default function ConfirmPage() {
           </button>
         </div>
 
-        <div className="mt-4 rounded-lg border border-border bg-slate-50/70 p-4 text-sm text-foreground">
+        <div className="mt-4 rounded-lg border border-border bg-muted p-4 text-sm text-foreground">
           {approvalTask ? (
             <>
               <p className="font-medium text-foreground">Pending task: {approvalTask.taskName}</p>
@@ -308,9 +310,13 @@ function PendingHandoffsSection() {
       )}
 
       {isLoading ? (
-        <p className="text-sm text-muted-foreground">Loading...</p>
+        <PageSkeleton variant="table" />
       ) : handoffs.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No pending handoffs.</p>
+        <EmptyState
+          tone="success"
+          title="No pending handoffs"
+          description="All tool handoffs have been resolved."
+        />
       ) : handoffs.map(h => (
         <div key={h.handoff_id} className="rounded-lg border border-border bg-muted p-4 space-y-3">
           <div className="flex items-start justify-between">

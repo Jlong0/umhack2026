@@ -72,6 +72,7 @@ export default function Dashboard() {
       </PageHeader>
 
       {/* ── Attention Banner ── */}
+      <div aria-live="polite" aria-atomic="true">
       {needsAttention && (
         <div className="flex items-center gap-4 rounded-2xl border border-red-200 bg-gradient-to-r from-red-50 to-orange-50 px-5 py-4 dark:border-red-900 dark:from-red-950/40 dark:to-orange-950/30">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-100 dark:bg-red-950">
@@ -92,6 +93,7 @@ export default function Dashboard() {
           </Button>
         </div>
       )}
+      </div>
 
       {/* ── Section 1: Compliance Health ── */}
       <section className="space-y-4">
