@@ -167,16 +167,28 @@ export default function WorkerProfilePage() {
   );
 
   const activeTaskRef = useRef(null);
+  const flashTimerRef = useRef(null);
+  const [flashEdgeId, setFlashEdgeId] = useState(null);
+
+  useEffect(() => () => clearTimeout(flashTimerRef.current), []);
 
   useEffect(() => {
     if (!activeTask) {
       setRuminationLines(["> Waiting for active task..."]);
       activeTaskRef.current = null;
+      setFlashEdgeId(null);
       return;
     }
 
-    if (activeTaskRef.current === activeTask.id) {
-      return;
+    if (activeTaskRef.current === activeTask.id) return;
+
+    // Flash the connecting edge before updating the ref
+    const prevId = activeTaskRef.current;
+    if (prevId) {
+      const edgeId = `${prevId}->${activeTask.id}`;
+      clearTimeout(flashTimerRef.current);
+      setFlashEdgeId(edgeId);
+      flashTimerRef.current = setTimeout(() => setFlashEdgeId(null), 1500);
     }
 
     activeTaskRef.current = activeTask.id;
@@ -192,6 +204,22 @@ export default function WorkerProfilePage() {
     ]);
   }, [activeTask, setRuminationLines]);
 
+  // Apply flash highlight to the transitioning edge
+  const displayEdges = useMemo(
+    () =>
+      graph.edges.map((e) =>
+        e.id === flashEdgeId
+          ? {
+              ...e,
+              animated: true,
+              style: { stroke: "#6366f1", strokeWidth: 3 },
+              markerEnd: { type: MarkerType.ArrowClosed, color: "#6366f1" },
+            }
+          : e,
+      ),
+    [graph.edges, flashEdgeId],
+  );
+
   const completedCount = tasks.filter((task) => task.status === "completed").length;
   const blockedCount = tasks.filter((task) => isStatusBlocked(task.status)).length;
 
@@ -202,7 +230,7 @@ export default function WorkerProfilePage() {
           <div className="flex items-center gap-3">
             <UserCircle2 className="h-11 w-11 text-slate-500" />
             <div>
-              <h2 className="text-xl font-semibold">Worker Profile & LangGraph Visualizer</h2>
+              <h2 className="text-xl font-semibold">Compliance Workflow</h2>
               <p className="text-sm text-slate-600">
                 Worker ID: {workerId || "none selected"} | Source: {taskSource}
               </p>
@@ -245,7 +273,7 @@ export default function WorkerProfilePage() {
           <div className="h-[calc(100%-49px)]">
             <ReactFlow
               nodes={graph.nodes}
-              edges={graph.edges}
+              edges={displayEdges}
               nodeTypes={nodeTypes}
               fitView
               fitViewOptions={{ padding: 0.22 }}

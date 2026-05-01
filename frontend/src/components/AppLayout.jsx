@@ -1,4 +1,4 @@
-import { Activity, LayoutDashboard, Wrench, Workflow, AlertCircle, Users, Calculator, Columns, GitBranch, ScrollText, FileSignature, CalendarIcon, Network, Building2, LogOut, UserPlus } from "lucide-react";
+import { Activity, LayoutDashboard, Wrench, Workflow, AlertCircle, Users, Calculator, Columns, GitBranch, ScrollText, FileSignature, CalendarIcon, Building2, LogOut, UserPlus } from "lucide-react";
 import { createElement } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -16,16 +16,6 @@ const NAV_ITEMS = [
     to: "/dashboard",
     label: "Overview",
     icon: LayoutDashboard,
-  },
-  {
-    to: "/graph",
-    label: "Workflow Diagram",
-    icon: Network,
-  },
-  {
-    to: "/workflows",
-    label: "Worker Workflows",
-    icon: Workflow,
   },
   {
     to: "/pipeline",
@@ -69,7 +59,7 @@ const NAV_ITEMS = [
   },
   {
     to: "/worker-visualizer",
-    label: "Worker Compliance Graph",
+    label: "Compliance Workflow",
     icon: Workflow,
   },
   {
