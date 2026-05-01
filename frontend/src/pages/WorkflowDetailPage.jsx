@@ -11,7 +11,7 @@ function AgentNode({ data }) {
         ? "bg-blue-600 text-white border-blue-700"
         : data.status === "completed"
         ? "bg-emerald-50 text-emerald-800 border-emerald-300"
-        : "bg-white text-gray-700 border-gray-300"
+        : "bg-card text-foreground border-border"
     }`}>
       <Handle type="target" position={Position.Top} className="!bg-gray-400" />
       {data.label}
@@ -45,31 +45,31 @@ function TraceSection({ trace }) {
   const entries = [...seen.values()];
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-      <h2 className="text-base font-semibold text-gray-900 mb-4">Execution Trace</h2>
+    <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+      <h2 className="text-base font-semibold text-foreground mb-4">Execution Trace</h2>
       <div className="space-y-2">
         {entries.map((e, i) => (
-          <div key={i} className="flex items-start gap-3 rounded-lg border border-gray-100 bg-gray-50 px-4 py-2.5">
-            {TRACE_ICON[e.status] || <Circle className="h-4 w-4 text-gray-300 shrink-0" />}
+          <div key={i} className="flex items-start gap-3 rounded-lg border border-border bg-muted px-4 py-2.5">
+            {TRACE_ICON[e.status] || <Circle className="h-4 w-4 text-muted-foreground shrink-0" />}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-mono font-medium text-gray-900">{e.node}</span>
+                <span className="text-sm font-mono font-medium text-foreground">{e.node}</span>
                 {duration(trace, e.node) && (
-                  <span className="text-xs text-gray-400">{duration(trace, e.node)}</span>
+                  <span className="text-xs text-muted-foreground">{duration(trace, e.node)}</span>
                 )}
               </div>
               {e.output_summary && (
-                <p className="text-xs text-gray-500 mt-0.5">{e.output_summary}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{e.output_summary}</p>
               )}
               {e.error && (
                 <p className="text-xs text-red-600 mt-0.5 font-mono">{e.error}</p>
               )}
             </div>
             <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-              e.status === "completed" ? "bg-emerald-50 text-emerald-700" :
-              e.status === "failed"    ? "bg-red-50 text-red-700" :
-              e.status === "running"   ? "bg-amber-50 text-amber-700" :
-                                         "bg-gray-100 text-gray-500"
+              e.status === "completed" ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300" :
+              e.status === "failed"    ? "bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300" :
+              e.status === "running"   ? "bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300" :
+                                         "bg-muted text-muted-foreground"
             }`}>{e.status}</span>
           </div>
         ))}
@@ -109,7 +109,7 @@ export default function WorkflowDetailPage() {
 					<ArrowLeft className="w-4 h-4 mr-2" />
 					Back to Workflows
 				</button>
-				<div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg">
+				<div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg dark:bg-red-950/40 dark:border-red-800 dark:text-red-300">
 					{error}
 				</div>
 			</div>
@@ -123,35 +123,35 @@ export default function WorkflowDetailPage() {
 				Back to Workflows
 			</button>
 
-			<div className="bg-white border border-gray-200 rounded-lg p-6">
-				<h1 className="text-2xl font-bold text-gray-900 mb-4">Workflow: {workerId}</h1>
+			<div className="bg-card border border-border rounded-lg p-6">
+				<h1 className="text-2xl font-bold text-foreground mb-4">Workflow: {workerId}</h1>
 
 				<div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
 					<div>
-						<div className="text-sm text-gray-600">Status</div>
-						<div className="font-semibold text-gray-900">{workflow.status}</div>
+						<div className="text-sm text-muted-foreground">Status</div>
+						<div className="font-semibold text-foreground">{workflow.status}</div>
 					</div>
 					<div>
-						<div className="text-sm text-gray-600">Current Agent</div>
-						<div className="font-semibold text-gray-900">{workflow.current_agent}</div>
+						<div className="text-sm text-muted-foreground">Current Agent</div>
+						<div className="font-semibold text-foreground">{workflow.current_agent}</div>
 					</div>
 					<div>
-						<div className="text-sm text-gray-600">Compliance</div>
-						<div className="font-semibold text-gray-900">{workflow.compliance_status}</div>
+						<div className="text-sm text-muted-foreground">Compliance</div>
+						<div className="font-semibold text-foreground">{workflow.compliance_status}</div>
 					</div>
 					<div>
-						<div className="text-sm text-gray-600">Complete</div>
-						<div className="font-semibold text-gray-900">
+						<div className="text-sm text-muted-foreground">Complete</div>
+						<div className="font-semibold text-foreground">
 							{workflow.workflow_complete ? "Yes" : "No"}
 						</div>
 					</div>
 				</div>
 
 				{workflow.hitl_required && (
-					<div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6">
+					<div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6 dark:bg-orange-950 dark:border-orange-800">
 						<div className="flex items-center space-x-2 mb-3">
 							<AlertCircle className="w-5 h-5 text-orange-600" />
-							<span className="font-semibold text-orange-900">Human Decision Required</span>
+							<span className="font-semibold text-orange-900 dark:text-orange-200">Human Decision Required</span>
 						</div>
 						<div className="flex space-x-3">
 							<button
@@ -181,10 +181,10 @@ export default function WorkflowDetailPage() {
 
 				{workflow.alerts && workflow.alerts.length > 0 && (
 					<div className="mb-6">
-						<h3 className="font-semibold text-gray-900 mb-3">Alerts</h3>
+						<h3 className="font-semibold text-foreground mb-3">Alerts</h3>
 						<div className="space-y-2">
 							{workflow.alerts.map((alert, idx) => (
-								<div key={idx} className="bg-red-50 border border-red-200 text-red-800 px-4 py-2 rounded-lg text-sm">
+								<div key={idx} className="bg-red-50 border border-red-200 text-red-800 px-4 py-2 rounded-lg text-sm dark:bg-red-950 dark:border-red-800 dark:text-red-200">
 									{alert.message || JSON.stringify(alert)}
 								</div>
 							))}
@@ -194,10 +194,10 @@ export default function WorkflowDetailPage() {
 
 				{workflow.observations && workflow.observations.length > 0 && (
 					<div>
-						<h3 className="font-semibold text-gray-900 mb-3">Agent Observations</h3>
+						<h3 className="font-semibold text-foreground mb-3">Agent Observations</h3>
 						<div className="space-y-1 max-h-64 overflow-y-auto">
 							{workflow.observations.map((obs, idx) => (
-								<div key={idx} className="text-sm text-gray-700 border-l-2 border-gray-300 pl-3 py-1">
+								<div key={idx} className="text-sm text-foreground border-l-2 border-border pl-3 py-1">
 									{obs}
 								</div>
 							))}
@@ -207,8 +207,8 @@ export default function WorkflowDetailPage() {
 			</div>
 
 			{graph && (
-				<div className="bg-white border border-gray-200 rounded-lg p-6">
-					<h2 className="text-xl font-bold text-gray-900 mb-4">Compliance Graph</h2>
+				<div className="bg-card border border-border rounded-lg p-6">
+					<h2 className="text-xl font-bold text-foreground mb-4">Compliance Graph</h2>
 					<div style={{ height: "500px" }}>
 						<ReactFlow
 							nodes={graph.nodes}

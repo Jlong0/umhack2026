@@ -4,10 +4,10 @@ import { listWorkers } from "@/services/api";
 import { useAuthStore } from "@/store/useAuthStore";
 
 const STATUS_COLORS = {
-  complete: "bg-green-100 text-green-800",
-  in_progress: "bg-yellow-100 text-yellow-800",
-  blocked: "bg-red-100 text-red-800",
-  not_started: "bg-gray-100 text-gray-500",
+  complete: "bg-green-100 text-green-800 dark:bg-green-950/60 dark:text-green-300",
+  in_progress: "bg-yellow-100 text-yellow-800 dark:bg-yellow-950/60 dark:text-yellow-300",
+  blocked: "bg-red-100 text-red-800 dark:bg-red-950/60 dark:text-red-300",
+  not_started: "bg-muted text-muted-foreground",
 };
 
 function phaseStatus(phaseData, validationErrors) {
@@ -38,11 +38,11 @@ function Badge({ status }) {
 function PhaseSection({ label, data }) {
   return (
     <div className="mb-4">
-      <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{label}</h4>
+      <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">{label}</h4>
       <div className="space-y-1">
         {Object.entries(data || {}).map(([key, value]) => (
           <div key={key} className="flex items-center justify-between text-sm">
-            <span className="text-gray-600 capitalize">{key.replace(/_/g, " ")}</span>
+            <span className="text-muted-foreground capitalize">{key.replace(/_/g, " ")}</span>
             <span className={value ? "text-green-600 font-medium" : "text-red-400"}>
               {value ? String(value) : "—"}
             </span>
@@ -55,20 +55,20 @@ function PhaseSection({ label, data }) {
 //
 // function ReviewQueueDrawer({ workers, onClose, onSelectWorker }) {
 //   return (
-//     <div className="fixed inset-y-0 right-0 z-50 flex w-[520px] flex-col bg-white shadow-2xl">
+//     <div className="fixed inset-y-0 right-0 z-50 flex w-[520px] flex-col bg-card shadow-2xl">
 //       <div className="flex items-center justify-between border-b px-6 py-4">
 //         <div>
-//           <h2 className="text-lg font-semibold text-gray-900">
+//           <h2 className="text-lg font-semibold text-foreground">
 //             Review Queue
 //           </h2>
-//           <p className="text-xs text-gray-500">
+//           <p className="text-xs text-muted-foreground">
 //             {workers.length} pending submission{workers.length === 1 ? "" : "s"}
 //           </p>
 //         </div>
 //
 //         <button
 //           onClick={onClose}
-//           className="text-xl leading-none text-gray-400 hover:text-gray-600"
+//           className="text-xl leading-none text-muted-foreground hover:text-muted-foreground"
 //         >
 //           &times;
 //         </button>
@@ -76,7 +76,7 @@ function PhaseSection({ label, data }) {
 //
 //       <div className="flex-1 overflow-y-auto p-4">
 //         {workers.length === 0 ? (
-//           <p className="rounded-lg border border-dashed p-6 text-center text-sm text-gray-400">
+//           <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
 //             No submissions need review.
 //           </p>
 //         ) : (
@@ -86,22 +86,22 @@ function PhaseSection({ label, data }) {
 //                 key={worker.worker_id}
 //                 type="button"
 //                 onClick={() => onSelectWorker(worker)}
-//                 className="w-full rounded-lg border border-gray-200 bg-white p-4 text-left transition hover:border-blue-300 hover:bg-blue-50"
+//                 className="w-full rounded-lg border border-border bg-card p-4 text-left transition hover:border-blue-300 hover:bg-blue-50"
 //               >
 //                 <div className="flex items-start justify-between gap-3">
 //                   <div>
-//                     <p className="font-semibold text-gray-900">
+//                     <p className="font-semibold text-foreground">
 //                       {worker.full_name || worker.passport?.full_name || "Unnamed Worker"}
 //                     </p>
 //
-//                     <p className="mt-1 text-xs text-gray-500">
+//                     <p className="mt-1 text-xs text-muted-foreground">
 //                       Passport:{" "}
 //                       {worker.passport_number ||
 //                         worker.passport?.passport_number ||
 //                         "—"}
 //                     </p>
 //
-//                     <p className="text-xs text-gray-500">
+//                     <p className="text-xs text-muted-foreground">
 //                       Nationality:{" "}
 //                       {worker.nationality ||
 //                         worker.passport?.nationality ||
@@ -124,20 +124,20 @@ function PhaseSection({ label, data }) {
 function InfoSection({ title, data }) {
   return (
     <div className="space-y-3">
-      <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
+      <h3 className="text-sm font-semibold text-foreground">{title}</h3>
 
       {Object.keys(data || {}).length === 0 ? (
-        <p className="rounded-lg border border-dashed p-4 text-sm text-gray-400">
+        <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
           No data available.
         </p>
       ) : (
         <div className="space-y-2">
           {Object.entries(data || {}).map(([key, value]) => (
             <div key={key} className="flex justify-between gap-4 text-sm">
-              <span className="text-gray-500 capitalize">
+              <span className="text-muted-foreground capitalize">
                 {key.replace(/_/g, " ")}
               </span>
-              <span className="text-right font-medium text-gray-900">
+              <span className="text-right font-medium text-foreground">
                 {value ? String(value) : "—"}
               </span>
             </div>
@@ -158,13 +158,13 @@ function WorkerDrawer({ worker, onClose }) {
   ];
 
   return (
-    <div className="fixed inset-y-0 right-0 w-[520px] bg-white shadow-2xl z-50 flex flex-col">
+    <div className="fixed inset-y-0 right-0 w-[520px] bg-card shadow-2xl z-50 flex flex-col">
       <div className="flex items-center justify-between px-6 py-4 border-b">
         <div>
-          <p className="font-semibold text-gray-900">
+          <p className="font-semibold text-foreground">
             {worker.passport?.full_name || "—"}
           </p>
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-muted-foreground">
             {worker.passport?.passport_number || "—"} ·{" "}
             {worker.passport?.nationality || "—"}
           </p>
@@ -172,7 +172,7 @@ function WorkerDrawer({ worker, onClose }) {
 
         <button
           onClick={onClose}
-          className="text-gray-400 hover:text-gray-600 text-xl leading-none"
+          className="text-muted-foreground hover:text-muted-foreground text-xl leading-none"
         >
           &times;
         </button>
@@ -186,7 +186,7 @@ function WorkerDrawer({ worker, onClose }) {
             className={`flex-1 py-2 text-sm font-medium ${
               openTab === tab.key
                 ? "border-b-2 border-blue-600 text-blue-600"
-                : "text-gray-500"
+                : "text-muted-foreground"
             }`}
           >
             {tab.label}
@@ -221,13 +221,13 @@ function WorkerDrawerStage1({ worker, onClose }) {
   const [openStage, setOpenStage] = useState("stage_1");
 
   return (
-    <div className="fixed inset-y-0 right-0 w-[480px] bg-white shadow-2xl z-50 flex flex-col">
+    <div className="fixed inset-y-0 right-0 w-[480px] bg-card shadow-2xl z-50 flex flex-col">
       <div className="flex items-center justify-between px-6 py-4 border-b">
         <div>
-          <p className="font-semibold text-gray-900">{worker.passport?.full_name || "—"}</p>
-          <p className="text-xs text-gray-500">{worker.passport?.passport_number} · {worker.passport?.nationality} · {worker.sector}</p>
+          <p className="font-semibold text-foreground">{worker.passport?.full_name || "—"}</p>
+          <p className="text-xs text-muted-foreground">{worker.passport?.passport_number} · {worker.passport?.nationality} · {worker.sector}</p>
         </div>
-        <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+        <button onClick={onClose} className="text-muted-foreground hover:text-muted-foreground text-xl leading-none">&times;</button>
       </div>
 
       <div className="flex border-b">
@@ -235,7 +235,7 @@ function WorkerDrawerStage1({ worker, onClose }) {
           <button
             key={s}
             onClick={() => setOpenStage(s)}
-            className={`flex-1 py-2 text-sm font-medium ${openStage === s ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-500"}`}
+            className={`flex-1 py-2 text-sm font-medium ${openStage === s ? "border-b-2 border-blue-600 text-blue-600" : "text-muted-foreground"}`}
           >
             {s === "stage_1" ? "Stage 1 — VDR" : "Stage 2 — PLKS"}
           </button>
@@ -256,8 +256,8 @@ function WorkerDrawerStage1({ worker, onClose }) {
       </div>
 
       {worker.validation_errors?.length > 0 && (
-        <div className="px-6 py-3 bg-red-50 border-t">
-          <p className="text-xs font-semibold text-red-700 mb-1">Validation Errors</p>
+        <div className="px-6 py-3 bg-red-50 dark:bg-red-950/40 border-t">
+          <p className="text-xs font-semibold text-red-700 dark:text-red-300 mb-1">Validation Errors</p>
           {worker.validation_errors.map((e, i) => (
             <p key={i} className="text-xs text-red-600">• {e}</p>
           ))}
@@ -302,8 +302,8 @@ export default function WorkersPage() {
     <div className="p-6">
 
         <div>
-          <h1 className="text-xl font-semibold text-gray-900">Workers</h1>
-          <p className="text-sm text-gray-500">
+          <h1 className="text-xl font-semibold text-foreground">Workers</h1>
+          <p className="text-sm text-muted-foreground">
             {workers.length} worker{workers.length === 1 ? "" : "s"}
             {companyName ? ` · ${companyName}` : ""}
           </p>
@@ -315,16 +315,16 @@ export default function WorkersPage() {
         placeholder="Search by name, passport, nationality…"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
-        className="w-full mb-4 px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="w-full mb-4 px-3 py-2 border border-border rounded-md text-sm bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
       />
 
-      {isLoading && <p className="text-sm text-gray-500">Loading workers…</p>}
+      {isLoading && <p className="text-sm text-muted-foreground">Loading workers…</p>}
       {error && <p className="text-sm text-red-500">Failed to load workers.</p>}
 
       {!isLoading && !error && (
         <div className="overflow-x-auto rounded-lg border">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-gray-600 text-xs uppercase">
+            <thead className="bg-muted text-muted-foreground text-xs uppercase">
               <tr>
                 <th className="px-4 py-3 text-left">Name</th>
                 <th className="px-4 py-3 text-left">Passport</th>
@@ -333,21 +333,21 @@ export default function WorkersPage() {
                 <th className="px-4 py-3 text-left">Stage 2</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-border">
               {workers.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-6 text-center text-gray-400">No workers found.</td>
+                  <td colSpan={6} className="px-4 py-6 text-center text-muted-foreground">No workers found.</td>
                 </tr>
               )}
               {workers.map((w) => (
                 <tr
                   key={w.worker_id}
                   onClick={() => setSelected(w)}
-                  className="hover:bg-blue-50 cursor-pointer transition-colors"
+                  className="hover:bg-blue-50 dark:hover:bg-blue-950/30 cursor-pointer transition-colors"
                 >
-                  <td className="px-4 py-3 font-medium text-gray-900">{w.passport?.full_name || "—"}</td>
-                  <td className="px-4 py-3 text-gray-600">{w.passport?.passport_number || "—"}</td>
-                  <td className="px-4 py-3 text-gray-600 capitalize">{w.passport?.nationality || "—"}</td>
+                  <td className="px-4 py-3 font-medium text-foreground">{w.passport?.full_name || "—"}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{w.passport?.passport_number || "—"}</td>
+                  <td className="px-4 py-3 text-muted-foreground capitalize">{w.passport?.nationality || "—"}</td>
                   <td className="px-4 py-3">
                     <Badge status={stageStatus(w.stage_1 || {}, w.validation_errors)} />
                   </td>

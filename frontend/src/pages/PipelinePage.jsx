@@ -42,10 +42,10 @@ function WorkerCard({ worker, isBlocked }) {
         <div className="flex items-center gap-2">
           <span className="text-lg">{flag}</span>
           <div>
-            <div className="text-sm font-semibold text-gray-200">
+            <div className="text-sm font-semibold text-foreground">
               {worker.first_name} {worker.last_name}
             </div>
-            <div className="font-mono text-[10px] text-gray-500">
+            <div className="font-mono text-[10px] text-muted-foreground">
               {worker.worker_id}
             </div>
           </div>
@@ -59,12 +59,12 @@ function WorkerCard({ worker, isBlocked }) {
       </div>
 
       <div className="mt-2 flex items-center justify-between">
-        <span className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-gray-400">
+        <span className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-muted-foreground">
           {worker.sector || "—"}
         </span>
         {daysInGate > 0 && (
           <span className={`text-[10px] font-medium ${
-            daysInGate > 7 ? "text-amber-400" : "text-gray-500"
+            daysInGate > 7 ? "text-amber-400" : "text-muted-foreground"
           }`}>
             Day {daysInGate}
           </span>
@@ -92,10 +92,10 @@ function GateColumn({ gate, workers, blockedIds }) {
       {/* Column Header */}
       <div className="flex items-center justify-between border-b border-white/5 px-4 py-3">
         <div>
-          <h3 className="text-sm font-semibold text-gray-200">
+          <h3 className="text-sm font-semibold text-foreground">
             {GATE_LABELS[gate] || gate}
           </h3>
-          <p className="text-[10px] text-gray-500">
+          <p className="text-[10px] text-muted-foreground">
             {count} worker{count !== 1 ? "s" : ""}
             {blockedCount > 0 && (
               <span className="ml-1 text-red-400">
@@ -104,7 +104,7 @@ function GateColumn({ gate, workers, blockedIds }) {
             )}
           </p>
         </div>
-        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/5 text-xs font-bold text-gray-400">
+        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/5 text-xs font-bold text-muted-foreground">
           {count}
         </span>
       </div>
@@ -112,7 +112,7 @@ function GateColumn({ gate, workers, blockedIds }) {
       {/* Cards */}
       <div className="flex flex-1 flex-col gap-2 overflow-y-auto p-3">
         {workers.length === 0 ? (
-          <div className="flex h-20 items-center justify-center rounded-lg border border-dashed border-white/5 text-xs text-gray-600">
+          <div className="flex h-20 items-center justify-center rounded-lg border border-dashed border-white/5 text-xs text-muted-foreground">
             No workers
           </div>
         ) : (
@@ -168,8 +168,8 @@ export default function PipelinePage() {
     <div className="space-y-6">
       {/* Page Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-100">Permit Stages Board</h1>
-        <p className="text-sm text-gray-500">
+        <h1 className="text-2xl font-bold text-foreground">Permit Stages Board</h1>
+        <p className="text-sm text-muted-foreground">
           Real-time permit stage tracker — cards move autonomously as AI verifies each step
         </p>
       </div>

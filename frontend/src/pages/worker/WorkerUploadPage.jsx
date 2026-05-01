@@ -26,13 +26,13 @@ function normalizeInitialValues(parsedFields) {
 
 function PersonalInput({ label, field, full, formValues, onChange }) {
   const inputClasses =
-    "w-full rounded-lg border border-slate-200 px-3 py-2 text-sm";
+    "w-full rounded-lg border border-border px-3 py-2 text-sm";
 
   return (
     <div className={`space-y-1 ${full ? "sm:col-span-2" : ""}`}>
       <label
         htmlFor={`personal-${field}`}
-        className="text-xs font-medium text-slate-600"
+        className="text-xs font-medium text-muted-foreground"
       >
         {label}
       </label>
@@ -52,7 +52,7 @@ function PersonalInput({ label, field, full, formValues, onChange }) {
 function PersonalDemographicForm({ formValues, onChange }) {
   return (
     <div className="permit-surface p-5 sm:p-6 space-y-4">
-      <h3 className="text-lg font-semibold text-slate-900">
+      <h3 className="text-lg font-semibold text-foreground">
         Personal & Demographic Information
       </h3>
 
@@ -297,7 +297,7 @@ export default function UploadPage() {
   const previewContent = (() => {
     if (!previewUrl) {
       return (
-        <div className="flex h-full min-h-[360px] items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50 text-center text-sm text-slate-500">
+        <div className="flex h-full min-h-[360px] items-center justify-center rounded-xl border border-dashed border-border bg-muted text-center text-sm text-muted-foreground">
           Upload a file to see its preview.
         </div>
       );
@@ -308,7 +308,7 @@ export default function UploadPage() {
         <iframe
           title="Document preview"
           src={previewUrl}
-          className="h-[420px] w-full rounded-xl border border-slate-200"
+          className="h-[420px] w-full rounded-xl border border-border"
         />
       );
     }
@@ -317,7 +317,7 @@ export default function UploadPage() {
       <img
         src={previewUrl}
         alt="Uploaded document preview"
-        className="h-[420px] w-full rounded-xl border border-slate-200 object-contain bg-white"
+        className="h-[420px] w-full rounded-xl border border-border object-contain bg-card"
       />
     );
   })();
@@ -326,11 +326,11 @@ export default function UploadPage() {
     <div className="space-y-6">
       <section className="permit-surface px-5 py-4 sm:px-6">
         <h2 className="text-xl font-semibold">Document Ingestion & HITL Triage</h2>
-        <p className="mt-1 text-sm text-slate-600">
+        <p className="mt-1 text-sm text-muted-foreground">
           Upload documents, monitor extraction progress, and confirm fields before obligations are generated.
         </p>
         {jobId ? (
-          <p className="mt-2 font-mono text-xs text-slate-500">
+          <p className="mt-2 font-mono text-xs text-muted-foreground">
             Job ID: {jobId} | Document ID: {documentId || "pending"}
           </p>
         ) : null}
@@ -338,20 +338,20 @@ export default function UploadPage() {
 
       <section className="grid gap-6 xl:grid-cols-[1.08fr_1fr]">
         <article className="permit-surface p-5 sm:p-6">
-          <h3 className="text-lg font-semibold text-slate-900">Document Preview</h3>
-          <p className="mt-1 text-sm text-slate-600">Left pane mirrors the uploaded artifact for side-by-side triage.</p>
+          <h3 className="text-lg font-semibold text-foreground">Document Preview</h3>
+          <p className="mt-1 text-sm text-muted-foreground">Left pane mirrors the uploaded artifact for side-by-side triage.</p>
           <div className="mt-4">{previewContent}</div>
         </article>
 
         <div className="permit-surface p-5 sm:p-6">
-          <label className="text-sm font-medium text-slate-700">
+          <label className="text-sm font-medium text-foreground">
             Select document type
           </label>
 
           <select
             value={selectedDocumentType}
             onChange={(e) => setSelectedDocumentType(e.target.value)}
-            className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            className="mt-2 w-full rounded-lg border border-border px-3 py-2 text-sm"
           >
             <option value="passport">Passport</option>
             <option value="health_checkup">Health Checkup</option>
@@ -378,7 +378,7 @@ export default function UploadPage() {
           )}
           {selectedDocumentType === "passport" && (
             <div className="permit-surface p-5 sm:p-6">
-              <h3 className="text-lg font-semibold text-slate-900">
+              <h3 className="text-lg font-semibold text-foreground">
                 Passport Information
               </h3>
 
@@ -387,7 +387,7 @@ export default function UploadPage() {
                   <div key={field.key} className="space-y-1">
                     <label
                       htmlFor={`passport-${field.key}`}
-                      className="block text-xs font-medium text-slate-600"
+                      className="block text-xs font-medium text-muted-foreground"
                     >
                       {field.label}
                     </label>
@@ -406,11 +406,11 @@ export default function UploadPage() {
                           },
                         }))
                       }
-                      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800"
+                      className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground"
                     />
 
                     {parsedFieldsByType.passport?.[field.key]?.confidence != null && (
-                      <p className="text-[10px] text-slate-400">
+                      <p className="text-[10px] text-muted-foreground">
                         confidence:{" "}
                         {(parsedFieldsByType.passport[field.key].confidence * 100).toFixed(1)}%
                       </p>
@@ -423,15 +423,15 @@ export default function UploadPage() {
           {selectedDocumentType === "health_checkup" &&
             formValuesByType.health_checkup?.storage_path && (
               <div className="permit-surface p-5 sm:p-6">
-                <h3 className="text-lg font-semibold text-slate-900">
+                <h3 className="text-lg font-semibold text-foreground">
                   Medical File Saved
                 </h3>
 
-                <p className="mt-2 text-sm text-slate-600">
+                <p className="mt-2 text-sm text-muted-foreground">
                   Filename: {formValuesByType.health_checkup.filename}
                 </p>
 
-                <p className="mt-1 font-mono text-xs text-slate-500">
+                <p className="mt-1 font-mono text-xs text-muted-foreground">
                   Storage path: {formValuesByType.health_checkup.storage_path}
                 </p>
               </div>

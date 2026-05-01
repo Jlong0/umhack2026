@@ -24,7 +24,7 @@ function phaseStatus(data) {
 const STATUS_STYLE = {
   complete:    { dot: "bg-green-500",  text: "text-green-700",  label: "Complete" },
   in_progress: { dot: "bg-yellow-400", text: "text-yellow-700", label: "In Progress" },
-  not_started: { dot: "bg-slate-300",  text: "text-slate-500",  label: "Not Started" },
+  not_started: { dot: "bg-slate-300",  text: "text-muted-foreground",  label: "Not Started" },
   blocked:     { dot: "bg-red-500",    text: "text-red-700",    label: "Blocked" },
 };
 
@@ -32,8 +32,8 @@ function PhaseRow({ phaseKey, data }) {
   const s = phaseStatus(data);
   const style = STATUS_STYLE[s] || STATUS_STYLE.not_started;
   return (
-    <div className="flex items-center justify-between py-2.5 border-b border-slate-100 last:border-0">
-      <span className="text-sm text-slate-700">{STAGE_LABELS[phaseKey] || phaseKey}</span>
+    <div className="flex items-center justify-between py-2.5 border-b border-border last:border-0">
+      <span className="text-sm text-foreground">{STAGE_LABELS[phaseKey] || phaseKey}</span>
       <span className={`flex items-center gap-1.5 text-xs font-medium ${style.text}`}>
         <span className={`h-2 w-2 rounded-full ${style.dot}`} />
         {style.label}
@@ -57,14 +57,14 @@ export default function WorkerStatusPage() {
 
   if (!workerId) {
     return (
-      <div className="permit-surface px-5 py-12 text-center text-sm text-slate-500">
+      <div className="permit-surface px-5 py-12 text-center text-sm text-muted-foreground">
         No active worker session.
       </div>
     );
   }
 
   if (isLoading) {
-    return <div className="permit-surface px-5 py-12 text-center text-sm text-slate-500">Loading status…</div>;
+    return <div className="permit-surface px-5 py-12 text-center text-sm text-muted-foreground">Loading status…</div>;
   }
 
   if (error || !worker) {
@@ -79,20 +79,20 @@ export default function WorkerStatusPage() {
     <div className="space-y-6">
       <section className="permit-surface px-5 py-4 sm:px-6">
         <h2 className="text-xl font-semibold">Application Status</h2>
-        <p className="mt-1 text-sm text-slate-600">
+        <p className="mt-1 text-sm text-muted-foreground">
           {worker.full_name || "—"} · {worker.passport_number || "—"}
         </p>
       </section>
 
       <section className="permit-surface p-5 sm:p-6">
-        <h3 className="text-sm font-semibold text-slate-800 mb-3">Stage 1 — VDR Application</h3>
+        <h3 className="text-sm font-semibold text-foreground mb-3">Stage 1 — VDR Application</h3>
         {Object.entries(worker.stage_1 || {}).map(([key, phase]) => (
           <PhaseRow key={key} phaseKey={key} data={phase.data} />
         ))}
       </section>
 
       <section className="permit-surface p-5 sm:p-6">
-        <h3 className="text-sm font-semibold text-slate-800 mb-3">Stage 2 — PLKS Application</h3>
+        <h3 className="text-sm font-semibold text-foreground mb-3">Stage 2 — PLKS Application</h3>
         {Object.entries(worker.stage_2 || {})
           .filter(([key]) => key !== "com_repatriation" || worker.stage_2?.arrival_verification?.data?.mdac_verified)
           .map(([key, phase]) => (

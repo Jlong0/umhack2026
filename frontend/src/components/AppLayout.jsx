@@ -18,6 +18,8 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { createElement, useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
@@ -25,6 +27,7 @@ import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useWorkerStore } from "@/store/useWorkerStore";
 import { useUIStore } from "@/store/useUIStore";
+import { useThemeStore } from "@/store/useThemeStore";
 import ComplianceBreachBanner from "@/components/ComplianceBreachBanner";
 import IntentPreviewModal from "@/components/IntentPreviewModal";
 import AuditLogDrawer from "@/components/AuditLogDrawer";
@@ -115,6 +118,46 @@ function statusTone(status) {
   return "text-slate-400";
 }
 
+function ThemeSelectorButton({ sidebarOpen }) {
+  const theme = useThemeStore((state) => state.theme);
+  const setTheme = useThemeStore((state) => state.setTheme);
+
+  return (
+    <div
+      className={cn(
+        "flex items-center gap-2",
+        !sidebarOpen && "lg:justify-center lg:px-2"
+      )}
+    >
+      {sidebarOpen ? (
+        <>
+          <span className="text-xs font-medium text-muted-foreground">Theme</span>
+          <select
+            value={theme}
+            onChange={(e) => setTheme(e.target.value)}
+            className="w-full rounded-lg border border-border bg-muted px-2 py-1.5 text-xs font-medium text-foreground transition-colors duration-200 hover:border-blue-500/30 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          >
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+          </select>
+        </>
+      ) : (
+        <button
+          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+          title={theme === "dark" ? "Light mode" : "Dark mode"}
+          className="flex w-full items-center justify-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors duration-200 hover:bg-muted hover:text-foreground"
+        >
+          {theme === "dark" ? (
+            <Sun className="h-4 w-4 flex-shrink-0" />
+          ) : (
+            <Moon className="h-4 w-4 flex-shrink-0" />
+          )}
+        </button>
+      )}
+    </div>
+  );
+}
+
 export default function AppLayout() {
   const parseJobStatus = useWorkerStore((state) => state.parseJobStatus);
   const workerId = useWorkerStore((state) => state.workerId);
@@ -141,7 +184,7 @@ export default function AppLayout() {
   const sidebarContent = (
     <div className="flex h-full flex-col">
       {/* Branding */}
-      <div className="flex items-center justify-between border-b border-slate-700/50 px-4 py-5">
+      <div className="flex items-center justify-between border-b border-border px-4 py-5">
         {/* Expanded: icon + text. Collapsed: nothing (arrow takes full row) */}
         {sidebarOpen ? (
           <div className="flex items-center gap-3 overflow-hidden">
@@ -149,8 +192,8 @@ export default function AppLayout() {
               <Activity className="h-5 w-5 text-white" />
             </div>
             <div className="min-w-0">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-blue-400">PermitIQ</p>
-              <p className="truncate text-sm font-semibold text-white">Admin Console</p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-blue-600 dark:text-blue-400">PermitIQ</p>
+              <p className="truncate text-sm font-semibold text-foreground">Admin Console</p>
             </div>
           </div>
         ) : (
@@ -161,7 +204,7 @@ export default function AppLayout() {
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
           className={cn(
-            "hidden rounded-md p-1.5 text-slate-400 transition-colors duration-200 hover:bg-slate-800 hover:text-white lg:block",
+            "hidden rounded-md p-1.5 text-muted-foreground transition-colors duration-200 hover:bg-muted hover:text-foreground lg:block",
             !sidebarOpen && "lg:mx-auto",
           )}
           aria-label={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
@@ -171,7 +214,7 @@ export default function AppLayout() {
         {/* Mobile close */}
         <button
           onClick={() => setMobileOpen(false)}
-          className="rounded-md p-1 text-slate-400 transition-colors duration-200 hover:bg-slate-800 hover:text-white lg:hidden"
+          className="rounded-md p-1 text-muted-foreground transition-colors duration-200 hover:bg-muted hover:text-foreground lg:hidden"
           aria-label="Close sidebar"
         >
           <X className="h-5 w-5" />
@@ -179,16 +222,16 @@ export default function AppLayout() {
       </div>
 
       {/* Company & Role — hidden entirely when collapsed */}
-      <div className={cn("border-b border-slate-700/50 px-4 py-3", !sidebarOpen && "lg:hidden")}>
+      <div className={cn("border-b border-border px-4 py-3", !sidebarOpen && "lg:hidden")}>
         {companyName && (
-          <p className="mb-2 truncate text-xs text-slate-400">
+          <p className="mb-2 truncate text-xs text-muted-foreground">
             {companyName}
           </p>
         )}
         <div className="flex items-center gap-2">
-          <span className="text-[10px] uppercase tracking-wide text-slate-500">Role</span>
+          <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Role</span>
           <select
-            className="w-full rounded-md border border-slate-700 bg-slate-800 px-2 py-1.5 text-xs font-medium text-slate-300 transition-colors duration-200 hover:border-slate-600 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full rounded-md border border-border bg-muted px-2 py-1.5 text-xs font-medium text-foreground transition-colors duration-200 hover:border-blue-500/30 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             value="staff"
             onChange={(e) => handleRoleSwitch(e.target.value)}
           >
@@ -214,8 +257,8 @@ export default function AppLayout() {
                     cn(
                       "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
                       isActive
-                        ? "border-l-2 border-blue-500 bg-blue-600/15 text-white"
-                        : "border-l-2 border-transparent text-slate-400 hover:bg-slate-800 hover:text-white",
+                        ? "border-l-2 border-blue-500 bg-blue-600/15 text-blue-700 dark:text-white"
+                        : "border-l-2 border-transparent text-muted-foreground hover:bg-muted hover:text-foreground",
                       !sidebarOpen && "lg:justify-center lg:px-2",
                     )
                   }
@@ -230,18 +273,18 @@ export default function AppLayout() {
       </nav>
 
       {/* Bottom Section */}
-      <div className="mt-auto border-t border-slate-700/50">
+      <div className="mt-auto border-t border-border">
         {/* Status bar */}
-        <div className={cn("border-b border-slate-700/50 px-4 py-3", !sidebarOpen && "lg:px-2")}>
+        <div className={cn("border-b border-border px-4 py-3", !sidebarOpen && "lg:px-2")}>
           <div className={cn("flex items-center gap-2 text-xs", !sidebarOpen && "lg:flex-col lg:gap-1")}>
-            <Activity className="h-3.5 w-3.5 flex-shrink-0 text-blue-400" />
+            <Activity className="h-3.5 w-3.5 flex-shrink-0 text-blue-500" />
             <span className={cn("truncate", !sidebarOpen && "lg:hidden")}>
               <span className={cn("font-medium capitalize", statusTone(parseJobStatus))}>
                 {String(parseJobStatus).replace(/_/g, " ")}
               </span>
             </span>
           </div>
-          <p className={cn("mt-1 truncate font-mono text-[10px] text-slate-500", !sidebarOpen && "lg:hidden")}>
+          <p className={cn("mt-1 truncate font-mono text-[10px] text-muted-foreground", !sidebarOpen && "lg:hidden")}>
             WID: {workerId || "none"}
           </p>
         </div>
@@ -256,7 +299,7 @@ export default function AppLayout() {
             onClick={toggleAuditLog}
             title={!sidebarOpen ? "Audit Log" : undefined}
             className={cn(
-              "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-400 transition-colors duration-200 hover:bg-slate-800 hover:text-white",
+              "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors duration-200 hover:bg-muted hover:text-foreground",
               !sidebarOpen && "lg:justify-center lg:px-2",
             )}
           >
@@ -264,11 +307,13 @@ export default function AppLayout() {
             <span className={cn(!sidebarOpen && "lg:hidden")}>Audit Log</span>
           </button>
 
+          <ThemeSelectorButton sidebarOpen={sidebarOpen} />
+
           <button
             onClick={handleLogout}
             title={!sidebarOpen ? "Sign out" : undefined}
             className={cn(
-              "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-red-400 transition-colors duration-200 hover:bg-red-500/10 hover:text-red-300",
+              "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-red-500 dark:text-red-400 transition-colors duration-200 hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-300",
               !sidebarOpen && "lg:justify-center lg:px-2",
             )}
           >
@@ -281,11 +326,11 @@ export default function AppLayout() {
   );
 
   return (
-    <div className="relative min-h-screen bg-slate-50">
+    <div className="relative min-h-screen bg-background">
       {/* Mobile overlay */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 z-40 bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300 lg:hidden"
+          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm transition-opacity duration-300 lg:hidden"
           onClick={() => setMobileOpen(false)}
         />
       )}
@@ -293,7 +338,7 @@ export default function AppLayout() {
       {/* Sidebar — mobile: slide-over drawer, desktop: persistent rail */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex flex-col bg-slate-900 transition-all duration-300",
+          "fixed inset-y-0 left-0 z-50 flex flex-col border-r border-border bg-card transition-all duration-300",
           // Desktop sizing
           sidebarOpen ? "lg:w-64" : "lg:w-[68px]",
           // Mobile: slide from left
@@ -311,17 +356,17 @@ export default function AppLayout() {
         )}
       >
         {/* Mobile top bar */}
-        <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-slate-200 bg-white/80 px-4 py-3 backdrop-blur-sm lg:hidden">
+        <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-border bg-card/80 px-4 py-3 backdrop-blur-sm lg:hidden">
           <button
             onClick={() => setMobileOpen(true)}
-            className="rounded-lg border border-slate-200 p-2 text-slate-600 transition-colors duration-200 hover:bg-slate-100"
+            className="rounded-lg border border-border p-2 text-muted-foreground transition-colors duration-200 hover:bg-muted"
             aria-label="Open navigation"
           >
             <Menu className="h-5 w-5" />
           </button>
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-blue-600">PermitIQ</p>
-            <p className="text-sm font-semibold text-slate-900">Admin Console</p>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-blue-600 dark:text-blue-400">PermitIQ</p>
+            <p className="text-sm font-semibold text-foreground">Admin Console</p>
           </div>
         </header>
 

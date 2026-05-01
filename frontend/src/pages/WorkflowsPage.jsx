@@ -15,7 +15,7 @@ export default function WorkflowsPage() {
 			failed: "bg-red-100 text-red-800",
 		};
 		return (
-			<span className={`px-2 py-1 rounded-full text-xs font-medium ${styles[status] || "bg-gray-100 text-gray-800"}`}>
+			<span className={`px-2 py-1 rounded-full text-xs font-medium ${styles[status] || "bg-muted text-foreground"}`}>
 				{status}
 			</span>
 		);
@@ -30,7 +30,7 @@ export default function WorkflowsPage() {
 			case "pending":
 				return <Clock className="w-5 h-5 text-yellow-600" />;
 			default:
-				return <PlayCircle className="w-5 h-5 text-gray-600" />;
+				return <PlayCircle className="w-5 h-5 text-muted-foreground" />;
 		}
 	}
 
@@ -46,16 +46,16 @@ export default function WorkflowsPage() {
 		<div className="space-y-6">
 			<div className="flex justify-between items-center">
 				<div>
-					<h1 className="text-3xl font-bold text-gray-900">Worker Workflows</h1>
-					<p className="text-gray-600 mt-1">Automated compliance processing status for each worker</p>
+					<h1 className="text-3xl font-bold text-foreground">Worker Workflows</h1>
+					<p className="text-muted-foreground mt-1">Automated compliance processing status for each worker</p>
 				</div>
-				<div className="text-sm text-gray-500">
+				<div className="text-sm text-muted-foreground">
 					Total: {workflows.length} workflows
 				</div>
 			</div>
 
 			{error && (
-				<div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg">
+				<div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg dark:bg-red-950/40 dark:border-red-800 dark:text-red-300">
 					{error}
 				</div>
 			)}
@@ -65,16 +65,16 @@ export default function WorkflowsPage() {
 					<div
 						key={workflow.worker_id}
 						onClick={() => navigate(`/workflows/${workflow.worker_id}`)}
-						className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-lg transition-shadow cursor-pointer"
+						className="bg-card border border-border rounded-lg p-6 hover:shadow-lg transition-shadow cursor-pointer"
 					>
 						<div className="flex items-start justify-between">
 							<div className="flex items-start space-x-4">
 								{getComplianceIcon(workflow.compliance_status)}
 								<div>
-									<h3 className="font-semibold text-gray-900">Worker ID: {workflow.worker_id}</h3>
+									<h3 className="font-semibold text-foreground">Worker ID: {workflow.worker_id}</h3>
 									<div className="flex items-center space-x-3 mt-2">
 										{getStatusBadge(workflow.status)}
-										<span className="text-sm text-gray-600">
+										<span className="text-sm text-muted-foreground">
 											Compliance: <span className="font-medium">{workflow.compliance_status}</span>
 										</span>
 									</div>
@@ -86,14 +86,14 @@ export default function WorkflowsPage() {
 									)}
 								</div>
 							</div>
-							<div className="text-right text-sm text-gray-500">
+							<div className="text-right text-sm text-muted-foreground">
 								<div>Started: {new Date(workflow.started_at).toLocaleString()}</div>
 								<div>Updated: {new Date(workflow.last_updated).toLocaleString()}</div>
 							</div>
 						</div>
 
 						{workflow.workflow_complete && (
-							<div className="mt-4 pt-4 border-t border-gray-200">
+							<div className="mt-4 pt-4 border-t border-border">
 								<span className="text-sm font-medium text-green-600">✓ Workflow Complete</span>
 							</div>
 						)}
@@ -101,7 +101,7 @@ export default function WorkflowsPage() {
 				))}
 
 				{workflows.length === 0 && !loading && (
-					<div className="text-center py-12 text-gray-500">
+					<div className="text-center py-12 text-muted-foreground">
 						No active workflows found
 					</div>
 				)}

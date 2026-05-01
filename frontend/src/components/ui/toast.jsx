@@ -71,10 +71,11 @@ export function Toaster() {
         <article
           key={toast.id}
           className={cn(
-            "pointer-events-auto rounded-xl border bg-white/95 p-4 text-sm shadow-soft backdrop-blur-sm transition-transform duration-200",
-            toast.variant === "destructive" && "border-rose-300 bg-rose-50 text-rose-900",
-            toast.variant === "success" && "border-emerald-300 bg-emerald-50 text-emerald-900",
-            toast.variant === "default" && "border-slate-200 text-slate-900",
+            "pointer-events-auto rounded-xl border bg-card/95 p-4 text-sm text-foreground shadow-soft backdrop-blur-sm transition-transform duration-200",
+            toast.variant === "destructive" && "border-red-300 bg-red-50 text-red-900 dark:border-red-800 dark:bg-red-950 dark:text-red-100",
+            toast.variant === "success" && "border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-100",
+            toast.variant === "warning" && "border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100",
+            toast.variant === "default" && "border-border",
           )}
           role="status"
           aria-live="polite"

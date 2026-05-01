@@ -88,18 +88,18 @@ export default function WorkerUploadPage() {
     <div className="space-y-6">
       <section className="permit-surface px-5 py-4 sm:px-6">
         <h2 className="text-xl font-semibold">Document Upload</h2>
-        <p className="mt-1 text-sm text-slate-600">
+        <p className="mt-1 text-sm text-muted-foreground">
           Select the document type and upload the required file or fill in your details.
         </p>
       </section>
 
       <section className="permit-surface p-5 sm:p-6 space-y-5">
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1.5">Document Type</label>
+          <label className="block text-sm font-medium text-foreground mb-1.5">Document Type</label>
           <select
             value={docType}
             onChange={(e) => { setDocType(e.target.value); setFile(null); }}
-            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+            className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
           >
             {DOCUMENT_TYPES.map((t) => (
               <option key={t.value} value={t.value}>{t.label}</option>
@@ -259,7 +259,7 @@ function PhotoUpload({
       <div
         className={cn(
           "node-transition rounded-xl border-2 border-dashed p-6 text-center",
-          isDragActive ? "border-indigo-500 bg-indigo-50" : "border-slate-300 bg-slate-50/70",
+          isDragActive ? "border-indigo-500 bg-indigo-50" : "border-border bg-slate-50/70",
         )}
         onDrop={handleDrop}
         onDragOver={(e) => { e.preventDefault(); setIsDragActive(true); }}
@@ -275,7 +275,7 @@ function PhotoUpload({
         <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-indigo-100 text-indigo-700">
           <UploadCloud className="h-6 w-6" />
         </div>
-        <p className="text-sm font-medium text-slate-700">
+        <p className="text-sm font-medium text-foreground">
           Drop file here or{" "}
           <button
             type="button"
@@ -285,13 +285,13 @@ function PhotoUpload({
             browse device
           </button>
         </p>
-        <p className="mt-2 text-xs text-slate-500">Accepted: PNG, JPEG, PDF</p>
+        <p className="mt-2 text-xs text-muted-foreground">Accepted: PNG, JPEG, PDF</p>
       </div>
 
       {file && (
         <div className="space-y-3">
           {previewUrl && (
-            <div className="relative flex justify-center w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-50 p-2">
+            <div className="relative flex justify-center w-full overflow-hidden rounded-xl border border-border bg-muted p-2">
               <img 
                 src={previewUrl} 
                 alt="Document Preview" 
@@ -299,12 +299,12 @@ function PhotoUpload({
               />
             </div>
           )}
-          <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-4 py-3">
+          <div className="flex items-center justify-between rounded-lg border border-border bg-card px-4 py-3">
             <div className="flex min-w-0 items-center gap-3">
-              <FileText className="h-5 w-5 shrink-0 text-slate-500" />
+              <FileText className="h-5 w-5 shrink-0 text-muted-foreground" />
               <div className="min-w-0">
-                <p className="truncate text-sm font-medium text-slate-900">{file.name}</p>
-                <p className="text-xs text-slate-500">{formatBytes(file.size)}</p>
+                <p className="truncate text-sm font-medium text-foreground">{file.name}</p>
+                <p className="text-xs text-muted-foreground">{formatBytes(file.size)}</p>
               </div>
             </div>
             <button
@@ -317,8 +317,8 @@ function PhotoUpload({
           </div>
 
           {docType === "passport" && (
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
-              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Extracted from document — read only</p>
+            <div className="rounded-xl border border-border bg-muted p-4 space-y-3">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Extracted from document — read only</p>
               <div className="grid gap-3 sm:grid-cols-2">
                 {isPolling && (
                   <p className="text-sm text-indigo-600">
@@ -327,7 +327,7 @@ function PhotoUpload({
                 )}
                 {Object.entries(parsedData || {}).map(([key, value]) => (
                   <div key={key} className="space-y-1">
-                    <label className="block text-xs font-medium text-slate-600">
+                    <label className="block text-xs font-medium text-muted-foreground">
                       {key.replaceAll("_", " ")}
                     </label>
 
@@ -335,10 +335,10 @@ function PhotoUpload({
                       type="text"
                       value={value.value || ""}
                       readOnly
-                      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+                      className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground"
                     />
 
-                    <p className="text-[10px] text-slate-400">
+                    <p className="text-[10px] text-muted-foreground">
                       confidence: {(value.confidence * 100).toFixed(1)}%
                     </p>
                   </div>
@@ -426,28 +426,28 @@ function PersonalDemographicForm({ onGeneralSaved }) {
     });
   };
 
-  const inputClasses = "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-300";
+  const inputClasses = "w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-indigo-300";
 
   return (
     <div className="space-y-6">
-      <p className="text-sm text-slate-500">Fill in your personal and demographic details below.</p>
+      <p className="text-sm text-muted-foreground">Fill in your personal and demographic details below.</p>
       
       <div className="grid gap-4 sm:grid-cols-2">
         {/* Full Name */}
         <div className="space-y-1">
-          <label className="block text-xs font-medium text-slate-600">Full Name</label>
+          <label className="block text-xs font-medium text-muted-foreground">Full Name</label>
           <input type="text" placeholder="Full Name (as per passport)" className={inputClasses} />
         </div>
 
         {/* Date of Birth */}
         <div className="space-y-1">
-          <label className="block text-xs font-medium text-slate-600">Date of Birth</label>
+          <label className="block text-xs font-medium text-muted-foreground">Date of Birth</label>
           <input type="date" className={inputClasses} />
         </div>
 
         {/* Gender */}
         <div className="space-y-1">
-          <label className="block text-xs font-medium text-slate-600">Gender</label>
+          <label className="block text-xs font-medium text-muted-foreground">Gender</label>
           <select className={inputClasses} defaultValue="">
             <option value="" disabled>Select Gender</option>
             <option value="Male">Male</option>
@@ -457,25 +457,25 @@ function PersonalDemographicForm({ onGeneralSaved }) {
 
         {/* Nationality */}
         <div className="space-y-1">
-          <label className="block text-xs font-medium text-slate-600">Nationality</label>
+          <label className="block text-xs font-medium text-muted-foreground">Nationality</label>
           <input type="text" placeholder="Nationality" className={inputClasses} />
         </div>
 
         {/* Height */}
         <div className="space-y-1">
-          <label className="block text-xs font-medium text-slate-600">Height (cm)</label>
+          <label className="block text-xs font-medium text-muted-foreground">Height (cm)</label>
           <input type="number" min="0" placeholder="e.g. 170" className={inputClasses} />
         </div>
 
         {/* Weight */}
         <div className="space-y-1">
-          <label className="block text-xs font-medium text-slate-600">Weight (kg)</label>
+          <label className="block text-xs font-medium text-muted-foreground">Weight (kg)</label>
           <input type="number" min="0" placeholder="e.g. 65" className={inputClasses} />
         </div>
 
         {/* Marital Status */}
         <div className="space-y-1">
-          <label className="block text-xs font-medium text-slate-600">Marital Status</label>
+          <label className="block text-xs font-medium text-muted-foreground">Marital Status</label>
           <select className={inputClasses} defaultValue="">
             <option value="" disabled>Select Marital Status</option>
             <option value="Single">Single</option>
@@ -485,26 +485,26 @@ function PersonalDemographicForm({ onGeneralSaved }) {
 
         {/* Father's Name */}
         <div className="space-y-1">
-          <label className="block text-xs font-medium text-slate-600">Father's Name</label>
+          <label className="block text-xs font-medium text-muted-foreground">Father's Name</label>
           <input type="text" placeholder="Father's Name" className={inputClasses} />
         </div>
 
         {/* Mother's Name */}
         <div className="space-y-1">
-          <label className="block text-xs font-medium text-slate-600">Mother's Name</label>
+          <label className="block text-xs font-medium text-muted-foreground">Mother's Name</label>
           <input type="text" placeholder="Mother's Name" className={inputClasses} />
         </div>
 
         {/* Spouse's Name */}
         <div className="space-y-1">
-          <label className="block text-xs font-medium text-slate-600">Spouse's Name (Optional)</label>
+          <label className="block text-xs font-medium text-muted-foreground">Spouse's Name (Optional)</label>
           <input type="text" placeholder="Spouse's Name" className={inputClasses} />
         </div>
 
         {/* Children Details */}
         <div className="space-y-3 sm:col-span-2">
           <div className="flex items-center justify-between">
-            <label className="block text-xs font-medium text-slate-600">Children Details (Optional)</label>
+            <label className="block text-xs font-medium text-muted-foreground">Children Details (Optional)</label>
             <button 
               type="button" 
               onClick={addChild}
@@ -536,7 +536,7 @@ function PersonalDemographicForm({ onGeneralSaved }) {
                   <button 
                     type="button" 
                     onClick={() => removeChild(idx)}
-                    className="p-2 text-slate-400 hover:text-rose-600 transition"
+                    className="p-2 text-muted-foreground hover:text-rose-600 transition"
                     title="Remove Child"
                   >
                     <Trash2 className="h-4 w-4" />
@@ -549,25 +549,25 @@ function PersonalDemographicForm({ onGeneralSaved }) {
 
         {/* Permanent Home Address */}
         <div className="space-y-1 sm:col-span-2">
-          <label className="block text-xs font-medium text-slate-600">Permanent Home Address</label>
+          <label className="block text-xs font-medium text-muted-foreground">Permanent Home Address</label>
           <input type="text" placeholder="Permanent Home Address" className={inputClasses} />
         </div>
 
         {/* Emergency Contact Name */}
         <div className="space-y-1">
-          <label className="block text-xs font-medium text-slate-600">Emergency Contact Name</label>
+          <label className="block text-xs font-medium text-muted-foreground">Emergency Contact Name</label>
           <input type="text" placeholder="Emergency Contact Name" className={inputClasses} />
         </div>
 
         {/* Emergency Contact Phone */}
         <div className="space-y-1">
-          <label className="block text-xs font-medium text-slate-600">Emergency Contact Phone Number</label>
+          <label className="block text-xs font-medium text-muted-foreground">Emergency Contact Phone Number</label>
           <input type="text" placeholder="Emergency Contact Phone Number" className={inputClasses} />
         </div>
 
         {/* Education History */}
         <div className="space-y-1">
-          <label className="block text-xs font-medium text-slate-600">Education History</label>
+          <label className="block text-xs font-medium text-muted-foreground">Education History</label>
           <select className={inputClasses} defaultValue="">
              <option value="" disabled>Select Education Level</option>
              <option value="Primary School">Primary School</option>
@@ -580,7 +580,7 @@ function PersonalDemographicForm({ onGeneralSaved }) {
 
         {/* Past Overseas Travel History */}
         <div className="space-y-1">
-          <label className="block text-xs font-medium text-slate-600">Past Overseas Travel History</label>
+          <label className="block text-xs font-medium text-muted-foreground">Past Overseas Travel History</label>
           <select 
             className={inputClasses} 
             value={hasTravelHistory}
@@ -594,7 +594,7 @@ function PersonalDemographicForm({ onGeneralSaved }) {
         
         {hasTravelHistory === "Yes" && (
           <div className="space-y-1 sm:col-span-2">
-            <label className="block text-xs font-medium text-slate-600">Travel History Details</label>
+            <label className="block text-xs font-medium text-muted-foreground">Travel History Details</label>
             <input type="text" placeholder="Please specify your past overseas travel history" className={inputClasses} />
           </div>
         )}
@@ -602,7 +602,7 @@ function PersonalDemographicForm({ onGeneralSaved }) {
 
       {/* Employment History */}
       <div className="space-y-3 pt-2">
-        <label className="block text-xs font-medium text-slate-600">Employment History</label>
+        <label className="block text-xs font-medium text-muted-foreground">Employment History</label>
         <div className="space-y-2">
           {employmentHistory.map((emp, idx) => (
             <div key={idx} className="flex gap-2 items-center">
@@ -617,7 +617,7 @@ function PersonalDemographicForm({ onGeneralSaved }) {
                 <button 
                   type="button" 
                   onClick={() => removeEmployment(idx)}
-                  className="p-2 text-slate-400 hover:text-rose-600 transition"
+                  className="p-2 text-muted-foreground hover:text-rose-600 transition"
                   title="Remove Job"
                 >
                   <Trash2 className="h-4 w-4" />
@@ -635,7 +635,7 @@ function PersonalDemographicForm({ onGeneralSaved }) {
         </button>
       </div>
 
-      <div className="flex justify-end pt-4 border-t border-slate-100">
+      <div className="flex justify-end pt-4 border-t border-border">
         <button
           type="button"
           onClick={handleSubmit}

@@ -21,24 +21,24 @@ function asCurrency(value) {
 
 const TONE_STYLES = {
   blue: {
-    icon: "bg-blue-50 text-blue-600",
-    value: "text-blue-600",
+    icon: "bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400",
+    value: "text-blue-600 dark:text-blue-400",
   },
   red: {
-    icon: "bg-red-50 text-red-500",
-    value: "text-red-500",
+    icon: "bg-red-50 text-red-500 dark:bg-red-950 dark:text-red-400",
+    value: "text-red-500 dark:text-red-400",
   },
   amber: {
-    icon: "bg-amber-50 text-amber-500",
-    value: "text-amber-500",
+    icon: "bg-amber-50 text-amber-500 dark:bg-amber-950 dark:text-amber-400",
+    value: "text-amber-500 dark:text-amber-400",
   },
   emerald: {
-    icon: "bg-emerald-50 text-emerald-500",
-    value: "text-emerald-500",
+    icon: "bg-emerald-50 text-emerald-500 dark:bg-emerald-950 dark:text-emerald-400",
+    value: "text-emerald-500 dark:text-emerald-400",
   },
   slate: {
-    icon: "bg-slate-100 text-slate-600",
-    value: "text-slate-900",
+    icon: "bg-muted text-muted-foreground",
+    value: "text-foreground",
   },
 };
 
@@ -48,7 +48,7 @@ function HealthCard({ icon: Icon, label, value, tone = "slate", onClick }) {
 
   return (
     <article
-      className={`rounded-2xl border border-slate-200 bg-white p-6 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${
+      className={`rounded-2xl border border-border bg-card p-6 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${
         onClick
           ? "cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
           : ""
@@ -58,7 +58,7 @@ function HealthCard({ icon: Icon, label, value, tone = "slate", onClick }) {
       role={onClick ? "button" : undefined}
       onKeyDown={onClick ? (e) => { if (e.key === "Enter" || e.key === " ") onClick(); } : undefined}
     >
-      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p>
+      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
       <div className="mt-4 flex items-center gap-3">
         <div className={`rounded-lg p-2.5 ${styles.icon}`}>
           {iconNode}
@@ -73,8 +73,8 @@ function SummaryCard({ label, value, tone = "slate" }) {
   const styles = TONE_STYLES[tone] || TONE_STYLES.slate;
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-6 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
-      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p>
+    <div className="rounded-2xl border border-border bg-card p-6 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
       <p className={`mt-3 text-2xl font-semibold ${styles.value}`}>{value}</p>
     </div>
   );
@@ -128,16 +128,16 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       {/* Page header */}
-      <section className="rounded-2xl border border-slate-200 bg-white px-6 py-5">
-        <h2 className="text-xl font-semibold text-slate-900">Overview</h2>
-        <p className="mt-1 text-sm text-slate-500">
+      <section className="rounded-2xl border border-border bg-card px-6 py-5">
+        <h2 className="text-xl font-semibold text-foreground">Overview</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
           Real-time compliance monitoring, worker workflows, and task tracking.
         </p>
-        <div className="mt-3 flex items-center gap-3 text-xs text-slate-500">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-50 px-2.5 py-1 font-medium">
+        <div className="mt-3 flex items-center gap-3 text-xs text-muted-foreground">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 font-medium">
             Source: {taskSource}
           </span>
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-50 px-2.5 py-1 font-medium">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 font-medium">
             Last refresh: {lastUpdatedAt ? new Date(lastUpdatedAt).toLocaleTimeString() : "Not yet polled"}
           </span>
         </div>
@@ -216,9 +216,9 @@ export default function Dashboard() {
 
       {/* Blocked dependency table */}
       <section className="space-y-4">
-        <div className="rounded-2xl border border-slate-200 bg-white px-6 py-5">
-          <h3 className="text-lg font-semibold text-slate-900">Blocked Dependency Table</h3>
-          <p className="mt-1 text-sm text-slate-500">Rows in blocked state are highlighted and dependency failures are surfaced.</p>
+        <div className="rounded-2xl border border-border bg-card px-6 py-5">
+          <h3 className="text-lg font-semibold text-foreground">Blocked Dependency Table</h3>
+          <p className="mt-1 text-sm text-muted-foreground">Rows in blocked state are highlighted and dependency failures are surfaced.</p>
         </div>
         <TaskList tasks={tasks} />
       </section>

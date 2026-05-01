@@ -8,6 +8,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Network, RefreshCw, Download, Maximize2 } from "lucide-react";
+import { useThemeStore } from "@/store/useThemeStore";
 
 const API = (import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8001").replace(/\/+$/, "");
 
@@ -25,29 +26,47 @@ export default function GraphVisualizerPage() {
   const [fullscreen, setFullscreen] = useState(false);
   const containerRef = useRef(null);
   const mermaidRef = useRef(null);
+  const theme = useThemeStore((state) => state.theme);
 
   // Lazy-load mermaid
   useEffect(() => {
     import("mermaid").then((mod) => {
       const mermaid = mod.default;
+      const isDark = theme === "dark";
+      
       mermaid.initialize({
         startOnLoad: false,
-        theme: "dark",
-        themeVariables: {
-          primaryColor: "#6366f1",
+        theme: isDark ? "dark" : "light",
+        themeVariables: isDark ? {
+          primaryColor: "#1e40af",
           primaryTextColor: "#f1f5f9",
-          primaryBorderColor: "#818cf8",
-          lineColor: "#94a3b8",
+          primaryBorderColor: "#3b82f6",
+          lineColor: "#cbd5e1",
           secondaryColor: "#1e293b",
           tertiaryColor: "#0f172a",
           fontFamily: "Inter, system-ui, sans-serif",
           fontSize: "14px",
-          nodeBorder: "#6366f1",
+          nodeBorder: "#3b82f6",
           mainBkg: "#1e293b",
           clusterBkg: "#0f172a",
           clusterBorder: "#334155",
           titleColor: "#e2e8f0",
           edgeLabelBackground: "#1e293b",
+        } : {
+          primaryColor: "#2563eb",
+          primaryTextColor: "#1e293b",
+          primaryBorderColor: "#3b82f6",
+          lineColor: "#64748b",
+          secondaryColor: "#f1f5f9",
+          tertiaryColor: "#e2e8f0",
+          fontFamily: "Inter, system-ui, sans-serif",
+          fontSize: "14px",
+          nodeBorder: "#2563eb",
+          mainBkg: "#ffffff",
+          clusterBkg: "#f8fafc",
+          clusterBorder: "#cbd5e1",
+          titleColor: "#1e293b",
+          edgeLabelBackground: "#ffffff",
         },
         flowchart: {
           htmlLabels: true,
@@ -59,7 +78,7 @@ export default function GraphVisualizerPage() {
       });
       mermaidRef.current = mermaid;
     });
-  }, []);
+  }, [theme]);
 
   // Fetch graph definitions
   const fetchGraphs = useCallback(() => {
@@ -87,7 +106,7 @@ export default function GraphVisualizerPage() {
       graphs.compliance_mermaid;
 
     if (!code) {
-      containerRef.current.innerHTML = '<p class="text-gray-500 text-sm">No graph definition available</p>';
+      containerRef.current.innerHTML = '<p class="text-muted-foreground text-sm">No graph definition available</p>';
       return;
     }
 
@@ -106,7 +125,7 @@ export default function GraphVisualizerPage() {
       })
       .catch(() => {
         containerRef.current.innerHTML =
-          `<pre class="text-xs text-gray-400 whitespace-pre-wrap p-4 bg-gray-900 rounded-lg">${code}</pre>`;
+          `<pre class="text-xs text-muted-foreground whitespace-pre-wrap p-4 bg-card rounded-lg">${code}</pre>`;
       });
   }, [graphs, activeTab]);
 
@@ -124,15 +143,15 @@ export default function GraphVisualizerPage() {
   };
 
   return (
-    <div className={`space-y-6 ${fullscreen ? "fixed inset-0 z-50 bg-slate-950 p-6 overflow-auto" : ""}`}>
+    <div className={`space-y-6 ${fullscreen ? "fixed inset-0 z-50 bg-background p-6 overflow-auto" : ""}`}>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-100 flex items-center gap-3">
+          <h1 className="text-2xl font-bold text-foreground flex items-center gap-3">
             <Network className="h-7 w-7 text-indigo-400" />
             Workflow Diagram
           </h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             Live multi-agent workflow topology — equivalent to <code className="text-indigo-400 text-xs">app.get_graph().draw_mermaid_png()</code>
           </p>
         </div>
@@ -140,21 +159,21 @@ export default function GraphVisualizerPage() {
           <button
             onClick={fetchGraphs}
             disabled={loading}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-xs font-medium text-gray-300 transition hover:bg-gray-700 disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-muted px-3 py-2 text-xs font-medium text-muted-foreground transition hover:bg-muted/80 disabled:opacity-50"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
             Refresh
           </button>
           <button
             onClick={handleDownload}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-xs font-medium text-gray-300 transition hover:bg-gray-700"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-muted px-3 py-2 text-xs font-medium text-muted-foreground transition hover:bg-muted/80"
           >
             <Download className="h-3.5 w-3.5" />
             SVG
           </button>
           <button
             onClick={() => setFullscreen((f) => !f)}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-xs font-medium text-gray-300 transition hover:bg-gray-700"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-muted px-3 py-2 text-xs font-medium text-muted-foreground transition hover:bg-muted/80"
           >
             <Maximize2 className="h-3.5 w-3.5" />
             {fullscreen ? "Exit" : "Fullscreen"}
@@ -163,7 +182,7 @@ export default function GraphVisualizerPage() {
       </div>
 
       {/* Tab Bar */}
-      <div className="flex gap-1 rounded-xl bg-gray-900/60 p-1 border border-gray-800">
+      <div className="flex gap-1 rounded-xl bg-muted/60 p-1 border border-border">
         {TABS.map((tab) => (
           <button
             key={tab.key}
@@ -171,7 +190,7 @@ export default function GraphVisualizerPage() {
             className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-medium transition-all ${
               activeTab === tab.key
                 ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/20"
-                : "text-gray-400 hover:text-gray-200 hover:bg-gray-800"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted"
             }`}
           >
             <div>{tab.label}</div>
@@ -193,22 +212,22 @@ export default function GraphVisualizerPage() {
           </button>
         </div>
       ) : loading ? (
-        <div className="flex items-center justify-center rounded-xl border border-gray-800 bg-gray-900/50 p-20">
+        <div className="flex items-center justify-center rounded-xl border border-border bg-muted/50 p-20">
           <div className="flex flex-col items-center gap-3">
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-indigo-400 border-t-transparent" />
-            <p className="text-sm text-gray-500">Loading graph definitions...</p>
+            <p className="text-sm text-muted-foreground">Loading graph definitions...</p>
           </div>
         </div>
       ) : (
         <div
           ref={containerRef}
-          className="rounded-xl border border-gray-800 bg-gray-900/50 p-6 overflow-auto"
+          className="rounded-xl border border-border bg-muted/50 p-6 overflow-auto"
           style={{ minHeight: "500px" }}
         />
       )}
 
       {/* Legend */}
-      <div className="flex flex-wrap gap-4 text-xs text-gray-500">
+      <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
         <div className="flex items-center gap-1.5">
           <div className="h-3 w-3 rounded bg-indigo-600" />
           <span>Entry Point</span>
@@ -226,7 +245,7 @@ export default function GraphVisualizerPage() {
           <span>Gov Portal</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <div className="h-3 w-3 rounded border border-gray-600" />
+          <div className="h-3 w-3 rounded border border-border" />
           <span>Agent Node</span>
         </div>
       </div>
