@@ -28,7 +28,7 @@ export default function WorkerLayout() {
 
       <header className="border-b border-border bg-card/80 backdrop-blur-sm">
         {/* Top row: branding + actions */}
-        <div className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-4">
+        <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
           <div>
             <p className="font-heading text-xs uppercase tracking-[0.24em] text-indigo-700 dark:text-indigo-400">PermitIQ</p>
             <h1 className="font-heading text-xl font-semibold text-foreground">Worker Portal</h1>
@@ -53,7 +53,7 @@ export default function WorkerLayout() {
         </div>
 
         {/* Navigation tabs — stronger visual treatment */}
-        <div className="mx-auto w-full max-w-5xl px-6">
+        <div className="mx-auto w-full max-w-6xl px-6">
           <nav className="flex gap-1 border-t border-border pt-1" aria-label="Worker navigation">
             {TABS.map((tab) => {
               const isActive = location.pathname.includes(tab.path.split("/").pop());
@@ -77,7 +77,7 @@ export default function WorkerLayout() {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-5xl px-6 py-6 lg:py-8">
+      <main className="mx-auto w-full max-w-6xl px-6 py-6 lg:py-8">
         <Outlet />
       </main>
     </div>

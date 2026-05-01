@@ -46,10 +46,10 @@ export default function AdminLoginPage() {
         <div className="absolute inset-0 bg-[linear-gradient(rgba(59,130,246,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(59,130,246,0.03)_1px,transparent_1px)] bg-[size:48px_48px]" />
       </div>
 
-      <div className="relative z-10 mx-auto flex min-h-screen max-w-4xl items-center justify-center px-6">
-        <div className="w-full max-w-md">
+      <div className="relative z-10 flex min-h-screen items-center justify-center px-6">
+        <div className="w-full max-w-lg">
           {/* Card */}
-          <div className="rounded-2xl border border-border bg-card p-8 shadow-2xl shadow-blue-950/10 dark:shadow-blue-950/20">
+          <div className="rounded-2xl border border-border bg-card p-10 shadow-2xl shadow-blue-950/10 dark:shadow-blue-950/20">
             {/* Header */}
             <div className="mb-8 flex items-center gap-3">
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600/10">

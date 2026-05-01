@@ -65,94 +65,100 @@ export default function LandingPage() {
         ))}
       </div>
 
-      {/* ═══ HERO ═══ */}
-      <section className="relative z-10 flex min-h-screen flex-col items-center justify-center px-6 py-20 lg:px-16">
-        <div className="flex w-full max-w-7xl flex-col items-center">
-          <div className="mb-6 flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg shadow-blue-500/25">
-              <Cpu className="h-6 w-6 text-white" />
+      <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-md">
+        <div className="flex items-center justify-between px-6 py-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 shadow-sm shadow-blue-500/20">
+              <Cpu className="h-5 w-5 text-white" />
             </div>
-            <div>
-              <p className="font-heading text-[11px] font-semibold uppercase tracking-[0.3em] text-blue-600 dark:text-blue-400">PermitIQ</p>
-              <p className="text-xs text-muted-foreground">Agentic Compliance Platform</p>
-            </div>
+            <span className="font-heading text-lg font-bold tracking-tight text-foreground">PermitIQ</span>
           </div>
 
-          <h1 className="mb-4 bg-gradient-to-r from-foreground via-foreground/80 to-muted-foreground bg-clip-text text-center font-heading text-4xl font-bold tracking-tight text-transparent sm:text-5xl lg:text-6xl xl:text-7xl">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate("/login/admin")}
+              className="inline-flex items-center gap-2 rounded-lg border border-border bg-card/60 px-6 py-3 text-sm font-semibold text-foreground backdrop-blur-sm transition-all duration-200 hover:border-blue-500/40 hover:shadow-sm"
+            >
+              <Shield className="h-4 w-4 text-blue-500" />
+              Admin Portal
+            </button>
+            <button
+              onClick={() => navigate("/login/worker")}
+              className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-blue-700 hover:shadow-md hover:shadow-blue-500/15"
+            >
+              <Users className="h-4 w-4" />
+              Worker Portal
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* ═══ HERO ═══ */}
+      <section className="relative z-10 flex min-h-[calc(100vh-57px)] flex-col items-center justify-center px-6">
+        <div className="flex w-full flex-col items-center">
+          <p className="mb-5 font-heading text-sm font-semibold uppercase tracking-[0.3em] text-blue-600 dark:text-blue-400">
+            Agentic Compliance Platform
+          </p>
+
+          <h1 className="mb-5 bg-gradient-to-r from-foreground via-foreground/80 to-muted-foreground bg-clip-text text-center font-heading text-5xl font-bold tracking-tight text-transparent sm:text-6xl lg:text-7xl xl:text-8xl">
             Foreign Worker<br />Compliance Engine
           </h1>
 
-          <p className="mb-6 max-w-3xl text-center text-base leading-relaxed text-muted-foreground sm:text-lg lg:text-xl">
+          <p className="mb-8 max-w-4xl text-center text-base leading-relaxed text-muted-foreground lg:text-lg">
             AI-powered multi-agent system that replaces manual compliance workflows for Malaysian SMEs — from document ingestion to permit renewal, deadline tracking to contract generation.
           </p>
 
-          {/* Problem callout */}
-          <div className="mb-10 w-full max-w-4xl rounded-xl border border-border bg-card/60 px-8 py-5 text-center backdrop-blur-sm">
-            <p className="text-sm leading-relaxed text-muted-foreground sm:text-base">
-              <span className="font-semibold text-amber-500">The problem:</span>{" "}
-              Compliance officers track <span className="font-semibold text-foreground">13+ obligations per worker</span> across fragmented government portals (FWCMS, JTKSM, FOMEMA, MyEG). A single missed deadline →{" "}
-              <span className="font-semibold text-red-500 dark:text-red-400">RM 10,000–50,000 fines</span> or criminal prosecution under the Immigration Act 1959/63.
-            </p>
-          </div>
-
           {/* Feature pills */}
-          <div className="mb-12 flex flex-wrap justify-center gap-3">
+          <div className="mb-10 flex flex-wrap justify-center gap-2.5">
             {[
               { icon: Network, label: "Multi-Agent Orchestration" },
               { icon: Shield, label: "Real-time Compliance" },
               { icon: Lock, label: "HITL Governance" },
               { icon: Zap, label: "Gemini 2.5 Flash Vision" },
             ].map(({ icon: Icon, label }) => (
-              <span key={label} className="inline-flex items-center gap-2 rounded-full border border-border bg-card/50 px-4 py-2 text-xs font-medium text-muted-foreground backdrop-blur-sm transition-colors duration-200 hover:border-blue-500/40 hover:text-foreground">
-                {createElement(Icon, { className: "h-3.5 w-3.5 text-blue-500 dark:text-blue-400" })}
+              <span key={label} className="inline-flex items-center gap-2.5 rounded-full border border-border bg-card/50 px-5 py-2.5 text-sm font-medium text-muted-foreground backdrop-blur-sm transition-colors duration-200 hover:border-blue-500/40 hover:text-foreground">
+                {createElement(Icon, { className: "h-4 w-4 text-blue-500 dark:text-blue-400" })}
                 {label}
               </span>
             ))}
           </div>
 
-          {/* Login Cards — wider */}
-          <div className="grid w-full max-w-5xl gap-6 sm:grid-cols-2">
-            <button onClick={() => navigate("/login/admin")} className="group relative flex flex-col items-start gap-5 rounded-2xl border border-border bg-gradient-to-br from-card/80 to-card/60 p-8 text-left backdrop-blur-md transition-all duration-300 hover:border-blue-500/50 hover:shadow-xl hover:shadow-blue-500/10 hover:-translate-y-1">
-              <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-blue-600/5 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-              <div className="relative flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-600/10 ring-1 ring-blue-500/20">
-                <Shield className="h-7 w-7 text-blue-500 dark:text-blue-400" />
-              </div>
-              <div className="relative">
-                <h2 className="mb-1.5 font-heading text-xl font-semibold text-foreground">Admin Portal</h2>
-                <p className="text-sm leading-relaxed text-muted-foreground">Access the full compliance dashboard, agent workflows, HITL controls, and analytics.</p>
-              </div>
-              <div className="relative mt-auto flex items-center gap-2 text-sm font-medium text-blue-600 dark:text-blue-400 transition-all duration-200 group-hover:gap-3">
-                Sign in with credentials
-                <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
-              </div>
-            </button>
+          <p className="mb-10 w-full text-center text-sm leading-relaxed text-muted-foreground lg:text-base">
+            <span className="font-semibold text-amber-500">The problem:</span>{" "}
+            Compliance officers track <span className="font-semibold text-foreground">13+ obligations per worker</span> across fragmented government portals. A single missed deadline →{" "}
+            <span className="font-semibold text-red-500 dark:text-red-400">RM 10,000–50,000 fines</span> or criminal prosecution.
+          </p>
 
-            <button onClick={() => navigate("/login/worker")} className="group relative flex flex-col items-start gap-5 rounded-2xl border border-border bg-gradient-to-br from-card/80 to-card/60 p-8 text-left backdrop-blur-md transition-all duration-300 hover:border-emerald-500/50 hover:shadow-xl hover:shadow-emerald-500/10 hover:-translate-y-1">
-              <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-emerald-600/5 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-              <div className="relative flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-600/10 ring-1 ring-emerald-500/20">
-                <Users className="h-7 w-7 text-emerald-500 dark:text-emerald-400" />
-              </div>
-              <div className="relative">
-                <h2 className="mb-1.5 font-heading text-xl font-semibold text-foreground">Worker Portal</h2>
-                <p className="text-sm leading-relaxed text-muted-foreground">Upload documents, check application status, and view your contracts.</p>
-              </div>
-              <div className="relative mt-auto flex items-center gap-2 text-sm font-medium text-emerald-600 dark:text-emerald-500 transition-all duration-200 group-hover:gap-3">
-                Select your Worker ID
-                <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
-              </div>
+          {/* CTA buttons */}
+          <div className="mb-8 flex items-center gap-3">
+            <button
+              onClick={() => navigate("/login/admin")}
+              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-7 py-3.5 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-500/20 hover:-translate-y-0.5"
+            >
+              <Shield className="h-4 w-4" />
+              Admin Portal
+            </button>
+            <button
+              onClick={() => navigate("/login/worker")}
+              className="inline-flex items-center gap-2 rounded-xl border border-emerald-500/40 bg-emerald-600 px-7 py-3.5 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-emerald-700 hover:shadow-lg hover:shadow-emerald-500/20 hover:-translate-y-0.5"
+            >
+              <Users className="h-4 w-4" />
+              Worker Portal
+            </button>
+            <button
+              onClick={scrollToFeatures}
+              className="inline-flex items-center gap-2 rounded-xl border border-border bg-card/50 px-7 py-3.5 text-sm font-semibold text-muted-foreground backdrop-blur-sm transition-all duration-200 hover:border-blue-500/30 hover:text-foreground"
+            >
+              Learn more
+              <ChevronDown className="h-4 w-4" />
             </button>
           </div>
-
-          <button onClick={scrollToFeatures} className="mt-14 flex flex-col items-center gap-2 text-muted-foreground transition-colors duration-200 hover:text-blue-500" aria-label="Scroll to features">
-            <span className="text-xs font-medium uppercase tracking-widest">Explore features</span>
-            <ChevronDown className="h-5 w-5 animate-bounce" />
-          </button>
         </div>
       </section>
 
       {/* ═══ STATS ═══ */}
       <section className="relative z-10 border-y border-border bg-card/30 backdrop-blur-sm">
-        <div className="mx-auto grid max-w-7xl grid-cols-2 gap-8 px-6 py-12 sm:grid-cols-4 lg:px-16">
+        <div className="grid grid-cols-2 gap-8 px-6 py-12 sm:grid-cols-4">
           {STATS.map((s) => (
             <div key={s.label} className="text-center">
               <p className="font-heading text-3xl font-bold text-foreground lg:text-4xl">{s.value}</p>
@@ -163,8 +169,8 @@ export default function LandingPage() {
       </section>
 
       {/* ═══ FEATURES ═══ */}
-      <section ref={featuresRef} className="relative z-10 px-6 py-24 lg:px-16">
-        <div className="mx-auto max-w-7xl">
+      <section ref={featuresRef} className="relative z-10 px-6 py-24">
+        <div>
           <div className="mb-16 text-center">
             <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-blue-600 dark:text-blue-400">Platform Capabilities</p>
             <h2 className="mb-4 font-heading text-3xl font-bold text-foreground sm:text-4xl">Everything you need to stay compliant</h2>
@@ -186,8 +192,8 @@ export default function LandingPage() {
       </section>
 
       {/* ═══ HOW IT WORKS ═══ */}
-      <section className="relative z-10 border-y border-border bg-card/20 px-6 py-24 lg:px-16">
-        <div className="mx-auto max-w-7xl">
+      <section className="relative z-10 border-y border-border bg-card/20 px-6 py-24">
+        <div>
           <div className="mb-16 text-center">
             <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-blue-600 dark:text-blue-400">Workflow</p>
             <h2 className="mb-4 font-heading text-3xl font-bold text-foreground sm:text-4xl">How PermitIQ works</h2>
@@ -213,8 +219,8 @@ export default function LandingPage() {
       </section>
 
       {/* ═══ PERSONAS ═══ */}
-      <section className="relative z-10 px-6 py-24 lg:px-16">
-        <div className="mx-auto max-w-7xl">
+      <section className="relative z-10 px-6 py-24">
+        <div>
           <div className="mb-16 text-center">
             <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-blue-600 dark:text-blue-400">Who It's For</p>
             <h2 className="mb-4 font-heading text-3xl font-bold text-foreground sm:text-4xl">Built for every stakeholder</h2>
@@ -235,8 +241,8 @@ export default function LandingPage() {
       </section>
 
       {/* ═══ TECH STRIP ═══ */}
-      <section className="relative z-10 border-y border-border bg-card/20 px-6 py-10 lg:px-16">
-        <div className="mx-auto max-w-7xl">
+      <section className="relative z-10 border-y border-border bg-card/20 px-6 py-10">
+        <div>
           <p className="mb-5 text-center text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Powered By</p>
           <div className="flex flex-wrap items-center justify-center gap-4">
             {["React 18", "FastAPI", "LangGraph", "Gemini 2.5 Flash", "Firebase Firestore", "TanStack Query"].map((t) => (
@@ -247,24 +253,22 @@ export default function LandingPage() {
       </section>
 
       {/* ═══ CTA ═══ */}
-      <section className="relative z-10 px-6 py-24 lg:px-16">
+      <section className="relative z-10 px-6 py-24">
         <div className="mx-auto max-w-3xl text-center">
           <h2 className="mb-4 font-heading text-3xl font-bold text-foreground sm:text-4xl">Ready to automate compliance?</h2>
           <p className="mb-8 text-base text-muted-foreground lg:text-lg">Stop tracking deadlines in spreadsheets. Let PermitIQ handle the regulatory complexity while you focus on growing your workforce.</p>
-          <div className="flex flex-wrap justify-center gap-4">
+          <div className="flex justify-center">
             <button onClick={() => navigate("/login/admin")} className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-8 py-3.5 text-sm font-semibold text-white transition-all duration-200 hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-500/20 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-background">
-              <Shield className="h-4 w-4" /> Open Admin Portal
-            </button>
-            <button onClick={() => navigate("/login/worker")} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card/50 px-8 py-3.5 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:border-emerald-500/50 hover:text-foreground hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 focus:ring-offset-background">
-              <Users className="h-4 w-4" /> Worker Portal
+              Get Started
+              <ArrowRight className="h-4 w-4" />
             </button>
           </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="relative z-10 border-t border-border px-6 py-8 lg:px-16">
-        <div className="mx-auto flex max-w-7xl flex-col items-center gap-3 sm:flex-row sm:justify-between">
+      <footer className="relative z-10 border-t border-border px-6 py-8">
+        <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
           <div className="flex items-center gap-2">
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-600/80">
               <Cpu className="h-3.5 w-3.5 text-white" />

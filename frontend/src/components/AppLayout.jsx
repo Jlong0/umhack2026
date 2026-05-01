@@ -204,7 +204,7 @@ export default function AppLayout() {
             </div>
             <div className="min-w-0">
               <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-blue-600 dark:text-blue-400">PermitIQ</p>
-              <p className="truncate text-sm font-semibold text-foreground">Admin Console</p>
+              <p className="truncate text-sm font-semibold text-foreground">{companyName || "Admin Console"}</p>
             </div>
           </div>
         ) : (
@@ -229,24 +229,6 @@ export default function AppLayout() {
         >
           <X className="h-5 w-5" />
         </button>
-      </div>
-
-      {/* Company & Role — hidden when collapsed */}
-      <div className={cn("border-b border-border px-4 py-3", !sidebarOpen && "lg:hidden")}>
-        {companyName && (
-          <p className="mb-2 truncate text-xs text-muted-foreground">{companyName}</p>
-        )}
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Role</span>
-          <select
-            className="w-full rounded-md border border-border bg-muted px-2 py-1.5 text-xs font-medium text-foreground transition-colors duration-200 hover:border-blue-500/30 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            value="staff"
-            onChange={(e) => handleRoleSwitch(e.target.value)}
-          >
-            <option value="staff">Staff</option>
-            <option value="worker">Worker</option>
-          </select>
-        </div>
       </div>
 
       {/* Nav Links — grouped */}
@@ -397,7 +379,7 @@ export default function AppLayout() {
 
         <ComplianceBreachBanner />
 
-        <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+        <main className="w-full px-4 py-6 lg:px-6 lg:py-8">
           <Outlet />
         </main>
       </div>

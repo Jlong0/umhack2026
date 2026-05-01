@@ -37,8 +37,8 @@ export default function WorkerLoginPage() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <div className="mx-auto flex min-h-screen max-w-4xl items-center justify-center px-6">
-        <div className="w-full max-w-md rounded-2xl border border-border bg-card p-8 shadow-xl">
+      <div className="flex min-h-screen items-center justify-center px-6">
+        <div className="w-full max-w-lg rounded-2xl border border-border bg-card p-10 shadow-xl">
           <div className="mb-6 flex items-center gap-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-600/20">
               <Users className="h-6 w-6 text-emerald-600 dark:text-emerald-300" />
