@@ -9,6 +9,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Network, RefreshCw, Download, Maximize2 } from "lucide-react";
 import { useThemeStore } from "@/store/useThemeStore";
+import { PageHeader } from "@/components/ui/page-header";
+import { Button } from "@/components/ui/button";
 
 const API = (import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8001").replace(/\/+$/, "");
 
@@ -145,41 +147,26 @@ export default function GraphVisualizerPage() {
   return (
     <div className={`space-y-6 ${fullscreen ? "fixed inset-0 z-50 bg-background p-6 overflow-auto" : ""}`}>
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground flex items-center gap-3">
-            <Network className="h-7 w-7 text-indigo-400" />
-            Workflow Diagram
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Live multi-agent workflow topology — equivalent to <code className="text-indigo-400 text-xs">app.get_graph().draw_mermaid_png()</code>
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={fetchGraphs}
-            disabled={loading}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-muted px-3 py-2 text-xs font-medium text-muted-foreground transition hover:bg-muted/80 disabled:opacity-50"
-          >
-            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
-            Refresh
-          </button>
-          <button
-            onClick={handleDownload}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-muted px-3 py-2 text-xs font-medium text-muted-foreground transition hover:bg-muted/80"
-          >
-            <Download className="h-3.5 w-3.5" />
-            SVG
-          </button>
-          <button
-            onClick={() => setFullscreen((f) => !f)}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-muted px-3 py-2 text-xs font-medium text-muted-foreground transition hover:bg-muted/80"
-          >
-            <Maximize2 className="h-3.5 w-3.5" />
-            {fullscreen ? "Exit" : "Fullscreen"}
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title="Workflow Diagram"
+        description={<>Live multi-agent workflow topology — equivalent to <code className="text-primary text-xs">app.get_graph().draw_mermaid_png()</code></>}
+        actions={
+          <div className="flex gap-2">
+            <Button variant="ghost" size="sm" onClick={fetchGraphs} disabled={loading}>
+              <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+              Refresh
+            </Button>
+            <Button variant="ghost" size="sm" onClick={handleDownload}>
+              <Download className="h-3.5 w-3.5" />
+              SVG
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setFullscreen((f) => !f)}>
+              <Maximize2 className="h-3.5 w-3.5" />
+              {fullscreen ? "Exit" : "Fullscreen"}
+            </Button>
+          </div>
+        }
+      />
 
       {/* Tab Bar */}
       <div className="flex gap-1 rounded-xl bg-muted/60 p-1 border border-border">

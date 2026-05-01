@@ -3,6 +3,8 @@ import { useMTLMTiers, useEPSalaryThresholds, useSimulateMTLM, useSimulateEPSala
 import { useQuery } from "@tanstack/react-query";
 import { listWorkers } from "@/services/api";
 import { Calculator, TrendingUp, DollarSign, AlertCircle, CheckCircle } from "lucide-react";
+import { PageHeader } from "@/components/ui/page-header";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 const QUOTA_MAX = 50;
 
@@ -59,35 +61,18 @@ export default function SimulatorPage() {
 
 	return (
 		<div className="space-y-6">
-			<div>
-				<h1 className="text-3xl font-bold text-foreground">Cost Simulator</h1>
-				<p className="text-muted-foreground mt-1">Model levy costs and salary compliance scenarios</p>
-			</div>
+			<PageHeader
+				title="Cost Simulator"
+				description="Model levy costs and salary compliance scenarios"
+			/>
 
-			<div className="flex space-x-2 border-b border-border">
-				<button
-					onClick={() => setActiveTab("mtlm")}
-					className={`px-6 py-3 font-medium transition-colors ${
-						activeTab === "mtlm"
-							? "border-b-2 border-blue-600 text-blue-600"
-							: "text-muted-foreground hover:text-foreground"
-					}`}
-				>
-					MTLM Levy Calculator
-				</button>
-				<button
-					onClick={() => setActiveTab("ep")}
-					className={`px-6 py-3 font-medium transition-colors ${
-						activeTab === "ep"
-							? "border-b-2 border-blue-600 text-blue-600"
-							: "text-muted-foreground hover:text-foreground"
-					}`}
-				>
-					EP Salary Compliance
-				</button>
-			</div>
+			<Tabs defaultValue="mtlm">
+				<TabsList>
+					<TabsTrigger value="mtlm">MTLM Levy Calculator</TabsTrigger>
+					<TabsTrigger value="ep">EP Salary Compliance</TabsTrigger>
+				</TabsList>
 
-			{activeTab === "mtlm" && (
+				<TabsContent value="mtlm">
 				<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 					<div className="bg-card border border-border rounded-lg p-6">
 						<h2 className="text-xl font-bold text-foreground mb-4 flex items-center space-x-2">
@@ -262,9 +247,9 @@ export default function SimulatorPage() {
 						)}
 					</div>
 				</div>
-			)}
+				</TabsContent>
 
-			{activeTab === "ep" && (
+				<TabsContent value="ep">
 				<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 					<div className="bg-card border border-border rounded-lg p-6">
 						<h2 className="text-xl font-bold text-foreground mb-4 flex items-center space-x-2">
@@ -422,7 +407,8 @@ export default function SimulatorPage() {
 						)}
 					</div>
 				</div>
-			)}
+				</TabsContent>
+			</Tabs>
 		</div>
 	);
 }

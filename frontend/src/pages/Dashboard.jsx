@@ -1,84 +1,19 @@
-import { AlertTriangle, ShieldAlert, Timer, Workflow, TrendingUp, Users, AlertCircle } from "lucide-react";
-import { createElement, useMemo } from "react";
+import { ShieldAlert, Timer, Workflow, TrendingUp, Users, AlertCircle, Clock, AlertTriangle } from "lucide-react";
+import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import TaskList from "@/components/TaskList";
 import StatutoryExposureCalculator from "@/components/StatutoryExposureCalculator";
 import MTLMTracker from "@/components/MTLMTracker";
+import { MetricCard } from "@/components/ui/metric-card";
+import { PageHeader } from "@/components/ui/page-header";
+import { SectionLabel } from "@/components/ui/section-label";
+import { Button } from "@/components/ui/button";
 import { useWorkerTasksPolling } from "@/hooks/useWorkerTasksPolling";
 import { isStatusActive, isStatusAwaitingApproval, isStatusBlocked } from "@/services/taskAdapter";
 import { useWorkerStore } from "@/store/useWorkerStore";
 import { useAlertDashboard } from "@/hooks/queries/useAlertQueries";
 import { useAllWorkflows } from "@/hooks/queries/useWorkflowQueries";
 import { usePendingInterrupts } from "@/hooks/queries/useHITLQueries";
-
-function asCurrency(value) {
-  return new Intl.NumberFormat("en-MY", {
-    style: "currency",
-    currency: "MYR",
-    maximumFractionDigits: 0,
-  }).format(value || 0);
-}
-
-const TONE_STYLES = {
-  blue: {
-    icon: "bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400",
-    value: "text-blue-600 dark:text-blue-400",
-  },
-  red: {
-    icon: "bg-red-50 text-red-500 dark:bg-red-950 dark:text-red-400",
-    value: "text-red-500 dark:text-red-400",
-  },
-  amber: {
-    icon: "bg-amber-50 text-amber-500 dark:bg-amber-950 dark:text-amber-400",
-    value: "text-amber-500 dark:text-amber-400",
-  },
-  emerald: {
-    icon: "bg-emerald-50 text-emerald-500 dark:bg-emerald-950 dark:text-emerald-400",
-    value: "text-emerald-500 dark:text-emerald-400",
-  },
-  slate: {
-    icon: "bg-muted text-muted-foreground",
-    value: "text-foreground",
-  },
-};
-
-function HealthCard({ icon: Icon, label, value, tone = "slate", onClick }) {
-  const iconNode = createElement(Icon, { className: "h-5 w-5" });
-  const styles = TONE_STYLES[tone] || TONE_STYLES.slate;
-
-  return (
-    <article
-      className={`rounded-2xl border border-border bg-card p-6 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${
-        onClick
-          ? "cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-          : ""
-      }`}
-      onClick={onClick}
-      tabIndex={onClick ? 0 : undefined}
-      role={onClick ? "button" : undefined}
-      onKeyDown={onClick ? (e) => { if (e.key === "Enter" || e.key === " ") onClick(); } : undefined}
-    >
-      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
-      <div className="mt-4 flex items-center gap-3">
-        <div className={`rounded-lg p-2.5 ${styles.icon}`}>
-          {iconNode}
-        </div>
-        <p className={`text-2xl font-semibold ${styles.value}`}>{value}</p>
-      </div>
-    </article>
-  );
-}
-
-function SummaryCard({ label, value, tone = "slate" }) {
-  const styles = TONE_STYLES[tone] || TONE_STYLES.slate;
-
-  return (
-    <div className="rounded-2xl border border-border bg-card p-6 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
-      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className={`mt-3 text-2xl font-semibold ${styles.value}`}>{value}</p>
-    </div>
-  );
-}
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -107,32 +42,25 @@ export default function Dashboard() {
       (task) => task.requiresApproval || isStatusAwaitingApproval(task.status),
     ).length;
 
-    const fineTasks = tasks.filter(
-      (task) =>
-        task.nodeType === "CalculateFines" || /fine|levy|penalty|calculate/i.test(task.taskType),
-    );
-
-    const strictLiabilityExposure = fineTasks.reduce((sum, task) => {
-      const exposure = Number(task.fineExposure);
-      return Number.isFinite(exposure) ? sum + exposure : sum;
-    }, 0);
-
-    return {
-      activeRuns,
-      blockedTasks,
-      pendingConfirmations,
-      strictLiabilityExposure,
-    };
+    return { activeRuns, blockedTasks, pendingConfirmations };
   }, [tasks]);
 
+  // Derived urgency state for the attention banner
+  const expiredPermits = alertDashboard?.summary?.expired_permits || 0;
+  const expiringPermits = alertDashboard?.summary?.expiring_30_days || 0;
+  const deadlocks = alertDashboard?.summary?.compliance_deadlocks || 0;
+  const totalWorkers = alertDashboard?.summary?.total_workers || 0;
+  const healthScore = alertDashboard?.health_score;
+
+  const needsAttention = expiredPermits > 0 || metrics.blockedTasks > 0 || deadlocks > 0;
+
   return (
-    <div className="space-y-6">
-      {/* Page header */}
-      <section className="rounded-2xl border border-border bg-card px-6 py-5">
-        <h2 className="text-xl font-semibold text-foreground">Overview</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Real-time compliance monitoring, worker workflows, and task tracking.
-        </p>
+    <div className="space-y-8">
+      {/* ── Page Header ── */}
+      <PageHeader
+        title="Overview"
+        description="Real-time compliance monitoring, worker workflows, and task tracking."
+      >
         <div className="mt-3 flex items-center gap-3 text-xs text-muted-foreground">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 font-medium">
             Source: {taskSource}
@@ -141,85 +69,125 @@ export default function Dashboard() {
             Last refresh: {lastUpdatedAt ? new Date(lastUpdatedAt).toLocaleTimeString() : "Not yet polled"}
           </span>
         </div>
-      </section>
+      </PageHeader>
 
-      {/* Primary KPIs */}
-      <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <HealthCard
-          icon={Workflow}
-          label="Active Workflows"
-          value={workflows.length}
-          tone="blue"
-          onClick={() => navigate("/workflows")}
-        />
-        <HealthCard
-          icon={AlertCircle}
-          label="Critical Alerts"
-          value={alertDashboard?.summary?.expired_permits || 0}
-          tone="red"
-          onClick={() => navigate("/alerts")}
-        />
-        <HealthCard
-          icon={Users}
-          label="Approvals Queue"
-          value={pendingInterrupts}
-          tone="amber"
-          onClick={() => navigate("/hitl")}
-        />
-        <HealthCard
-          icon={TrendingUp}
-          label="Health Score"
-          value={alertDashboard?.health_score ? `${alertDashboard.health_score}%` : "N/A"}
-          tone="emerald"
-          onClick={() => navigate("/alerts")}
-        />
-      </section>
-
-      {/* Secondary metrics */}
-      {alertDashboard && (
-        <section className="grid gap-4 md:grid-cols-3">
-          <SummaryCard
-            label="Total Workers"
-            value={alertDashboard.summary.total_workers}
-            tone="slate"
-          />
-          <SummaryCard
-            label="Expiring (30 days)"
-            value={alertDashboard.summary.expiring_30_days}
-            tone="amber"
-          />
-          <SummaryCard
-            label="Compliance Deadlocks"
-            value={alertDashboard.summary.compliance_deadlocks}
-            tone="red"
-          />
-        </section>
+      {/* ── Attention Banner ── */}
+      {needsAttention && (
+        <div className="flex items-center gap-4 rounded-2xl border border-red-200 bg-gradient-to-r from-red-50 to-orange-50 px-5 py-4 dark:border-red-900 dark:from-red-950/40 dark:to-orange-950/30">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-100 dark:bg-red-950">
+            <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-foreground">Immediate attention required</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {[
+                expiredPermits > 0 && `${expiredPermits} expired permit${expiredPermits !== 1 ? "s" : ""}`,
+                metrics.blockedTasks > 0 && `${metrics.blockedTasks} blocked task${metrics.blockedTasks !== 1 ? "s" : ""}`,
+                deadlocks > 0 && `${deadlocks} compliance deadlock${deadlocks !== 1 ? "s" : ""}`,
+              ].filter(Boolean).join(" · ")}
+            </p>
+          </div>
+          <Button size="sm" variant="destructive" onClick={() => navigate("/alerts")}>
+            Review Alerts
+          </Button>
+        </div>
       )}
 
-      {/* PRD Screen A: Risk Widgets */}
-      <section className="grid gap-4 md:grid-cols-2">
-        <StatutoryExposureCalculator />
-        <MTLMTracker />
-      </section>
-
-      {/* Workflow detail metrics */}
-      <section className="grid gap-4 md:grid-cols-3">
-        <HealthCard icon={Workflow} label="Active LangGraph Runs" value={metrics.activeRuns} tone="blue" />
-        <HealthCard icon={ShieldAlert} label="Blocked Tasks" value={metrics.blockedTasks} tone="red" />
-        <HealthCard
-          icon={Timer}
-          label="Pending Human Confirmations"
-          value={metrics.pendingConfirmations}
-          tone="amber"
-        />
-      </section>
-
-      {/* Blocked dependency table */}
+      {/* ── Section 1: Compliance Health ── */}
       <section className="space-y-4">
-        <div className="rounded-2xl border border-border bg-card px-6 py-5">
-          <h3 className="text-lg font-semibold text-foreground">Blocked Dependency Table</h3>
-          <p className="mt-1 text-sm text-muted-foreground">Rows in blocked state are highlighted and dependency failures are surfaced.</p>
+        <SectionLabel title="Compliance Health" subtitle="Permit status and workforce overview" />
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <MetricCard
+            icon={TrendingUp}
+            label="Health Score"
+            value={healthScore ? `${healthScore}%` : "N/A"}
+            tone={healthScore >= 80 ? "emerald" : healthScore >= 50 ? "amber" : "red"}
+            description={healthScore >= 80 ? "Good standing" : healthScore >= 50 ? "Needs improvement" : "Critical risk"}
+            onClick={() => navigate("/alerts")}
+          />
+          <MetricCard
+            icon={Users}
+            label="Total Workers"
+            value={totalWorkers}
+            tone="slate"
+            description="Active workforce"
+            onClick={() => navigate("/workers")}
+          />
+          <MetricCard
+            icon={AlertCircle}
+            label="Expired Permits"
+            value={expiredPermits}
+            tone={expiredPermits > 0 ? "red" : "emerald"}
+            description={expiredPermits > 0 ? "Immediate action needed" : "All compliant"}
+            onClick={() => navigate("/alerts")}
+          />
+          <MetricCard
+            icon={Clock}
+            label="Expiring (30 days)"
+            value={expiringPermits}
+            tone={expiringPermits > 0 ? "amber" : "emerald"}
+            description={expiringPermits > 0 ? "Renewal window open" : "No upcoming expirations"}
+            onClick={() => navigate("/alerts")}
+          />
         </div>
+      </section>
+
+      {/* ── Section 2: Risk Exposure ── */}
+      <section className="space-y-4">
+        <SectionLabel title="Risk Exposure" subtitle="Section 55B fines and MTLM levy projections" />
+        <div className="grid gap-4 md:grid-cols-2">
+          <StatutoryExposureCalculator />
+          <MTLMTracker />
+        </div>
+      </section>
+
+      {/* ── Section 3: Operational Status ── */}
+      <section className="space-y-4">
+        <SectionLabel
+          title="Operational Status"
+          subtitle="Active workflows, approvals, and task execution"
+          action={
+            <Button variant="ghost" size="sm" onClick={() => navigate("/workflows")}>
+              View all workflows →
+            </Button>
+          }
+        />
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <MetricCard
+            icon={Workflow}
+            label="Active Workflows"
+            value={workflows.length}
+            tone="blue"
+            onClick={() => navigate("/workflows")}
+          />
+          <MetricCard
+            icon={Users}
+            label="Approval Queue"
+            value={pendingInterrupts}
+            tone={pendingInterrupts > 0 ? "amber" : "emerald"}
+            description={pendingInterrupts > 0 ? "Awaiting human review" : "Queue clear"}
+            onClick={() => navigate("/hitl")}
+          />
+          <MetricCard
+            icon={ShieldAlert}
+            label="Blocked Tasks"
+            value={metrics.blockedTasks}
+            tone={metrics.blockedTasks > 0 ? "red" : "emerald"}
+            onClick={() => navigate("/tool-handoff")}
+          />
+          <MetricCard
+            icon={Timer}
+            label="Pending Confirmations"
+            value={metrics.pendingConfirmations}
+            tone={metrics.pendingConfirmations > 0 ? "amber" : "slate"}
+            onClick={() => navigate("/tool-handoff")}
+          />
+        </div>
+      </section>
+
+      {/* ── Section 4: Task Execution Detail (promoted higher) ── */}
+      <section className="space-y-4">
+        <SectionLabel title="Task Execution" subtitle="Dependency graph status — blocked rows are highlighted" />
         <TaskList tasks={tasks} />
       </section>
     </div>

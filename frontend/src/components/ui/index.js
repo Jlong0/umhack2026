@@ -10,5 +10,8 @@ export { Skeleton } from "./skeleton";
 export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "./tooltip";
 export { MetricCard } from "./metric-card";
 export { EmptyState } from "./empty-state";
+export { ErrorState } from "./error-state";
 export { PageHeader } from "./page-header";
 export { PageSkeleton } from "./page-skeleton";
+export { StatusBadge } from "./status-badge";
+export { SectionLabel } from "./section-label";

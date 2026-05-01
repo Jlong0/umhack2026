@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import { createElement } from "react";
+import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 
 const TONE_STYLES = {
   blue: {
@@ -29,6 +30,18 @@ const TONE_STYLES = {
   },
 };
 
+const TREND_ICON = {
+  up: TrendingUp,
+  down: TrendingDown,
+  flat: Minus,
+};
+
+const TREND_COLOR = {
+  up: "text-emerald-500",
+  down: "text-red-500",
+  flat: "text-muted-foreground",
+};
+
 /**
  * MetricCard — Unified KPI/stat card.
  *
@@ -36,11 +49,14 @@ const TONE_STYLES = {
  * @param {Function} props.icon  - Lucide icon component
  * @param {string}   props.label - Metric label
  * @param {string|number} props.value - Display value
+ * @param {string}   [props.description] - Optional subtext (e.g. "vs. last week")
  * @param {string}   [props.tone="slate"] - blue|red|amber|emerald|slate
+ * @param {"up"|"down"|"flat"} [props.trend] - Optional trend indicator
+ * @param {string}   [props.trendLabel] - e.g. "+12%" or "No change"
  * @param {Function} [props.onClick] - Makes the card interactive
  * @param {string}   [props.className]
  */
-function MetricCard({ icon: Icon, label, value, tone = "slate", onClick, className }) {
+function MetricCard({ icon: Icon, label, value, description, tone = "slate", trend, trendLabel, onClick, className }) {
   const styles = TONE_STYLES[tone] || TONE_STYLES.slate;
   const isInteractive = Boolean(onClick);
 
@@ -63,9 +79,17 @@ function MetricCard({ icon: Icon, label, value, tone = "slate", onClick, classNa
           : undefined
       }
     >
-      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-        {label}
-      </p>
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          {label}
+        </p>
+        {trend && (
+          <div className={cn("flex items-center gap-1 text-xs font-medium", TREND_COLOR[trend])}>
+            {createElement(TREND_ICON[trend], { className: "h-3.5 w-3.5" })}
+            {trendLabel && <span>{trendLabel}</span>}
+          </div>
+        )}
+      </div>
       <div className="mt-3 flex items-center gap-3">
         {Icon && (
           <div className={cn("rounded-lg p-2.5", styles.icon)}>
@@ -74,6 +98,9 @@ function MetricCard({ icon: Icon, label, value, tone = "slate", onClick, classNa
         )}
         <p className={cn("text-2xl font-semibold", styles.value)}>{value}</p>
       </div>
+      {description && (
+        <p className="mt-2 text-xs text-muted-foreground">{description}</p>
+      )}
     </article>
   );
 }

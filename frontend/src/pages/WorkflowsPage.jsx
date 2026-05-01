@@ -1,6 +1,10 @@
 import { useNavigate } from "react-router-dom";
 import { useAllWorkflows } from "@/hooks/queries/useWorkflowQueries";
 import { AlertCircle, CheckCircle, Clock, PlayCircle } from "lucide-react";
+import { PageHeader } from "@/components/ui/page-header";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { PageSkeleton } from "@/components/ui/page-skeleton";
+import { ErrorState } from "@/components/ui/error-state";
 
 export default function WorkflowsPage() {
 	const { data, isLoading: loading, error: queryError } = useAllWorkflows();
@@ -8,18 +12,7 @@ export default function WorkflowsPage() {
 	const error = queryError?.message || null;
 	const navigate = useNavigate();
 
-	function getStatusBadge(status) {
-		const styles = {
-			active: "bg-blue-100 text-blue-800",
-			completed: "bg-green-100 text-green-800",
-			failed: "bg-red-100 text-red-800",
-		};
-		return (
-			<span className={`px-2 py-1 rounded-full text-xs font-medium ${styles[status] || "bg-muted text-foreground"}`}>
-				{status}
-			</span>
-		);
-	}
+	const statusVariant = { active: "info", completed: "success", failed: "danger" };
 
 	function getComplianceIcon(status) {
 		switch (status) {
@@ -34,30 +27,22 @@ export default function WorkflowsPage() {
 		}
 	}
 
-	if (loading) {
-		return (
-			<div className="flex items-center justify-center h-64">
-				<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-			</div>
-		);
-	}
+	if (loading) return <PageSkeleton variant="table" />;
 
 	return (
 		<div className="space-y-6">
-			<div className="flex justify-between items-center">
-				<div>
-					<h1 className="text-3xl font-bold text-foreground">Worker Workflows</h1>
-					<p className="text-muted-foreground mt-1">Automated compliance processing status for each worker</p>
-				</div>
-				<div className="text-sm text-muted-foreground">
-					Total: {workflows.length} workflows
-				</div>
-			</div>
+			<PageHeader
+				title="Worker Workflows"
+				description="Automated compliance processing status for each worker"
+				actions={
+					<span className="text-sm text-muted-foreground">
+						Total: {workflows.length} workflows
+					</span>
+				}
+			/>
 
 			{error && (
-				<div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg dark:bg-red-950/40 dark:border-red-800 dark:text-red-300">
-					{error}
-				</div>
+				<ErrorState compact message={error} />
 			)}
 
 			<div className="grid gap-4">
@@ -72,8 +57,8 @@ export default function WorkflowsPage() {
 								{getComplianceIcon(workflow.compliance_status)}
 								<div>
 									<h3 className="font-semibold text-foreground">Worker ID: {workflow.worker_id}</h3>
-									<div className="flex items-center space-x-3 mt-2">
-										{getStatusBadge(workflow.status)}
+								<div className="flex items-center space-x-3 mt-2">
+										<StatusBadge variant={statusVariant[workflow.status] || "neutral"}>{workflow.status}</StatusBadge>
 										<span className="text-sm text-muted-foreground">
 											Compliance: <span className="font-medium">{workflow.compliance_status}</span>
 										</span>

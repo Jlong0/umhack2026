@@ -10,22 +10,23 @@ import {
 } from "lucide-react";
 import { listWorkerObligations, listWorkers } from "@/services/api";
 import { useAuthStore } from "@/store/useAuthStore";
+import { PageHeader } from "@/components/ui/page-header";
 
 const obligationTypes = {
   passport: {
     label: "Passport Renewal",
     icon: IdCard,
-    className: "bg-indigo-50 text-indigo-700 border-indigo-200",
+    className: "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-800",
   },
   permit: {
     label: "Permit Renewal",
     icon: FileText,
-    className: "bg-orange-50 text-orange-700 border-orange-200",
+    className: "bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-800",
   },
   health: {
     label: "Annual Health Checkup",
     icon: HeartPulse,
-    className: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    className: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800",
   },
 };
 
@@ -197,22 +198,14 @@ export default function WorkerObligationCalendar() {
 
   return (
     <div className="space-y-6">
-      <section className="permit-surface px-5 py-4 sm:px-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <h2 className="flex items-center gap-2 text-xl font-semibold text-foreground">
-              <CalendarDays className="h-5 w-5 text-indigo-700" />
-              Worker Obligation Calendar
-            </h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              View passport renewal, permit renewal, and annual health checkup deadlines by worker.
-            </p>
-          </div>
-
+      <PageHeader
+        title="Worker Obligation Calendar"
+        description="View passport renewal, permit renewal, and annual health checkup deadlines by worker."
+        actions={
           <select
             value={selectedWorkerId}
             onChange={(e) => setSelectedWorkerId(e.target.value)}
-            className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-indigo-500 lg:w-72"
+            className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary lg:w-72"
           >
             {workers.map((worker) => {
               const id = worker.id || worker.worker_id;
@@ -224,8 +217,8 @@ export default function WorkerObligationCalendar() {
               );
             })}
           </select>
-        </div>
-      </section>
+        }
+      />
 
       {isLoading && (
         <section className="permit-surface p-6 text-sm text-muted-foreground">

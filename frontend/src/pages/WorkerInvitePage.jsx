@@ -6,6 +6,8 @@ import {
 } from "lucide-react";
 import { listWorkers, inviteWorker, assignAllLoginCodes, updateWorkerContact } from "@/services/api";
 import { useAuthStore } from "@/store/useAuthStore";
+import { PageHeader } from "@/components/ui/page-header";
+import { Button } from "@/components/ui/button";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -251,26 +253,22 @@ export default function WorkerInvitePage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Invite Workers</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Add workers and send their login credentials via WhatsApp.
-          </p>
-        </div>
-
-        {/* Bulk assign button */}
-        {withoutCode > 0 && (
-          <button
-            onClick={() => bulkMutation.mutate()}
-            disabled={bulkMutation.isPending}
-            className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-sm font-semibold text-indigo-700 hover:bg-indigo-100 disabled:opacity-60 transition"
-          >
-            <RefreshCw className={`h-4 w-4 ${bulkMutation.isPending ? "animate-spin" : ""}`} />
-            {bulkMutation.isPending ? "Assigning…" : `Assign codes to ${withoutCode} worker${withoutCode > 1 ? "s" : ""}`}
-          </button>
-        )}
-      </div>
+      <PageHeader
+        title="Invite Workers"
+        description="Add workers and send their login credentials via WhatsApp."
+        actions={
+          withoutCode > 0 && (
+            <Button
+              variant="outline"
+              onClick={() => bulkMutation.mutate()}
+              disabled={bulkMutation.isPending}
+            >
+              <RefreshCw className={`h-4 w-4 ${bulkMutation.isPending ? "animate-spin" : ""}`} />
+              {bulkMutation.isPending ? "Assigning…" : `Assign codes to ${withoutCode} worker${withoutCode > 1 ? "s" : ""}`}
+            </Button>
+          )
+        }
+      />
 
       {/* Bulk result banner */}
       {bulkResult && (

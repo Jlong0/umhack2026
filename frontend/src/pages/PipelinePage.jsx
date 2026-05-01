@@ -14,6 +14,7 @@ import { useCriticalAlerts } from "@/hooks/queries/useAlertQueries";
 import { useUIStore } from "@/store/useUIStore";
 import { GATE_ORDER, GATE_LABELS, NATIONALITY_FLAGS } from "@/types/worker";
 import ConfidenceBadge from "@/components/ConfidenceBadge";
+import { PageHeader } from "@/components/ui/page-header";
 
 const GATE_COLORS = {
   JTKSM: "border-t-violet-500/60",
@@ -32,10 +33,10 @@ function WorkerCard({ worker, isBlocked }) {
 
   return (
     <div
-      className={`group rounded-xl border-t-2 bg-white/[0.03] p-3 transition-all hover:bg-white/[0.05] ${
+      className={`group rounded-xl border-t-2 bg-card/60 p-3 transition-all hover:bg-card ${
         isBlocked
           ? "border border-red-500/40 shadow-lg shadow-red-500/5 " + "border-t-red-500"
-          : "border border-white/5 " + (GATE_COLORS[worker.current_gate] || "border-t-gray-500/60")
+          : "border border-border " + (GATE_COLORS[worker.current_gate] || "border-t-gray-500/60")
       }`}
     >
       <div className="flex items-start justify-between">
@@ -59,7 +60,7 @@ function WorkerCard({ worker, isBlocked }) {
       </div>
 
       <div className="mt-2 flex items-center justify-between">
-        <span className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-muted-foreground">
+        <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
           {worker.sector || "—"}
         </span>
         {daysInGate > 0 && (
@@ -88,9 +89,9 @@ function GateColumn({ gate, workers, blockedIds }) {
   const blockedCount = workers.filter((w) => blockedIds.has(w.worker_id)).length;
 
   return (
-    <div className="flex w-72 flex-shrink-0 flex-col rounded-xl border border-white/5 bg-white/[0.01]">
+    <div className="flex w-72 flex-shrink-0 flex-col rounded-xl border border-border bg-card/40">
       {/* Column Header */}
-      <div className="flex items-center justify-between border-b border-white/5 px-4 py-3">
+      <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <div>
           <h3 className="text-sm font-semibold text-foreground">
             {GATE_LABELS[gate] || gate}
@@ -104,7 +105,7 @@ function GateColumn({ gate, workers, blockedIds }) {
             )}
           </p>
         </div>
-        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/5 text-xs font-bold text-muted-foreground">
+        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-xs font-bold text-muted-foreground">
           {count}
         </span>
       </div>
@@ -112,7 +113,7 @@ function GateColumn({ gate, workers, blockedIds }) {
       {/* Cards */}
       <div className="flex flex-1 flex-col gap-2 overflow-y-auto p-3">
         {workers.length === 0 ? (
-          <div className="flex h-20 items-center justify-center rounded-lg border border-dashed border-white/5 text-xs text-muted-foreground">
+          <div className="flex h-20 items-center justify-center rounded-lg border border-dashed border-border text-xs text-muted-foreground">
             No workers
           </div>
         ) : (
@@ -167,12 +168,10 @@ export default function PipelinePage() {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Permit Stages Board</h1>
-        <p className="text-sm text-muted-foreground">
-          Real-time permit stage tracker — cards move autonomously as AI verifies each step
-        </p>
-      </div>
+      <PageHeader
+        title="Permit Stages Board"
+        description="Real-time permit stage tracker — cards move autonomously as AI verifies each step"
+      />
 
       {/* Kanban Board */}
       {isLoading ? (
@@ -180,7 +179,7 @@ export default function PipelinePage() {
           {GATE_ORDER.map((gate) => (
             <div
               key={gate}
-              className="h-96 w-72 flex-shrink-0 animate-pulse rounded-xl border border-white/5 bg-white/[0.02]"
+              className="h-96 w-72 flex-shrink-0 animate-pulse rounded-xl border border-border bg-muted/50"
             />
           ))}
         </div>

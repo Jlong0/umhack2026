@@ -2,11 +2,16 @@ import { useState, useRef } from "react";
 import { FileText, Upload, Download, CheckCircle, Clock } from "lucide-react";
 import { useContracts, useGenerateContracts, useUploadSigned } from "@/hooks/queries/useContractQueries";
 import { getContractPdfUrl } from "@/services/api";
+import { PageHeader } from "@/components/ui/page-header";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { Button } from "@/components/ui/button";
+import { PageSkeleton } from "@/components/ui/page-skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
 
-const STATUS_STYLES = {
-  generated: "bg-muted text-foreground",
-  signed: "bg-amber-100 text-amber-700",
-  reviewed: "bg-emerald-100 text-emerald-700",
+const STATUS_VARIANT = {
+  generated: "neutral",
+  signed: "warning",
+  reviewed: "success",
 };
 
 function UploadSignedButton({ contractId }) {
@@ -57,10 +62,10 @@ export default function ContractGenerationPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Contract Generation</h1>
-        <p className="text-sm text-muted-foreground mt-1">Upload a PDF template to generate employment contracts for all workers</p>
-      </div>
+      <PageHeader
+        title="Contract Generation"
+        description="Upload a PDF template to generate employment contracts for all workers"
+      />
 
       {/* Upload Template */}
       <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
@@ -80,14 +85,13 @@ export default function ContractGenerationPage() {
             <Upload className="h-4 w-4" />
             {templateFile ? templateFile.name : "Choose PDF template"}
           </button>
-          <button
+          <Button
             onClick={handleGenerate}
             disabled={!templateFile || generateMutation.isPending}
-            className="flex items-center gap-2 rounded-lg bg-indigo-600 px-5 py-3 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50 transition"
           >
             <FileText className="h-4 w-4" />
             {generateMutation.isPending ? "Generating..." : "Generate All Contracts"}
-          </button>
+          </Button>
         </div>
         {generateMutation.isSuccess && (
           <p className="mt-3 text-sm text-emerald-600">
@@ -104,11 +108,14 @@ export default function ContractGenerationPage() {
         </div>
 
         {isLoading ? (
-          <div className="p-8 text-center text-muted-foreground text-sm">Loading...</div>
+          <div className="p-8"><PageSkeleton variant="table" /></div>
         ) : contracts.length === 0 ? (
-          <div className="p-12 text-center text-muted-foreground">
-            <FileText className="w-10 h-10 mx-auto mb-3 opacity-30" />
-            <p className="text-sm">No contracts yet. Upload a template to get started.</p>
+          <div className="p-6">
+            <EmptyState
+              icon={FileText}
+              title="No contracts yet"
+              description="Upload a template to get started."
+            />
           </div>
         ) : (
           <div className="divide-y divide-border">
@@ -122,9 +129,9 @@ export default function ContractGenerationPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_STYLES[c.status] || STATUS_STYLES.generated}`}>
+                  <StatusBadge variant={STATUS_VARIANT[c.status] || "neutral"}>
                     {c.status}
-                  </span>
+                  </StatusBadge>
                   <button
                     onClick={() => handleDownload(c.contract_id, c.worker_name)}
                     className="text-xs text-muted-foreground hover:text-indigo-600 flex items-center gap-1"

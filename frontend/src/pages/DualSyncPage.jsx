@@ -8,6 +8,10 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, CheckCircle, FileX, RefreshCw, X } from "lucide-react";
 import { getSyncCheck, resolveSyncConflict } from "@/services/api";
 import { useAuditLogStore } from "@/store/useAuditLogStore";
+import { PageHeader } from "@/components/ui/page-header";
+import { MetricCard } from "@/components/ui/metric-card";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { Button } from "@/components/ui/button";
 
 function useSyncCheck() {
   return useQuery({ queryKey: ["sync-check"], queryFn: getSyncCheck, refetchInterval: 30000 });
@@ -21,10 +25,22 @@ function useResolveConflict() {
   });
 }
 
-const STATUS_STYLE = {
-  matched:   { icon: <CheckCircle className="h-4 w-4 text-emerald-500" />, label: "Matched",   badge: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300" },
-  conflict:  { icon: <AlertTriangle className="h-4 w-4 text-amber-500" />, label: "CONFLICT",  badge: "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300" },
-  not_filed: { icon: <FileX className="h-4 w-4 text-red-500" />,           label: "Not Filed", badge: "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300" },
+const STATUS_VARIANT = {
+  matched:   "success",
+  conflict:  "warning",
+  not_filed: "danger",
+};
+
+const STATUS_ICON = {
+  matched:   <CheckCircle className="h-4 w-4" />,
+  conflict:  <AlertTriangle className="h-4 w-4" />,
+  not_filed: <FileX className="h-4 w-4" />,
+};
+
+const STATUS_LABEL = {
+  matched:   "Matched",
+  conflict:  "CONFLICT",
+  not_filed: "Not Filed",
 };
 
 export default function DualSyncPage() {
@@ -49,37 +65,31 @@ export default function DualSyncPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">F&B Integration Layer</h1>
-          <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1 mt-1 inline-block dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-300">
+      <PageHeader
+        title="F&B Integration Layer"
+        description={
+          <span className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1 inline-block dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-300">
             Government portal data is simulated (mock). No live FWCMS connection.
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <button onClick={handleExport} className="rounded-lg border border-border px-3 py-2 text-sm text-muted-foreground hover:border-indigo-300">
-            Export Report
-          </button>
-          <button onClick={() => refetch()} disabled={isFetching}
-            className="flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm text-muted-foreground hover:border-indigo-300 disabled:opacity-50">
-            <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
-            Run Sync Check
-          </button>
-        </div>
-      </div>
+          </span>
+        }
+        actions={
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={handleExport}>
+              Export Report
+            </Button>
+            <Button variant="outline" onClick={() => refetch()} disabled={isFetching}>
+              <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
+              Run Sync Check
+            </Button>
+          </div>
+        }
+      />
 
       <div className="grid grid-cols-4 gap-4">
-        {[
-          { label: "Total Workers", value: records.length, color: "text-foreground" },
-          { label: "Matched",       value: matched,         color: "text-emerald-700" },
-          { label: "Conflicts",     value: conflicts,       color: "text-amber-700" },
-          { label: "Not Filed",     value: notFiled,        color: "text-red-700" },
-        ].map(c => (
-          <div key={c.label} className="rounded-xl border border-border bg-card p-4 shadow-sm">
-            <p className="text-xs text-muted-foreground">{c.label}</p>
-            <p className={`text-2xl font-bold mt-1 ${c.color}`}>{c.value}</p>
-          </div>
-        ))}
+        <MetricCard label="Total Workers" value={records.length} tone="slate" />
+        <MetricCard label="Matched" value={matched} tone="emerald" />
+        <MetricCard label="Conflicts" value={conflicts} tone="amber" />
+        <MetricCard label="Not Filed" value={notFiled} tone="red" />
       </div>
 
       <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
@@ -98,7 +108,6 @@ export default function DualSyncPage() {
             {isLoading ? (
               <tr><td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">Loading...</td></tr>
             ) : records.map(r => {
-              const s = STATUS_STYLE[r.status] || STATUS_STYLE.matched;
               return (
                 <tr key={r.worker_id}
                   onClick={() => r.conflicts?.length && setSelected(r)}
@@ -112,9 +121,12 @@ export default function DualSyncPage() {
                       r.conflicts?.map(c => `${c.field}: ${c.mock_gov}`).join(", ") || "In sync"}
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${s.badge}`}>
-                      {s.icon}{s.label}
-                    </span>
+                    <StatusBadge
+                      variant={STATUS_VARIANT[r.status] || "neutral"}
+                      icon={STATUS_ICON[r.status]}
+                    >
+                      {STATUS_LABEL[r.status] || r.status}
+                    </StatusBadge>
                   </td>
                 </tr>
               );

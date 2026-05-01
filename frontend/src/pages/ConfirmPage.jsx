@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { patchWorkerTask, listPendingHandoffs, confirmHandoff, rejectHandoff } from "@/services/api";
 import { areDependenciesCompleted, isStatusAwaitingApproval } from "@/services/taskAdapter";
 import { useWorkerStore } from "@/store/useWorkerStore";
+import { PageHeader } from "@/components/ui/page-header";
 
 function ToolApprovalModal({ open, task, payload, onApprove, onDismiss, isApproving }) {
   const approveButtonRef = useRef(null);
@@ -178,13 +179,12 @@ export default function ConfirmPage() {
 
   return (
     <div className="space-y-6">
-      <section className="permit-surface px-5 py-4 sm:px-6">
-        <h2 className="text-xl font-semibold">Interactive Tool Execution & Payload Handoff</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Resolve graph pauses by approving tool calls and exporting MyEG payloads.
-        </p>
+      <PageHeader
+        title="Interactive Tool Execution & Payload Handoff"
+        description="Resolve graph pauses by approving tool calls and exporting MyEG payloads."
+      >
         <p className="mt-2 text-xs text-muted-foreground">Worker: {workerId || "demo-worker-001"} | Source: {taskSource}</p>
-      </section>
+      </PageHeader>
 
       <section className="permit-surface p-5 sm:p-6">
         <div className="flex items-start justify-between gap-4">

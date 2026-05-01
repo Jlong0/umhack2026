@@ -9,6 +9,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Building2, Zap, Send, CheckCircle2, ChevronDown, User, FileText, Loader2 } from "lucide-react";
+import { PageHeader } from "@/components/ui/page-header";
 
 const API = (import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8001").replace(/\/+$/, "");
 
@@ -134,15 +135,10 @@ export default function MockGovPortalPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-foreground flex items-center gap-3">
-          <Building2 className="h-7 w-7 text-blue-400" />
-          Mock Government Portal
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Simulated FWCMS portal — demonstrates AI-powered autofill from agent-extracted data
-        </p>
-      </div>
+      <PageHeader
+        title="Mock Government Portal"
+        description="Simulated FWCMS portal — demonstrates AI-powered autofill from agent-extracted data"
+      />
 
       {/* Worker Selector */}
       <div className="rounded-xl border border-border bg-card/50 p-4">

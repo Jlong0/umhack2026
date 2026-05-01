@@ -3,6 +3,12 @@ import { useNavigate } from "react-router-dom";
 import { useHITLWorkers, useResolveWorkerFields } from "@/hooks/queries/useHITLQueries";
 import { AlertCircle, CheckCircle, Shield, FileText, Eye } from "lucide-react";
 import { useContracts, useReviewContract, useContractPdfUrl } from "@/hooks/queries/useContractQueries";
+import { PageHeader } from "@/components/ui/page-header";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { Button } from "@/components/ui/button";
+import { PageSkeleton } from "@/components/ui/page-skeleton";
+import { ErrorState } from "@/components/ui/error-state";
 
 function ContractReviewTab() {
 	const [selectedContract, setSelectedContract] = useState(null);
@@ -124,7 +130,6 @@ function ContractReviewTab() {
 
 export default function HITLPage() {
 	const navigate = useNavigate();
-	const [activeTab, setActiveTab] = useState("interrupts");
 	const [selectedWorker, setSelectedWorker] = useState(null);
 	const [fieldValues, setFieldValues] = useState({});
 
@@ -147,39 +152,32 @@ export default function HITLPage() {
 		});
 	}
 
-	if (isLoading) return <div className="p-6 text-muted-foreground">Loading...</div>;
-	if (isError) return <div className="p-6 text-red-500">Failed to load workers. Is the backend running?</div>;
+	if (isLoading) return <PageSkeleton variant="detail" />;
+	if (isError) return <ErrorState title="Failed to load workers" message="Unable to connect to the backend. Please check that the server is running." />;
 
 	return (
 		<div className="space-y-6">
-			<div className="flex items-center justify-between">
-				<div>
-					<h1 className="text-2xl font-bold text-foreground">Human-in-the-Loop Interrupts</h1>
-					<p className="text-sm text-muted-foreground mt-1">High-stakes compliance decisions requiring human approval</p>
-				</div>
-				<div className="flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700">
-					<Shield className="h-3.5 w-3.5" />
-					{pendingCount} Pending
-				</div>
-			</div>
+			<PageHeader
+				title="Human-in-the-Loop Interrupts"
+				description="High-stakes compliance decisions requiring human approval"
+				actions={
+					<StatusBadge variant="warning" icon={<Shield className="h-3.5 w-3.5" />}>
+						{pendingCount} Pending
+					</StatusBadge>
+				}
+			/>
 
-			{/* Tab bar */}
-			<div className="flex gap-2 border-b border-border">
-				<button
-					onClick={() => setActiveTab("interrupts")}
-					className={`px-4 py-2 text-sm font-medium border-b-2 transition ${activeTab === "interrupts" ? "border-indigo-600 text-indigo-700" : "border-transparent text-muted-foreground hover:text-foreground"}`}
-				>
-					Workflow Interrupts
-				</button>
-				<button
-					onClick={() => setActiveTab("contracts")}
-					className={`px-4 py-2 text-sm font-medium border-b-2 transition ${activeTab === "contracts" ? "border-indigo-600 text-indigo-700" : "border-transparent text-muted-foreground hover:text-foreground"}`}
-				>
-					Contract Review
-				</button>
-			</div>
+			<Tabs defaultValue="interrupts">
+				<TabsList>
+					<TabsTrigger value="interrupts">Workflow Interrupts</TabsTrigger>
+					<TabsTrigger value="contracts">Contract Review</TabsTrigger>
+				</TabsList>
 
-			{activeTab === "contracts" ? <ContractReviewTab /> : (
+				<TabsContent value="contracts">
+					<ContractReviewTab />
+				</TabsContent>
+
+				<TabsContent value="interrupts">
 			<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 				{/* Left: worker list */}
 				<div className="rounded-xl border border-border bg-card shadow-sm">
@@ -199,17 +197,15 @@ export default function HITLPage() {
 								{workers.map((worker) => (
 									<tr
 										key={worker.worker_id}
-										className={`border-b border-gray-50 last:border-0 ${worker.status === "pending" ? "cursor-pointer hover:bg-muted" : ""} ${selectedWorker?.worker_id === worker.worker_id ? "bg-blue-50" : ""}`}
+									className={`border-b border-border last:border-0 ${worker.status === "pending" ? "cursor-pointer hover:bg-muted" : ""} ${selectedWorker?.worker_id === worker.worker_id ? "bg-blue-50 dark:bg-blue-950/30" : ""}`}
 										onClick={() => worker.status === "pending" && handleSelectWorker(worker)}
 									>
 										<td className="py-3 font-medium text-foreground">{worker.full_name}</td>
 										<td className="py-3">
 											{worker.status === "pending" ? (
-												<span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">Pending</span>
+												<StatusBadge variant="warning">Pending</StatusBadge>
 											) : (
-												<span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700">
-													<CheckCircle className="w-3 h-3" /> Complete
-												</span>
+												<StatusBadge variant="success" icon={<CheckCircle className="w-3 h-3" />}>Complete</StatusBadge>
 											)}
 										</td>
 										<td className="py-3 text-right">
@@ -237,7 +233,7 @@ export default function HITLPage() {
 								<p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Worker</p>
 								<p className="font-medium text-foreground">{selectedWorker.full_name}</p>
 							</div>
-							<div className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-900">
+						<div className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-900 dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-300">
 								{selectedWorker.reason}
 							</div>
 							{selectedWorker.medical_form_url && (
@@ -263,7 +259,7 @@ export default function HITLPage() {
 								<p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Worker</p>
 								<p className="font-medium text-foreground">{selectedWorker.full_name}</p>
 							</div>
-							<div className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-900">
+						<div className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-900 dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-300">
 								{selectedWorker.reason}
 							</div>
 							{selectedWorker.passport_image_url && (
@@ -304,7 +300,8 @@ export default function HITLPage() {
 					)}
 				</div>
 			</div>
-			)}
+			</TabsContent>
+			</Tabs>
 		</div>
 	);
 }

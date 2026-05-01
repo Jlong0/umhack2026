@@ -2,36 +2,23 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { listWorkers } from "@/services/api";
 import { useAuthStore } from "@/store/useAuthStore";
+import { PageHeader } from "@/components/ui/page-header";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { PageSkeleton } from "@/components/ui/page-skeleton";
+import { ErrorState } from "@/components/ui/error-state";
 
-const STATUS_COLORS = {
-  complete: "bg-green-100 text-green-800 dark:bg-green-950/60 dark:text-green-300",
-  in_progress: "bg-yellow-100 text-yellow-800 dark:bg-yellow-950/60 dark:text-yellow-300",
-  blocked: "bg-red-100 text-red-800 dark:bg-red-950/60 dark:text-red-300",
-  not_started: "bg-muted text-muted-foreground",
+const STATUS_VARIANT = {
+  complete: "success",
+  in_progress: "warning",
+  blocked: "danger",
+  not_started: "neutral",
 };
-
-function phaseStatus(phaseData, validationErrors) {
-  if (validationErrors?.length) return "blocked";
-  const values = Object.values(phaseData || {});
-  if (values.length === 0) return "not_started";
-  if (values.every((v) => v !== null && v !== undefined && v !== "")) return "complete";
-  if (values.some((v) => v !== null && v !== undefined && v !== "")) return "in_progress";
-  return "not_started";
-}
-
-function stageStatus(stagePhases, validationErrors) {
-  if (validationErrors?.length) return "blocked";
-  const statuses = Object.values(stagePhases).map((p) => phaseStatus(p.data));
-  if (statuses.every((s) => s === "complete")) return "complete";
-  if (statuses.some((s) => s === "in_progress" || s === "complete")) return "in_progress";
-  return "not_started";
-}
 
 function Badge({ status }) {
   return (
-    <span className={`px-2 py-0.5 rounded text-xs font-medium ${STATUS_COLORS[status] || STATUS_COLORS.not_started}`}>
+    <StatusBadge variant={STATUS_VARIANT[status] || "neutral"}>
       {status.replace("_", " ")}
-    </span>
+    </StatusBadge>
   );
 }
 
@@ -301,13 +288,10 @@ export default function WorkersPage() {
   return (
     <div className="p-6">
 
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Workers</h1>
-          <p className="text-sm text-muted-foreground">
-            {workers.length} worker{workers.length === 1 ? "" : "s"}
-            {companyName ? ` · ${companyName}` : ""}
-          </p>
-        </div>
+        <PageHeader
+          title="Workers"
+          description={`${workers.length} worker${workers.length === 1 ? "" : "s"}${companyName ? ` · ${companyName}` : ""}`}
+        />
 
 
       <input
@@ -318,8 +302,8 @@ export default function WorkersPage() {
         className="w-full mb-4 px-3 py-2 border border-border rounded-md text-sm bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
       />
 
-      {isLoading && <p className="text-sm text-muted-foreground">Loading workers…</p>}
-      {error && <p className="text-sm text-red-500">Failed to load workers.</p>}
+      {isLoading && <PageSkeleton variant="table" />}
+      {error && <ErrorState compact message="Failed to load workers." />}
 
       {!isLoading && !error && (
         <div className="overflow-x-auto rounded-lg border">
