@@ -94,48 +94,6 @@ Requirements:
 - Sign out must return the user to the landing page.
 - Switching away from worker mode must clear the session and move to the admin login path.
 
-### Implemented Pages and Routes (As Built)
-
-Source of truth: [frontend/src/App.jsx](../frontend/src/App.jsx).
-
-Public:
-
-- `/` — Landing (role selection).
-- `/login/admin` — Admin login.
-- `/login/worker` — Worker login.
-
-Admin (requires admin role; rendered inside the admin shell):
-
-- `/dashboard` — Operational overview dashboard.
-- `/pipeline` — Permit stages pipeline board.
-- `/alerts` — Alerts and scan triggers.
-- `/workers` — Worker roster + detail drawer.
-- `/workflows` — Workflow list.
-- `/workflows/:workerId` — Workflow detail for a single worker.
-- `/hitl` — Approvals queue (HITL interrupts + contract review).
-- `/hitl/medical/:workerId` — Medical review flow (linked from HITL).
-- `/contract-generation` — Contract template upload + contract generation.
-- `/gov-portal` — Mock government portal demo.
-- `/dual-sync` — Sync/reconcile internal vs mock government records.
-- `/simulator` — Cost simulator (MTLM + EP).
-- `/worker-visualizer` — Worker graph visualizer (tasks/dependencies).
-- `/graph` — Graph visualizer (routed, but not in main navigation).
-- `/tool-handoff` — Action approvals / handoff confirmations.
-- `/worker-calendar` — Worker obligation/renewal calendar.
-- `/worker-invite` — Invite workers / credential distribution tools.
-
-Worker (requires worker role; rendered inside the worker portal shell):
-
-- `/worker` — Redirect to `/worker/upload`.
-- `/worker/upload` — Upload documents + parse/confirm flow.
-- `/worker/status` — Worker status / progress view.
-- `/worker/contracts` — Worker contract download + signed upload.
-
-Unrouted / legacy pages (exist in repo but not mounted in the router):
-
-- [frontend/src/pages/UploadPage.jsx](../frontend/src/pages/UploadPage.jsx) — Alternate staff upload + confirm + start-workflow flow.
-- [frontend/src/pages/worker/WorkerUploadPage2.jsx](../frontend/src/pages/worker/WorkerUploadPage2.jsx) — Alternate worker upload flow.
-
 ## 7. Functional Requirements
 
 ### 7.1 Dashboard

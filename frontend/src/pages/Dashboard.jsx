@@ -19,31 +19,64 @@ function asCurrency(value) {
   }).format(value || 0);
 }
 
-function HealthCard({ icon: Icon, label, value, tone = "slate", onClick }) {
-  const iconNode = createElement(Icon, { className: "h-4 w-4" });
+const TONE_STYLES = {
+  blue: {
+    icon: "bg-blue-50 text-blue-600",
+    value: "text-blue-600",
+  },
+  red: {
+    icon: "bg-red-50 text-red-500",
+    value: "text-red-500",
+  },
+  amber: {
+    icon: "bg-amber-50 text-amber-500",
+    value: "text-amber-500",
+  },
+  emerald: {
+    icon: "bg-emerald-50 text-emerald-500",
+    value: "text-emerald-500",
+  },
+  slate: {
+    icon: "bg-slate-100 text-slate-600",
+    value: "text-slate-900",
+  },
+};
 
-  const toneClass = {
-    slate: "text-slate-900",
-    indigo: "text-indigo-800",
-    rose: "text-rose-800",
-    amber: "text-amber-800",
-    green: "text-green-800",
-    orange: "text-orange-800",
-  }[tone];
+function HealthCard({ icon: Icon, label, value, tone = "slate", onClick }) {
+  const iconNode = createElement(Icon, { className: "h-5 w-5" });
+  const styles = TONE_STYLES[tone] || TONE_STYLES.slate;
 
   return (
     <article
-      className={`permit-surface p-5 ${onClick ? "cursor-pointer hover:shadow-lg transition-shadow" : ""}`}
+      className={`rounded-2xl border border-slate-200 bg-white p-6 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${
+        onClick
+          ? "cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          : ""
+      }`}
       onClick={onClick}
+      tabIndex={onClick ? 0 : undefined}
+      role={onClick ? "button" : undefined}
+      onKeyDown={onClick ? (e) => { if (e.key === "Enter" || e.key === " ") onClick(); } : undefined}
     >
-      <p className="text-xs uppercase tracking-wide text-slate-500">{label}</p>
-      <div className="mt-3 flex items-center gap-3">
-        <div className="rounded-lg bg-slate-100 p-2 text-slate-700">
+      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p>
+      <div className="mt-4 flex items-center gap-3">
+        <div className={`rounded-lg p-2.5 ${styles.icon}`}>
           {iconNode}
         </div>
-        <p className={`text-2xl font-semibold ${toneClass}`}>{value}</p>
+        <p className={`text-2xl font-semibold ${styles.value}`}>{value}</p>
       </div>
     </article>
+  );
+}
+
+function SummaryCard({ label, value, tone = "slate" }) {
+  const styles = TONE_STYLES[tone] || TONE_STYLES.slate;
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-6 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p>
+      <p className={`mt-3 text-2xl font-semibold ${styles.value}`}>{value}</p>
+    </div>
   );
 }
 
@@ -94,29 +127,36 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <section className="permit-surface px-5 py-4 sm:px-6">
-        <h2 className="text-xl font-semibold">Overview</h2>
-        <p className="mt-1 text-sm text-slate-600">
+      {/* Page header */}
+      <section className="rounded-2xl border border-slate-200 bg-white px-6 py-5">
+        <h2 className="text-xl font-semibold text-slate-900">Overview</h2>
+        <p className="mt-1 text-sm text-slate-500">
           Real-time compliance monitoring, worker workflows, and task tracking.
         </p>
-        <p className="mt-2 text-xs text-slate-500">
-          Source: {taskSource} | Last refresh: {lastUpdatedAt ? new Date(lastUpdatedAt).toLocaleTimeString() : "Not yet polled"}
-        </p>
+        <div className="mt-3 flex items-center gap-3 text-xs text-slate-500">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-50 px-2.5 py-1 font-medium">
+            Source: {taskSource}
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-50 px-2.5 py-1 font-medium">
+            Last refresh: {lastUpdatedAt ? new Date(lastUpdatedAt).toLocaleTimeString() : "Not yet polled"}
+          </span>
+        </div>
       </section>
 
+      {/* Primary KPIs */}
       <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <HealthCard
           icon={Workflow}
           label="Active Workflows"
           value={workflows.length}
-          tone="indigo"
+          tone="blue"
           onClick={() => navigate("/workflows")}
         />
         <HealthCard
           icon={AlertCircle}
           label="Critical Alerts"
           value={alertDashboard?.summary?.expired_permits || 0}
-          tone="rose"
+          tone="red"
           onClick={() => navigate("/alerts")}
         />
         <HealthCard
@@ -130,25 +170,29 @@ export default function Dashboard() {
           icon={TrendingUp}
           label="Health Score"
           value={alertDashboard?.health_score ? `${alertDashboard.health_score}%` : "N/A"}
-          tone="green"
+          tone="emerald"
           onClick={() => navigate("/alerts")}
         />
       </section>
 
+      {/* Secondary metrics */}
       {alertDashboard && (
         <section className="grid gap-4 md:grid-cols-3">
-          <div className="permit-surface p-5">
-            <p className="text-xs uppercase tracking-wide text-slate-500">Total Workers</p>
-            <p className="mt-2 text-2xl font-semibold text-slate-900">{alertDashboard.summary.total_workers}</p>
-          </div>
-          <div className="permit-surface p-5">
-            <p className="text-xs uppercase tracking-wide text-slate-500">Expiring (30 days)</p>
-            <p className="mt-2 text-2xl font-semibold text-orange-800">{alertDashboard.summary.expiring_30_days}</p>
-          </div>
-          <div className="permit-surface p-5">
-            <p className="text-xs uppercase tracking-wide text-slate-500">Compliance Deadlocks</p>
-            <p className="mt-2 text-2xl font-semibold text-rose-800">{alertDashboard.summary.compliance_deadlocks}</p>
-          </div>
+          <SummaryCard
+            label="Total Workers"
+            value={alertDashboard.summary.total_workers}
+            tone="slate"
+          />
+          <SummaryCard
+            label="Expiring (30 days)"
+            value={alertDashboard.summary.expiring_30_days}
+            tone="amber"
+          />
+          <SummaryCard
+            label="Compliance Deadlocks"
+            value={alertDashboard.summary.compliance_deadlocks}
+            tone="red"
+          />
         </section>
       )}
 
@@ -158,9 +202,10 @@ export default function Dashboard() {
         <MTLMTracker />
       </section>
 
+      {/* Workflow detail metrics */}
       <section className="grid gap-4 md:grid-cols-3">
-        <HealthCard icon={Workflow} label="Active LangGraph Runs" value={metrics.activeRuns} tone="indigo" />
-        <HealthCard icon={ShieldAlert} label="Blocked Tasks" value={metrics.blockedTasks} tone="rose" />
+        <HealthCard icon={Workflow} label="Active LangGraph Runs" value={metrics.activeRuns} tone="blue" />
+        <HealthCard icon={ShieldAlert} label="Blocked Tasks" value={metrics.blockedTasks} tone="red" />
         <HealthCard
           icon={Timer}
           label="Pending Human Confirmations"
@@ -169,10 +214,11 @@ export default function Dashboard() {
         />
       </section>
 
-      <section className="space-y-3">
-        <div>
+      {/* Blocked dependency table */}
+      <section className="space-y-4">
+        <div className="rounded-2xl border border-slate-200 bg-white px-6 py-5">
           <h3 className="text-lg font-semibold text-slate-900">Blocked Dependency Table</h3>
-          <p className="text-sm text-slate-600">Rows in blocked state are highlighted and dependency failures are surfaced.</p>
+          <p className="mt-1 text-sm text-slate-500">Rows in blocked state are highlighted and dependency failures are surfaced.</p>
         </div>
         <TaskList tasks={tasks} />
       </section>

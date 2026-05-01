@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Building2, Shield } from "lucide-react";
+import { Building2, Shield, Loader2 } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
 
 export default function AdminLoginPage() {
@@ -38,61 +38,84 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white">
-      <div className="mx-auto flex min-h-screen max-w-4xl items-center justify-center px-6">
-        <div className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900/60 p-8 shadow-xl">
-          <div className="mb-6 flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-600/20">
-              <Shield className="h-6 w-6 text-indigo-300" />
-            </div>
-            <div>
-              <p className="text-xs uppercase tracking-[0.24em] text-indigo-400">PermitIQ</p>
-              <h1 className="text-xl font-semibold text-white">Admin Portal</h1>
-            </div>
-          </div>
+    <div className="relative min-h-screen bg-slate-900 text-white">
+      {/* Background effects */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -left-32 -top-32 h-[420px] w-[420px] rounded-full bg-blue-600/15 blur-[100px] animate-pulse" />
+        <div className="absolute -bottom-24 -right-24 h-[320px] w-[320px] rounded-full bg-slate-700/20 blur-[80px] animate-pulse [animation-delay:1.5s]" />
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(59,130,246,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(59,130,246,0.03)_1px,transparent_1px)] bg-[size:48px_48px]" />
+      </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                Company
-              </label>
-              <select
-                value={selectedCompanyId}
-                onChange={(e) => {
-                  setSelectedCompanyId(e.target.value);
-                  if (loginError) clearError();
-                }}
-                className="mt-2 w-full rounded-lg border border-slate-800 bg-slate-950/40 px-4 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
-              >
-                <option value="">Select a company</option>
-                {companyList.map((company) => (
-                  <option key={company.id} value={company.id}>
-                    {company.company_name || company.name || company.id}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {loginError && (
-              <div className="rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
-                {loginError}
+      <div className="relative z-10 mx-auto flex min-h-screen max-w-4xl items-center justify-center px-6">
+        <div className="w-full max-w-md">
+          {/* Card */}
+          <div className="rounded-2xl border border-slate-200/10 bg-white p-8 shadow-2xl shadow-blue-950/20">
+            {/* Header */}
+            <div className="mb-8 flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600/10">
+                <Shield className="h-6 w-6 text-blue-600" />
               </div>
-            )}
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-blue-600">PermitIQ</p>
+                <h1 className="text-xl font-semibold text-slate-900">Admin Portal</h1>
+              </div>
+            </div>
 
-            <button
-              type="submit"
-              disabled={isLoading || !selectedCompanyId}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <Building2 className="h-4 w-4" />
-              {isLoading ? "Opening portal..." : "Open admin portal"}
-            </button>
-          </form>
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div>
+                <label className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                  Company
+                </label>
+                <select
+                  value={selectedCompanyId}
+                  onChange={(e) => {
+                    setSelectedCompanyId(e.target.value);
+                    if (loginError) clearError();
+                  }}
+                  className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 transition-colors duration-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                >
+                  <option value="">Select a company</option>
+                  {companyList.map((company) => (
+                    <option key={company.id} value={company.id}>
+                      {company.company_name || company.name || company.id}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-          <div className="mt-6 text-center text-xs text-slate-400">
-            <Link className="hover:text-indigo-300" to="/">
-              Back to landing
-            </Link>
+              {loginError && (
+                <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-500">
+                  {loginError}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={isLoading || !selectedCompanyId}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 py-3 text-sm font-semibold text-white transition-colors duration-200 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Opening portal...
+                  </>
+                ) : (
+                  <>
+                    <Building2 className="h-4 w-4" />
+                    Open admin portal
+                  </>
+                )}
+              </button>
+            </form>
+
+            <div className="mt-6 text-center">
+              <Link
+                className="text-xs text-slate-500 transition-colors duration-200 hover:text-blue-600"
+                to="/"
+              >
+                ← Back to landing
+              </Link>
+            </div>
           </div>
         </div>
       </div>
