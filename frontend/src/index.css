@@ -27,6 +27,22 @@
     --input: 214 32% 91%;
     --ring: 221 83% 53%;
     --radius: 0.9rem;
+
+    /* Semantic status tokens */
+    --status-success: 142 71% 45%;     /* emerald-600 */
+    --status-success-soft: 149 80% 95%; /* emerald-50  */
+    --status-warning: 38 92% 50%;      /* amber-500   */
+    --status-warning-soft: 48 96% 95%; /* amber-50    */
+    --status-danger: 0 84% 60%;        /* red-500     */
+    --status-danger-soft: 0 86% 97%;   /* red-50      */
+    --status-info: 217 91% 60%;        /* blue-500    */
+    --status-info-soft: 214 95% 95%;   /* blue-50     */
+
+    /* Surface hierarchy for card depth */
+    --surface-0: 210 40% 98%;     /* page bg */
+    --surface-1: 0 0% 100%;       /* primary cards */
+    --surface-2: 0 0% 100%;       /* elevated panels */
+    --surface-3: 0 0% 100%;       /* popovers */
   }
 
   html.dark {
@@ -50,6 +66,22 @@
     --border: 222 35% 14%;          /* #131D30  subtle visible edge */
     --input: 222 35% 14%;
     --ring: 217 91% 60%;
+
+    /* Semantic status tokens — dark */
+    --status-success: 142 71% 45%;
+    --status-success-soft: 155 40% 12%;
+    --status-warning: 38 92% 50%;
+    --status-warning-soft: 32 40% 12%;
+    --status-danger: 0 84% 60%;
+    --status-danger-soft: 0 40% 12%;
+    --status-info: 217 91% 60%;
+    --status-info-soft: 217 40% 12%;
+
+    /* Surface hierarchy — dark */
+    --surface-0: 228 60% 3%;
+    --surface-1: 224 50% 6%;
+    --surface-2: 224 45% 8%;
+    --surface-3: 224 40% 10%;
   }
 
   * {

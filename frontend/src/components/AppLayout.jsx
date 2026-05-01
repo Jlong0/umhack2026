@@ -18,8 +18,10 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Sun,
   Moon,
+  Beaker,
 } from "lucide-react";
 import { createElement, useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
@@ -28,135 +30,138 @@ import { useAuthStore } from "@/store/useAuthStore";
 import { useWorkerStore } from "@/store/useWorkerStore";
 import { useUIStore } from "@/store/useUIStore";
 import { useThemeStore } from "@/store/useThemeStore";
+import { useAlertDashboard } from "@/hooks/queries/useAlertQueries";
+import { usePendingInterrupts } from "@/hooks/queries/useHITLQueries";
 import ComplianceBreachBanner from "@/components/ComplianceBreachBanner";
 import IntentPreviewModal from "@/components/IntentPreviewModal";
 import AuditLogDrawer from "@/components/AuditLogDrawer";
 import AutonomyDial from "@/components/AutonomyDial";
 import AICommandConsole from "@/components/AICommandConsole";
+import { Badge } from "@/components/ui/badge";
 
-const NAV_ITEMS = [
+/* ───────── Navigation structure ───────── */
+
+const NAV_GROUPS = [
   {
-    to: "/dashboard",
-    label: "Overview",
-    icon: LayoutDashboard,
+    label: "Operations",
+    items: [
+      { to: "/dashboard", label: "Overview", icon: LayoutDashboard },
+      { to: "/pipeline", label: "Permit Stages", icon: Columns },
+      { to: "/alerts", label: "Alerts", icon: AlertCircle, badgeKey: "alerts" },
+      { to: "/workers", label: "Workers", icon: ScrollText },
+      { to: "/hitl", label: "Approvals", icon: Users, badgeKey: "hitl" },
+    ],
   },
   {
-    to: "/pipeline",
-    label: "Permit Stages Board",
-    icon: Columns,
+    label: "Planning",
+    items: [
+      { to: "/simulator", label: "Cost Simulator", icon: Calculator },
+      { to: "/worker-visualizer", label: "Compliance Flow", icon: Workflow },
+      { to: "/worker-calendar", label: "Renewal Calendar", icon: CalendarIcon },
+    ],
   },
   {
-    to: "/alerts",
-    label: "Alerts",
-    icon: AlertCircle,
+    label: "Administration",
+    items: [
+      { to: "/contract-generation", label: "Contracts", icon: FileSignature },
+      { to: "/tool-handoff", label: "Action Approvals", icon: Wrench },
+      { to: "/worker-invite", label: "Invite Workers", icon: UserPlus },
+    ],
   },
   {
-    to: "/workers",
-    label: "Workers",
-    icon: ScrollText,
-  },
-  {
-    to: "/hitl",
-    label: "Approvals Queue",
-    icon: Users,
-  },
-  {
-    to: "/contract-generation",
-    label: "Contract Generator",
-    icon: FileSignature,
-  },
-  {
-    to: "/gov-portal",
-    label: "Gov Portal (Demo)",
-    icon: Building2,
-  },
-  {
-    to: "/dual-sync",
-    label: "Sync With Gov Records",
-    icon: GitBranch,
-  },
-  {
-    to: "/simulator",
-    label: "Cost Simulator",
-    icon: Calculator,
-  },
-  {
-    to: "/worker-visualizer",
-    label: "Compliance Workflow",
-    icon: Workflow,
-  },
-  {
-    to: "/tool-handoff",
-    label: "Action Approvals",
-    icon: Wrench,
-  },
-  {
-    to: "/worker-calendar",
-    label: "Renewal Calendar",
-    icon: CalendarIcon,
-  },
-  {
-    to: "/worker-invite",
-    label: "Invite Workers",
-    icon: UserPlus,
+    label: "Demo",
+    collapsible: true,
+    items: [
+      { to: "/gov-portal", label: "Gov Portal", icon: Building2 },
+      { to: "/dual-sync", label: "Sync Records", icon: GitBranch },
+    ],
   },
 ];
 
+/* ───────── Helpers ───────── */
+
 function statusTone(status) {
-  if (status === "completed") {
-    return "text-emerald-400";
-  }
-
-  if (status === "failed") {
-    return "text-red-400";
-  }
-
-  if (status === "processing" || status === "in_progress" || status === "queued") {
-    return "text-blue-400";
-  }
-
+  if (status === "completed") return "text-emerald-400";
+  if (status === "failed") return "text-red-400";
+  if (status === "processing" || status === "in_progress" || status === "queued") return "text-blue-400";
   return "text-slate-400";
 }
+
+/* ───────── Sub-components ───────── */
 
 function ThemeSelectorButton({ sidebarOpen }) {
   const theme = useThemeStore((state) => state.theme);
   const setTheme = useThemeStore((state) => state.setTheme);
 
   return (
-    <div
+    <button
+      onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+      title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
       className={cn(
-        "flex items-center gap-2",
-        !sidebarOpen && "lg:justify-center lg:px-2"
+        "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors duration-200 hover:bg-muted hover:text-foreground",
+        !sidebarOpen && "lg:justify-center lg:px-2",
       )}
     >
-      {sidebarOpen ? (
-        <>
-          <span className="text-xs font-medium text-muted-foreground">Theme</span>
-          <select
-            value={theme}
-            onChange={(e) => setTheme(e.target.value)}
-            className="w-full rounded-lg border border-border bg-muted px-2 py-1.5 text-xs font-medium text-foreground transition-colors duration-200 hover:border-blue-500/30 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-          >
-            <option value="light">Light</option>
-            <option value="dark">Dark</option>
-          </select>
-        </>
+      {theme === "dark" ? (
+        <Sun className="h-4 w-4 flex-shrink-0" />
       ) : (
-        <button
-          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          title={theme === "dark" ? "Light mode" : "Dark mode"}
-          className="flex w-full items-center justify-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors duration-200 hover:bg-muted hover:text-foreground"
-        >
-          {theme === "dark" ? (
-            <Sun className="h-4 w-4 flex-shrink-0" />
-          ) : (
-            <Moon className="h-4 w-4 flex-shrink-0" />
-          )}
-        </button>
+        <Moon className="h-4 w-4 flex-shrink-0" />
       )}
-    </div>
+      <span className={cn("truncate", !sidebarOpen && "lg:hidden")}>
+        {theme === "dark" ? "Light mode" : "Dark mode"}
+      </span>
+    </button>
   );
 }
+
+function NavBadge({ count }) {
+  if (!count || count <= 0) return null;
+  return (
+    <Badge
+      variant={count > 0 ? "danger" : "default"}
+      className="ml-auto h-5 min-w-[1.25rem] justify-center px-1.5 text-[10px]"
+    >
+      {count > 99 ? "99+" : count}
+    </Badge>
+  );
+}
+
+function SectionLabel({ label, sidebarOpen }) {
+  if (!sidebarOpen) return <div className="my-2 border-t border-border lg:mx-2" />;
+  return (
+    <li className="px-3 pb-1 pt-4 first:pt-0">
+      <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+        {label}
+      </span>
+    </li>
+  );
+}
+
+function CollapsibleGroup({ label, children, sidebarOpen }) {
+  const [open, setOpen] = useState(false);
+
+  if (!sidebarOpen) {
+    // Collapsed sidebar: just show items without group header
+    return <>{open && children}</>;
+  }
+
+  return (
+    <>
+      <li className="px-3 pb-1 pt-4">
+        <button
+          onClick={() => setOpen(!open)}
+          className="flex w-full items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <ChevronDown className={cn("h-3 w-3 transition-transform duration-200", !open && "-rotate-90")} />
+          {label}
+        </button>
+      </li>
+      {open && children}
+    </>
+  );
+}
+
+/* ───────── Main Layout ───────── */
 
 export default function AppLayout() {
   const parseJobStatus = useWorkerStore((state) => state.parseJobStatus);
@@ -168,6 +173,13 @@ export default function AppLayout() {
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Badge counts
+  const { data: alertDashboard } = useAlertDashboard();
+  const { data: interruptData } = usePendingInterrupts();
+  const alertCount = alertDashboard?.summary?.expired_permits || 0;
+  const hitlCount = interruptData?.total || 0;
+  const badgeCounts = { alerts: alertCount, hitl: hitlCount };
 
   const handleLogout = () => {
     logout();
@@ -185,7 +197,6 @@ export default function AppLayout() {
     <div className="flex h-full flex-col">
       {/* Branding */}
       <div className="flex items-center justify-between border-b border-border px-4 py-5">
-        {/* Expanded: icon + text. Collapsed: nothing (arrow takes full row) */}
         {sidebarOpen ? (
           <div className="flex items-center gap-3 overflow-hidden">
             <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-blue-600">
@@ -197,7 +208,6 @@ export default function AppLayout() {
             </div>
           </div>
         ) : (
-          /* Collapsed: empty spacer so the arrow centers */
           <div className="hidden lg:block" />
         )}
         {/* Desktop collapse toggle */}
@@ -221,12 +231,10 @@ export default function AppLayout() {
         </button>
       </div>
 
-      {/* Company & Role — hidden entirely when collapsed */}
+      {/* Company & Role — hidden when collapsed */}
       <div className={cn("border-b border-border px-4 py-3", !sidebarOpen && "lg:hidden")}>
         {companyName && (
-          <p className="mb-2 truncate text-xs text-muted-foreground">
-            {companyName}
-          </p>
+          <p className="mb-2 truncate text-xs text-muted-foreground">{companyName}</p>
         )}
         <div className="flex items-center gap-2">
           <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Role</span>
@@ -241,31 +249,50 @@ export default function AppLayout() {
         </div>
       </div>
 
-      {/* Nav Links */}
-      <nav className="flex-1 overflow-y-auto px-3 py-3" aria-label="Primary navigation">
-        <ul className="space-y-1">
-          {NAV_ITEMS.map((item) => {
-            const iconNode = createElement(item.icon, { className: "h-4 w-4 flex-shrink-0" });
+      {/* Nav Links — grouped */}
+      <nav className="flex-1 overflow-y-auto px-3 py-2" aria-label="Primary navigation">
+        <ul className="space-y-0.5">
+          {NAV_GROUPS.map((group) => {
+            const navItems = group.items.map((item) => {
+              const iconNode = createElement(item.icon, { className: "h-4 w-4 flex-shrink-0" });
+              const count = item.badgeKey ? badgeCounts[item.badgeKey] : 0;
+
+              return (
+                <li key={item.to}>
+                  <NavLink
+                    to={item.to}
+                    onClick={() => setMobileOpen(false)}
+                    title={!sidebarOpen ? item.label : undefined}
+                    className={({ isActive }) =>
+                      cn(
+                        "group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200",
+                        isActive
+                          ? "border-l-2 border-blue-500 bg-blue-600/15 text-blue-700 dark:text-white"
+                          : "border-l-2 border-transparent text-muted-foreground hover:bg-muted hover:text-foreground",
+                        !sidebarOpen && "lg:justify-center lg:px-2",
+                      )
+                    }
+                  >
+                    {iconNode}
+                    <span className={cn("truncate", !sidebarOpen && "lg:hidden")}>{item.label}</span>
+                    {sidebarOpen && count > 0 && <NavBadge count={count} />}
+                  </NavLink>
+                </li>
+              );
+            });
+
+            if (group.collapsible) {
+              return (
+                <CollapsibleGroup key={group.label} label={group.label} sidebarOpen={sidebarOpen}>
+                  {navItems}
+                </CollapsibleGroup>
+              );
+            }
 
             return (
-              <li key={item.to}>
-                <NavLink
-                  to={item.to}
-                  onClick={() => setMobileOpen(false)}
-                  title={!sidebarOpen ? item.label : undefined}
-                  className={({ isActive }) =>
-                    cn(
-                      "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
-                      isActive
-                        ? "border-l-2 border-blue-500 bg-blue-600/15 text-blue-700 dark:text-white"
-                        : "border-l-2 border-transparent text-muted-foreground hover:bg-muted hover:text-foreground",
-                      !sidebarOpen && "lg:justify-center lg:px-2",
-                    )
-                  }
-                >
-                  {iconNode}
-                  <span className={cn("truncate", !sidebarOpen && "lg:hidden")}>{item.label}</span>
-                </NavLink>
+              <li key={group.label} className="list-none">
+                <SectionLabel label={group.label} sidebarOpen={sidebarOpen} />
+                <ul className="space-y-0.5">{navItems}</ul>
               </li>
             );
           })}
@@ -335,13 +362,11 @@ export default function AppLayout() {
         />
       )}
 
-      {/* Sidebar — mobile: slide-over drawer, desktop: persistent rail */}
+      {/* Sidebar */}
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-50 flex flex-col border-r border-border bg-card transition-all duration-300",
-          // Desktop sizing
           sidebarOpen ? "lg:w-64" : "lg:w-[68px]",
-          // Mobile: slide from left
           mobileOpen ? "w-72 translate-x-0" : "-translate-x-full lg:translate-x-0",
         )}
       >
