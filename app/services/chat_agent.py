@@ -176,9 +176,27 @@ TOOL_SCHEMAS = [
         description="Scan all workers for compliance issues, expiring permits, and overdue tasks.",
         parameters={"type": "object", "properties": {}},
     ),
+    types.FunctionDeclaration(
+        name="run_orchestration",
+        description="Run the full agentic orchestration pipeline for a worker — verify documents, auto-fill forms, interact with mock portals, and sync pipeline stages.",
+        parameters={
+            "type": "object",
+            "properties": {
+                "worker_id": {
+                    "type": "string",
+                    "description": "Worker ID, e.g. 'worker-001'",
+                },
+                "trigger_reason": {
+                    "type": "string",
+                    "description": "Brief reason for triggering, e.g. 'VDR verification'",
+                },
+            },
+            "required": ["worker_id"],
+        },
+    ),
 ]
 
-MUTATING_TOOLS = {"start_compliance_workflow", "scan_all_alerts"}
+MUTATING_TOOLS = {"start_compliance_workflow", "scan_all_alerts", "run_orchestration"}
 
 
 # ─── Tool handlers ────────────────────────────────────────────────────────────
@@ -380,6 +398,32 @@ def _handle_scan_all_alerts(args: dict) -> dict:
     return _handle_list_alerts({})
 
 
+def _handle_run_orchestration(args: dict) -> dict:
+    worker_id = args["worker_id"]
+    trigger_reason = args.get("trigger_reason", "ai_command_console")
+    doc = db.collection("workers").document(worker_id).get()
+    if not doc.exists:
+        return {"error": f"Worker '{worker_id}' not found"}
+    try:
+        from app.agents.orchestration.state import create_initial_orchestration_state
+        from app.agents.orchestration.graph import orchestration_graph
+        state = create_initial_orchestration_state(worker_id=worker_id, trigger_reason=trigger_reason)
+        session_id = state["session_id"]
+        config = {"configurable": {"thread_id": session_id, "checkpoint_ns": "orchestration"}}
+        # Run synchronously for chat context (background preferred for long tasks)
+        result = orchestration_graph.invoke(state, config)
+        return {
+            "session_id": session_id,
+            "worker_id": worker_id,
+            "status": result.get("status"),
+            "tasks_done": sum(1 for t in result.get("plan", []) if t.get("status") == "done"),
+            "tasks_total": len(result.get("plan", [])),
+            "hitl_required": result.get("hitl_required", False),
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+
 TOOL_HANDLERS: dict[str, Any] = {
     "list_workers": _handle_list_workers,
     "find_worker_by_name": _handle_find_worker_by_name,
@@ -391,6 +435,7 @@ TOOL_HANDLERS: dict[str, Any] = {
     "simulate_mtlm_levy": _handle_simulate_mtlm_levy,
     "start_compliance_workflow": _handle_start_compliance_workflow,
     "scan_all_alerts": _handle_scan_all_alerts,
+    "run_orchestration": _handle_run_orchestration,
 }
 
 
@@ -403,6 +448,12 @@ def _build_preview(tool_name: str, args: dict) -> str:
             if resolved_name:
                 return f"Start compliance workflow for **{resolved_name}** ({worker_id})"
         return f"Start compliance workflow for **{worker_id}**"
+    if tool_name == "run_orchestration":
+        worker_id = args.get("worker_id", "")
+        reason = args.get("trigger_reason", "manual")
+        doc = db.collection("workers").document(worker_id).get()
+        name = _worker_name(doc.to_dict() or {}, worker_id) if doc.exists else worker_id
+        return f"Run orchestration for **{name}** ({worker_id}) — {reason}"
     if tool_name == "scan_all_alerts":
         return "Scan all workers for compliance alerts"
     return f"Execute {tool_name}"

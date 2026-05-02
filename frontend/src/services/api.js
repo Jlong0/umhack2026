@@ -423,3 +423,39 @@ export async function getNotifyBotStatus() {
 export async function setupNotifyBot() {
   return apiRequest("/notify/bot-setup", { method: "POST" });
 }
+
+// Orchestration APIs
+export async function startOrchestration(workerId, triggerReason = "manual") {
+  return apiRequest("/orchestration/start", {
+    method: "POST",
+    body: JSON.stringify({ worker_id: workerId, trigger_reason: triggerReason }),
+  });
+}
+
+export async function getOrchestrationStatus(sessionId) {
+  return apiRequest(`/orchestration/${sessionId}/status`, { method: "GET" });
+}
+
+export async function getOrchestrationGraph(sessionId) {
+  return apiRequest(`/orchestration/${sessionId}/graph`, { method: "GET" });
+}
+
+export async function getOrchestrationTrace(sessionId) {
+  return apiRequest(`/orchestration/${sessionId}/trace`, { method: "GET" });
+}
+
+export async function resumeOrchestration(sessionId, decision, notes = null, modifiedData = null) {
+  return apiRequest(`/orchestration/${sessionId}/resume`, {
+    method: "POST",
+    body: JSON.stringify({ decision, notes, modified_data: modifiedData }),
+  });
+}
+
+export async function listOrchestrationSessions(workerId = null) {
+  const qs = workerId ? `?worker_id=${encodeURIComponent(workerId)}` : "";
+  return apiRequest(`/orchestration/sessions${qs}`, { method: "GET" });
+}
+
+export async function cancelOrchestrationSession(sessionId) {
+  return apiRequest(`/orchestration/${sessionId}`, { method: "DELETE" });
+}

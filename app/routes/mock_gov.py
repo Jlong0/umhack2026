@@ -221,6 +221,84 @@ async def mock_submit_plks(payload: PLKSSubmission):
     }
 
 
+@router.get("/plks/worker/{worker_id}")
+async def mock_plks_lookup(worker_id: str):
+    worker_doc = db.collection("workers").document(worker_id).get()
+
+    if not worker_doc.exists:
+        raise HTTPException(status_code=404, detail="Worker not found")
+
+    w = worker_doc.to_dict()
+    passport = w.get("passport", {}) or {}
+    general = w.get("general_information", {}) or {}
+
+    company_id = w.get("company_id")
+    company = {}
+
+    if company_id:
+        c_doc = db.collection("companies").document(company_id).get()
+        company = c_doc.to_dict() if c_doc.exists else {}
+
+    return {
+        "portal": "PLKS",
+        "status": "found",
+        "worker_id": worker_id,
+        "form_fields": {
+            "plks_worker_name": passport.get("full_name") or w.get("full_name"),
+            "plks_passport_no": passport.get("passport_number"),
+            "plks_nationality": passport.get("nationality") or general.get("nationality"),
+            "plks_sector": general.get("sector"),
+            "plks_employer": company.get("company_name") or "PermitIQ Demo Sdn Bhd",
+            "plks_roc_number": company.get("roc_number") or "ROC-202401012345",
+            "plks_fomema_status": w.get("fomema_status"),
+            "plks_arrival_date": w.get("arrival_confirmed_at"),
+            "plks_fomema_checked_at": w.get("fomema_checked_at"),
+            "plks_levy_amount_rm": w.get("levy_amount_rm") or 1850,
+            "plks_insurance_policy_no": w.get("insurance_policy_no") or "INS-DEMO-001",
+            "plks_security_bond_no": w.get("security_bond_no") or "BOND-DEMO-001",
+            "plks_medical_exam_ref": w.get("medical_exam_ref") or "FOMEMA-DEMO-001",
+        },
+        "simulated": True,
+    }
+
+
+@router.post("/plks/submit")
+async def mock_submit_plks(payload: PLKSSubmission):
+    now = datetime.now(timezone.utc)
+    receipt_id = f"PLKS-{now.strftime('%Y%m%d')}-{uuid4().hex[:8].upper()}"
+
+    db.collection("mock_gov_submissions").add({
+        "portal": "PLKS",
+        "form_type": "PLKS_APPLICATION",
+        "receipt_id": receipt_id,
+        "payload": payload.model_dump(),
+        "status": "accepted",
+        "submitted_at": now.isoformat(),
+        "simulated": True,
+    })
+
+    if payload.worker_id:
+        db.collection("workers").document(payload.worker_id).set({
+            "plks_status": "approved",
+            "plks_receipt_id": receipt_id,
+            "plks_submitted_at": now.isoformat(),
+            "current_gate": "ACTIVE",
+            "workflow_status": "active",
+            "active_status": "active",
+            "updated_at": now.isoformat(),
+        }, merge=True)
+
+    return {
+        "portal": "PLKS",
+        "form_type": "PLKS_APPLICATION",
+        "status": "accepted",
+        "receipt_id": receipt_id,
+        "message": "PLKS application approved successfully (simulated)",
+        "estimated_processing": "Immediate demo approval",
+        "simulated": True,
+    }
+
+
 # ── MyEG Portal ───────────────────────────────────────────
 
 
