@@ -182,8 +182,8 @@ export default function AppLayout() {
   const badgeCounts = { alerts: alertCount, hitl: hitlCount };
 
   const handleLogout = () => {
-    logout();
     navigate("/", { replace: true });
+    logout();
   };
 
   const handleRoleSwitch = (role) => {
