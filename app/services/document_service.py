@@ -8,6 +8,7 @@ from app.schemas.document import WorkerCreateRequest
 from app.services.worker_service import create_worker, update_worker
 from app.services.task_service import create_tasks_from_obligations
 from app.services.compliance_reasoning_service import generate_compliance_obligations
+from app.services.workflow_status_service import refresh_vdr_status
 
 LOCAL_UPLOAD_DIR = Path("uploads")
 
@@ -165,6 +166,7 @@ def create_worker_from_payload(payload: WorkerCreateRequest):
         worker_data["missing_fields"] = []
         worker_data["review_status"] = "pending_review"
         worker_data["workflow_status"] = "ready_for_admin_review"
+        refresh_vdr_status(worker_ref, worker_data)
 
     update_worker(worker_id, worker_data)
 

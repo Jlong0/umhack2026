@@ -373,6 +373,8 @@ async def list_all_workflows(company_id: Optional[str] = None):
                 # Main pipeline fields from workers
                 "current_gate": worker.get("current_gate") or "JTKSM",
                 "jtksm_status": worker.get("jtksm_status") or "pending",
+                "vdr_status": worker.get("vdr_status"),
+                "vdr_requirements": worker.get("vdr_requirements", {}),
                 "workflow_status": worker.get("workflow_status"),
                 "review_status": worker.get("review_status"),
                 "data_status": worker.get("data_status"),

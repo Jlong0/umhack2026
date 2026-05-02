@@ -30,6 +30,12 @@ function WorkerCard({ worker, isBlocked }) {
   const openHITLDrawer = useUIStore((s) => s.openHITLDrawer);
   const jtksmMutation = useJtksmDecision();
   const isVdrPending = worker.current_gate === "VDR_PENDING";
+  const vdrRequirements = worker.vdr_requirements || {};
+
+  const vdrReady =
+    isVdrPending &&
+    Object.keys(vdrRequirements).length > 0 &&
+    Object.values(vdrRequirements).every(Boolean);
 
   const flag = NATIONALITY_FLAGS[worker.nationality] || "🏳️";
   const daysInGate = worker.days_in_gate || 0;
@@ -67,7 +73,9 @@ function WorkerCard({ worker, isBlocked }) {
         </span>
 
         <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700">
-          {worker.jtksm_status || "pending"}
+          {isVdrPending
+            ? worker.vdr_status || "pending"
+            : worker.jtksm_status || "pending"}
         </span>
       </div>
 
@@ -101,19 +109,35 @@ function WorkerCard({ worker, isBlocked }) {
         </div>
       )}
 
-      {isVdrPending && worker.vdr_requirements && (
+      {isVdrPending && Object.keys(vdrRequirements).length > 0 && (
         <div className="mt-3 space-y-1 rounded-lg bg-muted/50 p-2">
-          {Object.entries(worker.vdr_requirements).map(([key, done]) => (
+          {Object.entries(vdrRequirements).map(([key, done]) => (
             <div key={key} className="flex items-center justify-between text-[11px]">
-              <span className="text-muted-foreground">
+              <span className="text-muted-foreground capitalize">
                 {key.replaceAll("_", " ")}
               </span>
+
               <span className={done ? "text-emerald-600" : "text-amber-600"}>
                 {done ? "Done" : "Pending"}
               </span>
             </div>
           ))}
         </div>
+      )}
+
+      {isVdrPending && vdrReady && (
+        <button
+          type="button"
+          className="mt-3 w-full rounded-lg bg-blue-600 py-1.5 text-xs font-semibold text-white hover:bg-blue-500"
+        >
+          Approve VDR
+        </button>
+      )}
+
+      {isVdrPending && !vdrReady && (
+        <p className="mt-2 rounded-lg bg-amber-50 px-2 py-1.5 text-[11px] text-amber-700">
+          VDR cannot be approved yet. Complete all requirements first.
+        </p>
       )}
 
       {isBlocked && (
