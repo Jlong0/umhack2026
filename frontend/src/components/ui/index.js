@@ -15,3 +15,5 @@ export { PageHeader } from "./page-header";
 export { PageSkeleton } from "./page-skeleton";
 export { StatusBadge } from "./status-badge";
 export { SectionLabel } from "./section-label";
+export { Sheet, SheetContent, SheetClose, SheetTrigger } from "./sheet";
+export { Modal, ModalContent, ModalClose, ModalTrigger } from "./modal";

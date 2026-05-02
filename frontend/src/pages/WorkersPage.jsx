@@ -6,6 +6,9 @@ import { PageHeader } from "@/components/ui/page-header";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { PageSkeleton } from "@/components/ui/page-skeleton";
 import { ErrorState } from "@/components/ui/error-state";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Modal, ModalContent } from "@/components/ui/modal";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 const STATUS_VARIANT = {
   complete: "success",
@@ -20,6 +23,18 @@ function Badge({ status }) {
       {status.replace("_", " ")}
     </StatusBadge>
   );
+}
+
+function stageStatus(stageData, validationErrors) {
+  const phases = Object.values(stageData);
+  if (!phases.length) return "not_started";
+  if (validationErrors?.length) return "blocked";
+  const filled = phases.filter(
+    (p) => p?.data && Object.values(p.data).some((v) => v !== null && v !== undefined && v !== ""),
+  );
+  if (filled.length === phases.length) return "complete";
+  if (filled.length > 0) return "in_progress";
+  return "not_started";
 }
 
 function PhaseSection({ label, data }) {
@@ -39,88 +54,20 @@ function PhaseSection({ label, data }) {
     </div>
   );
 }
-//
-// function ReviewQueueDrawer({ workers, onClose, onSelectWorker }) {
-//   return (
-//     <div className="fixed inset-y-0 right-0 z-50 flex w-[520px] flex-col bg-card shadow-2xl">
-//       <div className="flex items-center justify-between border-b px-6 py-4">
-//         <div>
-//           <h2 className="text-lg font-semibold text-foreground">
-//             Review Queue
-//           </h2>
-//           <p className="text-xs text-muted-foreground">
-//             {workers.length} pending submission{workers.length === 1 ? "" : "s"}
-//           </p>
-//         </div>
-//
-//         <button
-//           onClick={onClose}
-//           className="text-xl leading-none text-muted-foreground hover:text-muted-foreground"
-//         >
-//           &times;
-//         </button>
-//       </div>
-//
-//       <div className="flex-1 overflow-y-auto p-4">
-//         {workers.length === 0 ? (
-//           <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
-//             No submissions need review.
-//           </p>
-//         ) : (
-//           <div className="space-y-3">
-//             {workers.map((worker) => (
-//               <button
-//                 key={worker.worker_id}
-//                 type="button"
-//                 onClick={() => onSelectWorker(worker)}
-//                 className="w-full rounded-lg border border-border bg-card p-4 text-left transition hover:border-blue-300 hover:bg-blue-50"
-//               >
-//                 <div className="flex items-start justify-between gap-3">
-//                   <div>
-//                     <p className="font-semibold text-foreground">
-//                       {worker.full_name || worker.passport?.full_name || "Unnamed Worker"}
-//                     </p>
-//
-//                     <p className="mt-1 text-xs text-muted-foreground">
-//                       Passport:{" "}
-//                       {worker.passport_number ||
-//                         worker.passport?.passport_number ||
-//                         "—"}
-//                     </p>
-//
-//                     <p className="text-xs text-muted-foreground">
-//                       Nationality:{" "}
-//                       {worker.nationality ||
-//                         worker.passport?.nationality ||
-//                         "—"}
-//                     </p>
-//                   </div>
-//
-//                   <span className="rounded-full bg-yellow-100 px-2 py-1 text-xs font-medium text-yellow-800">
-//                     Pending
-//                   </span>
-//                 </div>
-//               </button>
-//             ))}
-//           </div>
-//         )}
-//       </div>
-//     </div>
-//   );
-// }
+
 function InfoSection({ title, data }) {
   return (
-    <div className="space-y-3">
-      <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+    <div className="space-y-4">
+      <h3 className="text-lg font-semibold text-foreground">{title}</h3>
 
       {Object.keys(data || {}).length === 0 ? (
-        <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+        <p className="rounded-lg border border-dashed p-6 text-base text-muted-foreground">
           No data available.
         </p>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {Object.entries(data || {}).map(([key, value]) => (
-            <div key={key} className="flex justify-between gap-4 text-sm">
+            <div key={key} className="flex justify-between gap-4 rounded-lg bg-muted/40 px-4 py-3 text-base">
               <span className="text-muted-foreground capitalize">
                 {key.replace(/_/g, " ")}
               </span>
@@ -135,122 +82,75 @@ function InfoSection({ title, data }) {
   );
 }
 
-function WorkerDrawer({ worker, onClose }) {
-  const [openTab, setOpenTab] = useState("passport");
-
-  const tabs = [
-    { key: "passport", label: "Passport" },
-    { key: "medical_information", label: "Health Checkup" },
-    { key: "general_information", label: "General Info" },
-  ];
-
+function WorkerDrawer({ worker, open, onOpenChange }) {
   return (
-    <div className="fixed inset-y-0 right-0 w-[520px] bg-card shadow-2xl z-50 flex flex-col">
-      <div className="flex items-center justify-between px-6 py-4 border-b">
-        <div>
-          <p className="font-semibold text-foreground">
-            {worker.passport?.full_name || "—"}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {worker.passport?.passport_number || "—"} ·{" "}
-            {worker.passport?.nationality || "—"}
-          </p>
-        </div>
-
-        <button
-          onClick={onClose}
-          className="text-muted-foreground hover:text-muted-foreground text-xl leading-none"
-        >
-          &times;
-        </button>
-      </div>
-
-      <div className="flex border-b">
-        {tabs.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setOpenTab(tab.key)}
-            className={`flex-1 py-2 text-sm font-medium ${
-              openTab === tab.key
-                ? "border-b-2 border-blue-600 text-blue-600"
-                : "text-muted-foreground"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="flex-1 overflow-y-auto px-6 py-4">
-        {openTab === "passport" && (
-          <InfoSection title="Passport Information" data={worker.passport} />
-        )}
-
-        {openTab === "medical_information" && (
-          <InfoSection
-            title="Health Checkup / Medical File"
-            data={worker.medical_information}
-          />
-        )}
-
-        {openTab === "general_information" && (
-          <InfoSection
-            title="General Information"
-            data={worker.general_information}
-          />
-        )}
-      </div>
-    </div>
+    <Modal open={open} onOpenChange={onOpenChange}>
+      <ModalContent
+        title={worker?.passport?.full_name || "—"}
+        description={`${worker?.passport?.passport_number || "—"} · ${worker?.passport?.nationality || "—"}`}
+        className="max-w-5xl"
+      >
+        <Tabs defaultValue="passport" className="flex flex-col">
+          <TabsList className="w-full rounded-none border-b border-border bg-transparent p-0">
+            <TabsTrigger value="passport" className="flex-1 rounded-none border-b-2 border-transparent py-3 text-base font-medium data-[state=active]:border-blue-600 data-[state=active]:text-blue-600">Passport</TabsTrigger>
+            <TabsTrigger value="medical_information" className="flex-1 rounded-none border-b-2 border-transparent py-3 text-base font-medium data-[state=active]:border-blue-600 data-[state=active]:text-blue-600">Health Checkup</TabsTrigger>
+            <TabsTrigger value="general_information" className="flex-1 rounded-none border-b-2 border-transparent py-3 text-base font-medium data-[state=active]:border-blue-600 data-[state=active]:text-blue-600">General Info</TabsTrigger>
+          </TabsList>
+          <div className="max-h-[65vh] overflow-y-auto px-2 py-6">
+            <TabsContent value="passport" className="mt-0">
+              <InfoSection title="Passport Information" data={worker?.passport} />
+            </TabsContent>
+            <TabsContent value="medical_information" className="mt-0">
+              <InfoSection title="Health Checkup / Medical File" data={worker?.medical_information} />
+            </TabsContent>
+            <TabsContent value="general_information" className="mt-0">
+              <InfoSection title="General Information" data={worker?.general_information} />
+            </TabsContent>
+          </div>
+        </Tabs>
+      </ModalContent>
+    </Modal>
   );
 }
 
-function WorkerDrawerStage1({ worker, onClose }) {
-  const [openStage, setOpenStage] = useState("stage_1");
-
+function WorkerDrawerStage1({ worker, open, onOpenChange }) {
   return (
-    <div className="fixed inset-y-0 right-0 w-[480px] bg-card shadow-2xl z-50 flex flex-col">
-      <div className="flex items-center justify-between px-6 py-4 border-b">
-        <div>
-          <p className="font-semibold text-foreground">{worker.passport?.full_name || "—"}</p>
-          <p className="text-xs text-muted-foreground">{worker.passport?.passport_number} · {worker.passport?.nationality} · {worker.sector}</p>
-        </div>
-        <button onClick={onClose} className="text-muted-foreground hover:text-muted-foreground text-xl leading-none">&times;</button>
-      </div>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        title={worker?.passport?.full_name || "—"}
+        description={`${worker?.passport?.passport_number || "—"} · ${worker?.passport?.nationality || "—"} · ${worker?.sector || "—"}`}
+      >
+        <Tabs defaultValue="stage_1" className="flex h-full flex-col">
+          <TabsList className="w-full rounded-none border-b border-border bg-transparent p-0">
+            <TabsTrigger value="stage_1" className="flex-1 rounded-none border-b-2 border-transparent py-2.5 text-sm data-[state=active]:border-blue-600 data-[state=active]:text-blue-600">Stage 1 — VDR</TabsTrigger>
+            <TabsTrigger value="stage_2" className="flex-1 rounded-none border-b-2 border-transparent py-2.5 text-sm data-[state=active]:border-blue-600 data-[state=active]:text-blue-600">Stage 2 — PLKS</TabsTrigger>
+          </TabsList>
+          <div className="flex-1 overflow-y-auto px-6 py-4">
+            <TabsContent value="stage_1" className="mt-0">
+              {Object.entries(worker?.stage_1 || {}).map(([key, phase]) => (
+                <PhaseSection key={key} label={phase.label} data={phase.data} />
+              ))}
+            </TabsContent>
+            <TabsContent value="stage_2" className="mt-0">
+              {Object.entries(worker?.stage_2 || {})
+                .filter(([key]) => key !== "com_repatriation" || worker?.stage_2?.arrival_verification?.data?.mdac_verified)
+                .map(([key, phase]) => (
+                  <PhaseSection key={key} label={phase.label} data={phase.data} />
+                ))}
+            </TabsContent>
+          </div>
+        </Tabs>
 
-      <div className="flex border-b">
-        {["stage_1", "stage_2"].map((s) => (
-          <button
-            key={s}
-            onClick={() => setOpenStage(s)}
-            className={`flex-1 py-2 text-sm font-medium ${openStage === s ? "border-b-2 border-blue-600 text-blue-600" : "text-muted-foreground"}`}
-          >
-            {s === "stage_1" ? "Stage 1 — VDR" : "Stage 2 — PLKS"}
-          </button>
-        ))}
-      </div>
-
-      <div className="flex-1 overflow-y-auto px-6 py-4">
-        {openStage === "stage_1" &&
-          Object.entries(worker.stage_1 || {}).map(([key, phase]) => (
-            <PhaseSection key={key} label={phase.label} data={phase.data} />
-          ))}
-        {openStage === "stage_2" &&
-          Object.entries(worker.stage_2 || {})
-            .filter(([key]) => key !== "com_repatriation" || worker.stage_2?.arrival_verification?.data?.mdac_verified)
-            .map(([key, phase]) => (
-              <PhaseSection key={key} label={phase.label} data={phase.data} />
+        {worker?.validation_errors?.length > 0 && (
+          <div className="border-t px-6 py-3 bg-red-50 dark:bg-red-950/40">
+            <p className="text-xs font-semibold text-red-700 dark:text-red-300 mb-1">Validation Errors</p>
+            {worker.validation_errors.map((e, i) => (
+              <p key={i} className="text-xs text-red-600">• {e}</p>
             ))}
-      </div>
-
-      {worker.validation_errors?.length > 0 && (
-        <div className="px-6 py-3 bg-red-50 dark:bg-red-950/40 border-t">
-          <p className="text-xs font-semibold text-red-700 dark:text-red-300 mb-1">Validation Errors</p>
-          {worker.validation_errors.map((e, i) => (
-            <p key={i} className="text-xs text-red-600">• {e}</p>
-          ))}
-        </div>
-      )}
-    </div>
+          </div>
+        )}
+      </SheetContent>
+    </Sheet>
   );
 }
 
@@ -328,6 +228,10 @@ export default function WorkersPage() {
                   key={w.worker_id}
                   onClick={() => setSelected(w)}
                   className="hover:bg-blue-50 dark:hover:bg-blue-950/30 cursor-pointer transition-colors"
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelected(w); } }}
+                  aria-label={`View details for ${w.passport?.full_name || 'worker'}`}
                 >
                   <td className="px-4 py-3 font-medium text-foreground">{w.passport?.full_name || "—"}</td>
                   <td className="px-4 py-3 text-muted-foreground">{w.passport?.passport_number || "—"}</td>
@@ -345,29 +249,7 @@ export default function WorkersPage() {
         </div>
       )}
 
-      {showReviewQueue && (
-        <>
-          <div
-            className="fixed inset-0 z-40 bg-black/30"
-            onClick={() => setShowReviewQueue(false)}
-          />
-          <ReviewQueueDrawer
-            workers={pendingReviews}
-            onClose={() => setShowReviewQueue(false)}
-            onSelectWorker={(worker) => {
-              setShowReviewQueue(false);
-              setSelected(worker);
-            }}
-          />
-        </>
-      )}
-
-      {selected && (
-        <>
-          <div className="fixed inset-0 bg-black/30 z-40" onClick={() => setSelected(null)} />
-          <WorkerDrawer worker={selected} onClose={() => setSelected(null)} />
-        </>
-      )}
+      <WorkerDrawer worker={selected} open={!!selected} onOpenChange={(open) => !open && setSelected(null)} />
     </div>
   );
 }

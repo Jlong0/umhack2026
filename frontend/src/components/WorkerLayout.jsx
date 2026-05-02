@@ -29,9 +29,12 @@ export default function WorkerLayout() {
       <header className="border-b border-border bg-card/80 backdrop-blur-sm">
         {/* Top row: branding + actions */}
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
-          <div>
-            <p className="font-heading text-xs uppercase tracking-[0.24em] text-indigo-700 dark:text-indigo-400">PermitIQ</p>
-            <h1 className="font-heading text-xl font-semibold text-foreground">Worker Portal</h1>
+          <div className="flex items-center gap-3">
+            <img src="/logo.png" alt="PermitIQ" className="h-9 w-9 rounded-lg object-contain" />
+            <div>
+              <p className="font-heading text-xs uppercase tracking-[0.24em] text-indigo-700 dark:text-indigo-400">PermitIQ</p>
+              <h1 className="font-heading text-xl font-semibold text-foreground">Worker Portal</h1>
+            </div>
           </div>
 
           <div className="flex items-center gap-2">

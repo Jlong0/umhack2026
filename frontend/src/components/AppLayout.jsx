@@ -199,9 +199,7 @@ export default function AppLayout() {
       <div className="flex items-center justify-between border-b border-border px-4 py-5">
         {sidebarOpen ? (
           <div className="flex items-center gap-3 overflow-hidden">
-            <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-blue-600">
-              <Activity className="h-5 w-5 text-white" />
-            </div>
+            <img src="/logo.png" alt="PermitIQ" className="h-9 w-9 flex-shrink-0 rounded-lg object-contain" />
             <div className="min-w-0">
               <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-blue-600 dark:text-blue-400">PermitIQ</p>
               <p className="truncate text-sm font-semibold text-foreground">{companyName || "Admin Console"}</p>

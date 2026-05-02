@@ -1,7 +1,7 @@
 import { createElement, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Shield, Users, ArrowRight, Cpu, Network, Lock, FileSearch, GitBranch,
+  Shield, Users, ArrowRight, Network, Lock, FileSearch, GitBranch,
   AlertTriangle, Calculator, FileSignature, ChevronDown, Zap, CheckCircle2,
   Bot, Eye, BarChart3, CalendarCheck, ClipboardList,
 } from "lucide-react";
@@ -68,9 +68,7 @@ export default function LandingPage() {
       <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-md">
         <div className="flex items-center justify-between px-6 py-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 shadow-sm shadow-blue-500/20">
-              <Cpu className="h-5 w-5 text-white" />
-            </div>
+            <img src="/logo.png" alt="PermitIQ" className="h-10 w-10 rounded-lg object-contain" />
             <span className="font-heading text-lg font-bold tracking-tight text-foreground">PermitIQ</span>
           </div>
 
@@ -256,9 +254,7 @@ export default function LandingPage() {
       <footer className="relative z-10 border-t border-border px-6 py-8">
         <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
           <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-600/80">
-              <Cpu className="h-3.5 w-3.5 text-white" />
-            </div>
+            <img src="/logo.png" alt="PermitIQ" className="h-7 w-7 rounded-lg object-contain" />
             <span className="text-xs font-semibold text-muted-foreground">PermitIQ v1.0</span>
           </div>
           <p className="text-center text-xs text-muted-foreground">Titan Core Technologies Sdn. Bhd. &middot; UMHack 2026</p>

@@ -13,6 +13,7 @@ import { MetricCard } from "@/components/ui/metric-card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Modal, ModalContent } from "@/components/ui/modal";
 
 function useSyncCheck() {
   return useQuery({ queryKey: ["sync-check"], queryFn: getSyncCheck, refetchInterval: 30000 });
@@ -114,7 +115,12 @@ export default function DualSyncPage() {
               return (
                 <tr key={r.worker_id}
                   onClick={() => r.conflicts?.length && setSelected(r)}
-                  className={r.conflicts?.length ? "cursor-pointer hover:bg-muted" : ""}>
+                  className={r.conflicts?.length ? "cursor-pointer hover:bg-muted" : ""}
+                  role={r.conflicts?.length ? "button" : undefined}
+                  tabIndex={r.conflicts?.length ? 0 : undefined}
+                  onKeyDown={r.conflicts?.length ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelected(r); } } : undefined}
+                  aria-label={r.conflicts?.length ? `View conflicts for ${r.worker_name}` : undefined}
+                >
                   <td className="px-4 py-3 font-medium text-foreground">{r.worker_name}</td>
                   <td className="px-4 py-3 text-muted-foreground text-xs">
                     {r.conflicts?.map(c => `${c.field}: ${c.internal}`).join(", ") || "—"}
@@ -138,46 +144,42 @@ export default function DualSyncPage() {
         </table>
       </div>
 
-      {selected && (
-        <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center" onClick={() => setSelected(null)}>
-          <div className="bg-card rounded-xl shadow-xl w-full max-w-lg p-6" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-bold text-foreground">CONFLICT — {selected.worker_name}</h2>
-              <button onClick={() => setSelected(null)}><X className="h-4 w-4 text-muted-foreground" /></button>
-            </div>
-            <p className="text-xs text-amber-600 mb-4">Marking as Correct updates mock_gov_records in Firestore only. No real portal submission.</p>
-            <table className="w-full text-sm mb-4">
-              <thead><tr className="text-xs text-muted-foreground border-b">
-                <th className="pb-2 text-left">Field</th>
-                <th className="pb-2 text-left">Internal</th>
-                <th className="pb-2 text-left">Mock Gov.</th>
-                <th className="pb-2"></th>
-              </tr></thead>
-              <tbody className="divide-y divide-border">
-                {selected.conflicts.map(c => (
-                  <tr key={c.field}>
-                    <td className="py-2 font-mono text-xs">{c.field}</td>
-                    <td className="py-2">{String(c.internal)}</td>
-                    <td className="py-2 text-red-600">{String(c.mock_gov)}</td>
-                    <td className="py-2">
-                      <button onClick={() => resolveMutation.mutate({ worker_id: selected.worker_id, field: c.field })}
-                        disabled={resolveMutation.isPending}
-                        className="text-xs text-indigo-600 hover:underline disabled:opacity-50">
-                        Mark Correct
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <button
-              onClick={() => { selected.conflicts.forEach(c => resolveMutation.mutate({ worker_id: selected.worker_id, field: c.field })); setSelected(null); }}
-              className="w-full rounded-lg bg-indigo-600 py-2 text-sm font-semibold text-white hover:bg-indigo-500">
-              Mark All Internal as Correct
-            </button>
-          </div>
-        </div>
-      )}
+      <Modal open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
+        <ModalContent
+          title={`CONFLICT — ${selected?.worker_name || ''}`}
+          description="Marking as Correct updates mock_gov_records in Firestore only. No real portal submission."
+        >
+          <table className="w-full text-sm mb-4">
+            <thead><tr className="text-xs text-muted-foreground border-b">
+              <th className="pb-2 text-left">Field</th>
+              <th className="pb-2 text-left">Internal</th>
+              <th className="pb-2 text-left">Mock Gov.</th>
+              <th className="pb-2"></th>
+            </tr></thead>
+            <tbody className="divide-y divide-border">
+              {selected?.conflicts?.map(c => (
+                <tr key={c.field}>
+                  <td className="py-2 font-mono text-xs">{c.field}</td>
+                  <td className="py-2">{String(c.internal)}</td>
+                  <td className="py-2 text-red-600">{String(c.mock_gov)}</td>
+                  <td className="py-2">
+                    <button onClick={() => resolveMutation.mutate({ worker_id: selected.worker_id, field: c.field })}
+                      disabled={resolveMutation.isPending}
+                      className="text-xs text-indigo-600 hover:underline disabled:opacity-50">
+                      Mark Correct
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <button
+            onClick={() => { selected?.conflicts?.forEach(c => resolveMutation.mutate({ worker_id: selected.worker_id, field: c.field })); setSelected(null); }}
+            className="w-full rounded-lg bg-indigo-600 py-2 text-sm font-semibold text-white hover:bg-indigo-500">
+            Mark All Internal as Correct
+          </button>
+        </ModalContent>
+      </Modal>
     </div>
   );
 }

@@ -52,9 +52,7 @@ export default function AdminLoginPage() {
           <div className="rounded-2xl border border-border bg-card p-10 shadow-2xl shadow-blue-950/10 dark:shadow-blue-950/20">
             {/* Header */}
             <div className="mb-8 flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600/10">
-                <Shield className="h-6 w-6 text-blue-600" />
-              </div>
+              <img src="/logo.png" alt="PermitIQ" className="h-12 w-12 rounded-xl object-contain" />
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-blue-600">PermitIQ</p>
                 <h1 className="text-xl font-semibold text-foreground">Admin Portal</h1>
