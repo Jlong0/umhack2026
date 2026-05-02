@@ -290,9 +290,7 @@ export default function AppLayout() {
               </span>
             </span>
           </div>
-          <p className={cn("mt-1 truncate font-mono text-[10px] text-muted-foreground", !sidebarOpen && "lg:hidden")}>
-            WID: {workerId || "none"}
-          </p>
+
         </div>
 
         {/* Actions */}

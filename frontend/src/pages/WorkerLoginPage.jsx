@@ -98,9 +98,12 @@ export default function WorkerLoginPage() {
             </button>
           </form>
 
-          <div className="mt-6 text-center text-xs text-muted-foreground">
-            <Link className="hover:text-emerald-600 dark:hover:text-emerald-300" to="/">
-              Back to landing
+          <div className="mt-6 text-center">
+            <Link
+              className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-5 py-2.5 text-xs font-medium text-muted-foreground backdrop-blur-md transition-all duration-300 hover:border-emerald-400/40 hover:bg-white/20 hover:text-emerald-600 hover:shadow-[0_0_20px_rgba(16,185,129,0.15)] hover:scale-[1.03] active:scale-[0.97] dark:border-white/10 dark:bg-white/5 dark:hover:border-emerald-400/30 dark:hover:bg-white/10 dark:hover:text-emerald-400"
+              to="/"
+            >
+              ← Back to landing
             </Link>
           </div>
         </div>
