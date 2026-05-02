@@ -1,9 +1,12 @@
 """
 API routes for agent operations and compliance workflows.
 """
+from langsmith import traceable
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional, Dict, List
+import asyncio
 from app.agents.graph import compliance_graph
 from app.agents.state import create_initial_worker_state, WorkerComplianceState
 from app.firebase_config import db
@@ -32,6 +35,9 @@ class WorkflowStatusResponse(BaseModel):
     alerts: List[Dict]
     observations: List[str]
 
+@traceable(name="compliance_workflow_start")
+def run_compliance_graph(state, config):
+    return compliance_graph.invoke(state, config)
 
 @router.post("/workflows/start")
 async def start_compliance_workflow(request: StartWorkflowRequest):
@@ -72,8 +78,9 @@ async def start_compliance_workflow(request: StartWorkflowRequest):
             }
         }
 
-        # Invoke the graph
-        result = compliance_graph.invoke(initial_state, config)
+        # Invoke the graph#result = compliance_graph.invoke(initial_state, config)
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(None, run_compliance_graph, initial_state, config)
 
         # Save workflow state to Firestore
         workflow_ref = db.collection("workflows").document(request.worker_id)
@@ -165,7 +172,9 @@ async def resume_workflow_after_hitl(worker_id: str, request: ResumeWorkflowRequ
             }
         }
 
-        result = compliance_graph.invoke(current_state, config)
+        #result = compliance_graph.invoke(current_state, config)
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(None, run_compliance_graph, current_state, config)
 
         # Update Firestore
         workflow_ref.update({
@@ -317,43 +326,112 @@ async def get_compliance_graph(worker_id: str):
 
 
 @router.get("/workflows")
-async def list_all_workflows():
+async def list_all_workflows(company_id: Optional[str] = None):
     """
-    List all active workflows.
+    List pipeline board cards.
+
+    Source of truth for current gate/status is workers collection.
+    workflows collection is only used for LangGraph execution details.
     """
     try:
-        workflows_ref = db.collection("workflows")
-        workflows = workflows_ref.stream()
+        workers_ref = db.collection("workers")
+
+        if company_id:
+            workers_ref = workers_ref.where("company_id", "==", company_id)
 
         result = []
-        for workflow in workflows:
-            data = workflow.to_dict()
-            current_state = data.get("current_state", {})
+
+        for doc in workers_ref.stream():
+            worker = doc.to_dict()
+            worker_id = doc.id
+
+            passport = worker.get("passport", {}) or {}
+            general = worker.get("general_information", {}) or {}
+
+            full_name = (
+                passport.get("full_name")
+                or worker.get("full_name")
+                or worker.get("master_name")
+                or worker_id
+            )
+
+            name_parts = full_name.split(" ", 1)
+
+            # Optional: enrich from workflows collection if it exists
+            workflow_doc = db.collection("workflows").document(worker_id).get()
+            workflow_data = workflow_doc.to_dict() if workflow_doc.exists else {}
+            current_state = workflow_data.get("current_state", {}) or {}
+
+            # Fall back to worker document for name/nationality/sector
+            full_name = current_state.get("full_name") or current_state.get("master_name", "")
+            if not full_name:
+                w_doc = db.collection("workers").document(worker_id).get()
+                w = w_doc.to_dict() if w_doc.exists else {}
+                full_name = w.get("full_name", "")
+                nationality = w.get("nationality") or current_state.get("nationality")
+                sector = w.get("sector") or current_state.get("sector")
+            else:
+                nationality = current_state.get("nationality")
+                sector = current_state.get("sector")
+
+            parts = full_name.split() if full_name else []
 
             result.append({
-                "worker_id": workflow.id,
-                "status": data.get("status"),
+                "worker_id": worker_id,
+                "company_id": worker.get("company_id"),
+
+                "full_name": full_name,
+                "first_name": name_parts[0],
+                "last_name": name_parts[1] if len(name_parts) > 1 else "",
+
+                # Main pipeline fields from workers
+                "current_gate": worker.get("current_gate") or "JTKSM",
+                "jtksm_status": worker.get("jtksm_status") or "pending",
+                "vdr_status": worker.get("vdr_status"),
+                "vdr_requirements": worker.get("vdr_requirements", {}),
+                "transit_status": worker.get("transit_status"),
+                "fomema_status": worker.get("fomema_status"),
+                "fomema_result": worker.get("fomema_result"),
+                "fomema_result_source": worker.get("fomema_result_source"),
+                "plks_status": worker.get("plks_status"),
+                "halt_reason": worker.get("halt_reason"),
+                "workflow_status": worker.get("workflow_status"),
+                "review_status": worker.get("review_status"),
+                "data_status": worker.get("data_status"),
+
+                # Optional LangGraph details from workflows
+                "status": workflow_data.get("status", worker.get("workflow_status")),
                 "compliance_status": current_state.get("compliance_status"),
                 "hitl_required": current_state.get("hitl_required", False),
+                "requires_hitl": current_state.get("hitl_required", False),
                 "workflow_complete": current_state.get("workflow_complete", False),
-                "started_at": data.get("started_at"),
-                "last_updated": data.get("last_updated"),
-                "first_name": current_state.get("full_name", "").split()[0] if current_state.get("full_name") else "",
-                "last_name": " ".join(current_state.get("full_name", "").split()[1:]) if current_state.get("full_name") else "",
-                "nationality": current_state.get("nationality"),
-                "sector": current_state.get("sector"),
-                "current_gate": current_state.get("current_gate"),
-                "days_in_gate": current_state.get("days_to_expiry"),
+                "started_at": workflow_data.get("started_at"),
+                "last_updated": workflow_data.get("last_updated") or worker.get("updated_at"),
+
+                # Display fields
+                "nationality": (
+                    passport.get("nationality")
+                    or general.get("nationality")
+                    or worker.get("nationality")
+                ),
+                "sector": (
+                    general.get("sector")
+                    or worker.get("sector")
+                    or "—"
+                ),
+                "days_in_gate": worker.get("days_in_gate", current_state.get("days_to_expiry", 0)),
+
+                # Used by PipelinePage blocked state
+                "requires_hitl": bool(worker.get("missing_fields")) or current_state.get("hitl_required", False),
             })
 
         return {
             "total": len(result),
-            "workflows": result
+            "workflows": result,
         }
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to list workflows: {str(e)}")
-# ---------------------------------------------------------------------------
+        raise HTTPException(status_code=500, detail=f"Failed to list workflows: {str(e)}")# ---------------------------------------------------------------------------
 
 @router.get("/handoffs")
 async def list_pending_handoffs():
@@ -446,3 +524,112 @@ async def resolve_sync_conflict(worker_id: str, field: str):
     db.collection("mock_gov_records").document(worker_id).set(
         {field: internal_value, "last_updated": datetime.now().isoformat()}, merge=True)
     return {"worker_id": worker_id, "field": field, "resolved_to": internal_value}
+
+
+# ---------------------------------------------------------------------------
+# Graph definition endpoint — live Mermaid diagram for website rendering
+# ---------------------------------------------------------------------------
+
+MASTER_MERMAID = """graph TD
+    User["👤 User Input"] --> Orchestrator["🧠 Orchestrator Agent"]
+    Orchestrator --> Router{"🔀 Route Decision"}
+    Router -->|"VDR Workflow"| VDR_SUB["📋 VDR Pipeline"]
+    Router -->|"Compliance Audit"| COMP_SUB["🔍 Compliance Pipeline"]
+    Router -->|"Simulation"| SIM["📊 Simulator Tools"]
+    Router -->|"Get Status"| STATUS["📌 Status Check"]
+
+    subgraph VDR["VDR Pipeline"]
+        direction TB
+        parse["📄 Document Parser"] --> validate["✅ Pre-Form Validator"]
+        validate --> signatures["✍️ Signature Tracker"]
+        signatures --> comp_reason["⚖️ Compliance Reasoner"]
+        comp_reason --> fomema["🏥 FOMEMA Gate"]
+        fomema --> assemble["📦 VDR Assembler"]
+    end
+
+    subgraph COMP["Compliance Pipeline"]
+        direction TB
+        supervisor["🎯 Supervisor"] --> auditor["📋 Auditor"]
+        supervisor --> company_audit["🏢 Company Audit"]
+        supervisor --> vdr_filing["📁 VDR Filing"]
+        supervisor --> plks_monitor["📡 PLKS Monitor"]
+        supervisor --> strategist["🧮 Strategist"]
+        supervisor --> filing["📝 Filing"]
+        supervisor --> hitl["👤 HITL Review"]
+        auditor --> supervisor
+        company_audit --> supervisor
+        vdr_filing --> supervisor
+        plks_monitor --> supervisor
+        strategist --> supervisor
+        filing --> supervisor
+        hitl --> supervisor
+    end
+
+    VDR_SUB --> VDR
+    COMP_SUB --> COMP
+
+    assemble -->|"Submit"| GOV["🏛️ Mock Gov Portal"]
+    hitl -->|"Human Decision"| supervisor
+
+    style User fill:#6366f1,stroke:#4f46e5,color:#fff
+    style Orchestrator fill:#8b5cf6,stroke:#7c3aed,color:#fff
+    style Router fill:#f59e0b,stroke:#d97706,color:#fff
+    style GOV fill:#10b981,stroke:#059669,color:#fff"""
+
+
+@router.get("/graph-definition")
+async def get_graph_definition():
+    """Return Mermaid diagram definitions for live rendering in the browser.
+
+    Equivalent to app.get_graph().draw_mermaid_png() but served as text
+    for the frontend Mermaid renderer.
+    """
+    from app.agents.graph import vdr_graph, compliance_graph
+    from app.agents.master_graph import master_graph
+
+    vdr_mermaid = None
+    compliance_mermaid = None
+    master_mermaid_result = None
+
+    try:
+        master_mermaid_result = master_graph.get_graph().draw_mermaid()
+    except Exception:
+        master_mermaid_result = MASTER_MERMAID
+
+    try:
+        vdr_mermaid = vdr_graph.get_graph().draw_mermaid()
+    except Exception:
+        # Fallback static definition
+        vdr_mermaid = """graph TD
+    parse["Document Parser"] --> validate["Pre-Form Validator"]
+    validate --> signatures["Signature Tracker"]
+    signatures --> compliance["Compliance Reasoner"]
+    compliance --> fomema["FOMEMA Gate"]
+    fomema --> assemble["VDR Assembler"]
+    assemble --> END["__end__"]"""
+
+    try:
+        compliance_mermaid = compliance_graph.get_graph().draw_mermaid()
+    except Exception:
+        compliance_mermaid = """graph TD
+    supervisor["Supervisor"] --> auditor["Auditor"]
+    supervisor --> strategist["Strategist"]
+    supervisor --> filing["Filing"]
+    supervisor --> company_audit["Company Audit"]
+    supervisor --> vdr_filing["VDR Filing"]
+    supervisor --> plks_monitor["PLKS Monitor"]
+    supervisor --> hitl["HITL Review"]
+    auditor --> supervisor
+    strategist --> supervisor
+    filing --> supervisor
+    company_audit --> supervisor
+    vdr_filing --> supervisor
+    plks_monitor --> supervisor
+    hitl --> supervisor"""
+
+    return {
+        "master_mermaid": master_mermaid_result,
+        "vdr_mermaid": vdr_mermaid,
+        "compliance_mermaid": compliance_mermaid,
+    }
+

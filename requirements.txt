@@ -29,7 +29,7 @@ zhipuai>=2.0.0
 openai                    # OpenAI-compatible shim for GLM API calls
 
 # ── Gemini Integration (Temporary for testing) ────────────
-google-generativeai       # Gemini API with key rotation for testing/optimization
+google-genai               # Unified Gemini SDK (Google AI Studio API key auth)
 
 # ── Observability & Tracing ───────────────────────────────
 opentelemetry-api
@@ -37,6 +37,7 @@ opentelemetry-sdk
 opentelemetry-instrumentation-fastapi
 arize-phoenix>=4.0.0
 arize-phoenix-otel
+langsmith>=0.1.0
 
 # ── Document Processing ───────────────────────────────────
 pdfplumber                # Replaces pypdf2 (actively maintained, better extraction)
@@ -49,6 +50,9 @@ python-magic              # File type detection before routing to GLM vs OCR
 httpx
 aiofiles
 anyio
+
+# ── Browser Automation ─────────────────────────────────────
+selenium                    # WhatsApp Web bot for automated notifications
 
 # ── Utilities ─────────────────────────────────────────────
 python-dateutil

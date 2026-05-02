@@ -1,5 +1,8 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useEffect, useMemo, useState } from "react";
+import { IdCard, FolderUp, UserCircle, ClipboardCheck, Loader2, CheckCircle2 } from "lucide-react";
+import { StepIndicator, WizardNavigation } from "@/components/ui/step-wizard";
+import { SuccessScreen } from "@/components/ui/success-screen";
 import { useNavigate } from "react-router-dom";
 import FileUpload from "@/components/FileUpload";
 import ParsedForm from "@/components/ParsedForm";
@@ -7,6 +10,13 @@ import { useToast } from "@/components/ui/toast";
 import { useParseJobPolling } from "@/hooks/useParseJobPolling";
 import {ApiError, confirmDocument, createWorkerProfile, startComplianceWorkflow, uploadDocument} from "@/services/api";
 import { useWorkerStore } from "@/store/useWorkerStore";
+import { useAuthStore } from "@/store/useAuthStore";
+import { cn } from "@/lib/utils";
+
+import PassportStep from "./steps/PassportStep";
+import SupportingDocsStep from "./steps/SupportingDocsStep";
+import PersonalDetailsStep from "./steps/PersonalDetailsStep";
+import ReviewStep from "./steps/ReviewStep";
 
 const PASSPORT_FIELDS = [
   { key: "full_name", label: "Full Name", type: "text" },
@@ -18,6 +28,22 @@ const PASSPORT_FIELDS = [
   { key: "expiry_date", label: "Passport Expiry Date", type: "date" },
 ];
 
+const INITIAL_PERSONAL = {
+  full_name: "", date_of_birth: "", gender: "", nationality: "",
+  height_cm: "", weight_kg: "", marital_status: "",
+  father_name: "", mother_name: "", spouse_name: "",
+  address: "", emergency_contact_name: "", emergency_contact_phone: "",
+  education_history: "", has_travel_history: "", travel_history_details: "",
+  sector: "Manufacturing", permit_class: "PLKS", employment_date: "",
+};
+
+const STEP_DEFS = [
+  { label: "Passport", icon: IdCard },
+  { label: "Documents", icon: FolderUp },
+  { label: "Details", icon: UserCircle },
+  { label: "Review", icon: ClipboardCheck },
+];
+
 function normalizeInitialValues(parsedFields) {
   return Object.fromEntries(
     Object.entries(parsedFields || {}).map(([fieldKey, fieldData]) => [fieldKey, fieldData?.value || ""]),
@@ -27,6 +53,7 @@ function normalizeInitialValues(parsedFields) {
 function PersonalInput({ label, field, full, formValues, onChange }) {
   const inputClasses =
     "w-full rounded-lg border border-slate-200 px-3 py-2 text-sm";
+
 
   return (
     <div className={`space-y-1 ${full ? "sm:col-span-2" : ""}`}>
@@ -75,6 +102,8 @@ export default function UploadPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  const user = useAuthStore((state) => state.user);
+  const workerId = user?.id;
   const jobId = useWorkerStore((state) => state.jobId);
   const documentId = useWorkerStore((state) => state.documentId);
   const parseJobStatus = useWorkerStore((state) => state.parseJobStatus);
@@ -113,6 +142,28 @@ export default function UploadPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
   const [activeParsingType, setActiveParsingType] = useState(null);
+
+  const [currentStep, setCurrentStep] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
+
+  const [passportData, setPassportData] = useState({});
+  const [supportingDocs, setSupportingDocs] = useState({
+    passport_photo: null, biometric_health: null, verified_signature: null,
+    academic_transcripts: null, degree_certificates: null, cv: null,
+  });
+  const [personalDetails, setPersonalDetails] = useState(INITIAL_PERSONAL);
+  const [employmentHistory, setEmploymentHistory] = useState([""]);
+  const [childrenList, setChildrenList] = useState([]);
+
+  const hasPassport = !!(passportData?.full_name || passportData?.passport_number);
+  const hasRequiredDocs = !!(supportingDocs.passport_photo && supportingDocs.biometric_health && supportingDocs.verified_signature);
+  const hasPersonal = !!(personalDetails.full_name && personalDetails.nationality);
+
+  const steps = STEP_DEFS.map((def, i) => ({
+    ...def,
+    isComplete: i === 0 ? hasPassport : i === 1 ? hasRequiredDocs : i === 2 ? hasPersonal : false,
+  }));
 
   const { isPolling, stepText, error: pollError } = useParseJobPolling(jobId);
 
@@ -241,44 +292,55 @@ export default function UploadPage() {
     }
   };
 
-  const handleConfirm = async () => {
+  const handleSubmit = async () => {
+    if (!workerId) {
+      toast({
+        title: "Missing worker ID",
+        description: "Please log in again before submitting.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const workerPayload = {
-      passport: formValuesByType.passport,
-      medical_information: formValuesByType.health_checkup,
-      general_information: formValuesByType.personal_demographic,
+      worker_id: workerId,
+
+      passport: passportData || {},
+
+      medical_information: supportingDocs.biometric_health
+        ? {
+            ...supportingDocs.biometric_health,
+            document_type: "medical_record",
+            source: "raw_file",
+          }
+        : {},
+
+      general_information: {
+        ...personalDetails,
+        employment_history: employmentHistory,
+        children: childrenList,
+      },
     };
 
     console.log("Worker payload:", workerPayload);
 
-    setIsConfirming(true);
+    setIsSubmitting(true);
 
     try {
-      // 🔥 NEW API
       const response = await createWorkerProfile(workerPayload);
 
       setWorkerId(response.worker_id);
-
-      // // 🧠 Start workflow (use flattened values)
-      // await startComplianceWorkflow(response.worker_id, {
-      //   ...workerPayload.passport,
-      //   ...workerPayload.general_information,
-      //   worker_id: response.worker_id,
-      //   full_name:
-      //     workerPayload.passport?.full_name ||
-      //     workerPayload.general_information?.full_name ||
-      //     "Unknown Worker",
-      //   name:
-      //     workerPayload.passport?.full_name ||
-      //     "Unknown Worker",
-      //   nationality:
-      //     workerPayload.passport?.nationality ||
-      //     "Unknown",
-      // });
+      setIsSubmitted(true);
 
       toast({
-        title: "Submitted for admin review",
+        title:
+          response.data_status === "complete"
+            ? "Submitted for admin review"
+            : "Progress saved",
         description:
-          "Worker information has been saved and is waiting for admin confirmation",
+          response.data_status === "complete"
+            ? "Worker information has been saved and is waiting for admin confirmation."
+            : "Some required information is still missing. Please complete the remaining sections.",
         variant: "success",
       });
     } catch (error) {
@@ -286,11 +348,12 @@ export default function UploadPage() {
 
       toast({
         title: "Submission failed",
-        description: error.message || "Unable to submit worker for review.",
+        description:
+          error.message || "Unable to submit worker for review.",
         variant: "destructive",
       });
     } finally {
-      setIsConfirming(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -322,147 +385,95 @@ export default function UploadPage() {
     );
   })();
 
+  if (isSubmitted) {
+    return (
+      <div className="permit-surface">
+        <SuccessScreen
+          title="Application Submitted!"
+          description="Your documents and personal details have been sent to your employer for review. You can check the status in the 'My Status' tab."
+          action={
+            <a href="/worker/status" className="inline-flex rounded-xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-indigo-500">
+              Check My Status →
+            </a>
+          }
+        />
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6">
-      <section className="permit-surface px-5 py-4 sm:px-6">
-        <h2 className="text-xl font-semibold">Document Ingestion & HITL Triage</h2>
-        <p className="mt-1 text-sm text-slate-600">
-          Upload documents, monitor extraction progress, and confirm fields before obligations are generated.
+    <div className="space-y-0">
+      {/* ── Progress header — sits outside the card for visual clarity ── */}
+      <div className="mb-6">
+        <h2 className="text-2xl font-heading font-bold text-foreground">Upload Your Documents</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Complete each step to submit your application.
         </p>
-        {jobId ? (
-          <p className="mt-2 font-mono text-xs text-slate-500">
-            Job ID: {jobId} | Document ID: {documentId || "pending"}
-          </p>
-        ) : null}
-      </section>
 
-      <section className="grid gap-6 xl:grid-cols-[1.08fr_1fr]">
-        <article className="permit-surface p-5 sm:p-6">
-          <h3 className="text-lg font-semibold text-slate-900">Document Preview</h3>
-          <p className="mt-1 text-sm text-slate-600">Left pane mirrors the uploaded artifact for side-by-side triage.</p>
-          <div className="mt-4">{previewContent}</div>
-        </article>
+        {/* Step indicator — prominent, full width */}
+        <div className="mt-5 rounded-2xl border border-border bg-card p-3 sm:p-4">
+          <StepIndicator steps={steps} currentStep={currentStep} onStepClick={setCurrentStep} />
 
-        <div className="permit-surface p-5 sm:p-6">
-          <label className="text-sm font-medium text-slate-700">
-            Select document type
-          </label>
 
-          <select
-            value={selectedDocumentType}
-            onChange={(e) => setSelectedDocumentType(e.target.value)}
-            className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-          >
-            <option value="passport">Passport</option>
-            <option value="health_checkup">Health Checkup</option>
-            <option value="personal_demographic">Personal & Demographic</option>
-          </select>
+        </div>
+      </div>
+
+      {/* ── Step content ── */}
+      <div>
+        {/* Mobile step label */}
+        <div className="mb-5 flex items-center gap-2 sm:hidden">
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-600 text-[11px] font-bold text-white">
+            {currentStep + 1}
+          </span>
+          <span className="text-sm font-semibold text-foreground">{STEP_DEFS[currentStep].label}</span>
         </div>
 
-        <div className="space-y-6">
-          {selectedDocumentType !== "personal_demographic" && (
-            <FileUpload
-              file={selectedFile}
-              onFileSelect={(file) =>
-                setSelectedFiles((current) => ({
-                  ...current,
-                  [selectedDocumentType]: file,
-                }))
-              }
-              onUpload={handleUpload}
-              isUploading={isUploading}
-              isPolling={isPolling}
-              progressValue={progressValue}
-              stepText={stepText}
-            />
-          )}
-          {selectedDocumentType === "passport" && (
-            <div className="permit-surface p-5 sm:p-6">
-              <h3 className="text-lg font-semibold text-slate-900">
-                Passport Information
-              </h3>
+        {currentStep === 0 && <PassportStep passportData={passportData} onPassportChange={setPassportData} />}
+        {currentStep === 1 && <SupportingDocsStep supportingDocs={supportingDocs} onDocUploaded={setSupportingDocs} />}
+        {currentStep === 2 && (
+          <PersonalDetailsStep
+            data={personalDetails} onChange={setPersonalDetails}
+            employmentHistory={employmentHistory} onEmploymentChange={setEmploymentHistory}
+            children={childrenList} onChildrenChange={setChildrenList}
+          />
+        )}
+        {currentStep === 3 && (
+          <ReviewStep
+            passportData={passportData} supportingDocs={supportingDocs}
+            personalDetails={personalDetails} employmentHistory={employmentHistory}
+            children={childrenList} onGoToStep={setCurrentStep}
+          />
+        )}
+      </div>
 
-              <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                {PASSPORT_FIELDS.map((field) => (
-                  <div key={field.key} className="space-y-1">
-                    <label
-                      htmlFor={`passport-${field.key}`}
-                      className="block text-xs font-medium text-slate-600"
-                    >
-                      {field.label}
-                    </label>
-
-                    <input
-                      id={`passport-${field.key}`}
-                      name={field.key}
-                      type={field.type}
-                      value={formValuesByType.passport?.[field.key] || ""}
-                      onChange={(e) =>
-                        setFormValuesByType((current) => ({
-                          ...current,
-                          passport: {
-                            ...current.passport,
-                            [field.key]: e.target.value,
-                          },
-                        }))
-                      }
-                      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800"
-                    />
-
-                    {parsedFieldsByType.passport?.[field.key]?.confidence != null && (
-                      <p className="text-[10px] text-slate-400">
-                        confidence:{" "}
-                        {(parsedFieldsByType.passport[field.key].confidence * 100).toFixed(1)}%
-                      </p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          {selectedDocumentType === "health_checkup" &&
-            formValuesByType.health_checkup?.storage_path && (
-              <div className="permit-surface p-5 sm:p-6">
-                <h3 className="text-lg font-semibold text-slate-900">
-                  Medical File Saved
-                </h3>
-
-                <p className="mt-2 text-sm text-slate-600">
-                  Filename: {formValuesByType.health_checkup.filename}
-                </p>
-
-                <p className="mt-1 font-mono text-xs text-slate-500">
-                  Storage path: {formValuesByType.health_checkup.storage_path}
-                </p>
-              </div>
-            )}
-          {selectedDocumentType === "personal_demographic" && (
-            <PersonalDemographicForm
-              formValues={formValuesByType.personal_demographic}
-              onChange={(field, value) =>
-                setFormValuesByType((current) => ({
-                  ...current,
-                  personal_demographic: {
-                    ...current.personal_demographic,
-                    [field]: value,
-                  },
-                }))
-              }
-            />
+      {/* ── Navigation ── */}
+      <div className="mt-14 space-y-4">
+        {/* Step navigation */}
+        <div className="flex items-center justify-between gap-3">
+          {currentStep > 0 ? (
+            <button type="button" onClick={() => setCurrentStep((s) => s - 1)}
+              className="rounded-xl border border-border px-5 py-3 text-sm font-semibold text-muted-foreground transition hover:bg-muted hover:text-foreground">
+              ← Back
+            </button>
+          ) : <div />}
+          {currentStep < 3 && (
+            <button type="button" onClick={() => setCurrentStep((s) => s + 1)}
+              className="rounded-xl bg-indigo-600 px-8 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 active:scale-[0.98]">
+              Continue →
+            </button>
           )}
         </div>
-        <div className="flex justify-end pt-4">
-          <button
-            type="button"
-            onClick={handleConfirm}
-            disabled={isConfirming}
-            className="rounded-lg bg-emerald-700 px-6 py-2 text-sm font-semibold text-white transition hover:bg-emerald-800 disabled:opacity-60"
-          >
-            {isConfirming ? "Creating Worker..." : "Create Worker Profile"}
+
+        {/* Green submit button — always visible */}
+        <div className="border-t border-border pt-4">
+          <button type="button" onClick={handleSubmit} disabled={isSubmitting}
+            className="w-full rounded-xl bg-emerald-600 px-8 py-4 text-base font-bold text-white shadow-md transition hover:bg-emerald-500 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed">
+            {isSubmitting ? (
+              <span className="flex items-center justify-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Submitting…</span>
+            ) : "Create Worker Profile ✓"}
           </button>
         </div>
-
-      </section>
+      </div>
     </div>
   );
 }

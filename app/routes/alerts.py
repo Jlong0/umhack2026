@@ -120,12 +120,14 @@ def scan_worker_for_alerts(worker_data: Dict) -> List[Dict]:
 
 
 @router.get("/scan")
-async def scan_all_workers():
+async def scan_all_workers(company_id: str | None = None):
     """
     Scan all workers for compliance alerts and deadlines.
     """
     try:
         workers_ref = db.collection("workers")
+        if company_id:
+            workers_ref = workers_ref.where("company_id", "==", company_id)
         workers = workers_ref.stream()
 
         all_alerts = []
@@ -192,12 +194,14 @@ async def get_worker_alerts(worker_id: str):
 
 
 @router.get("/critical")
-async def get_critical_alerts():
+async def get_critical_alerts(company_id: str | None = None):
     """
     Get only critical alerts requiring immediate action.
     """
     try:
         workers_ref = db.collection("workers")
+        if company_id:
+            workers_ref = workers_ref.where("company_id", "==", company_id)
         workers = workers_ref.stream()
 
         critical_alerts = []
@@ -222,12 +226,14 @@ async def get_critical_alerts():
 
 
 @router.get("/expiring")
-async def get_expiring_permits(days: int = 30):
+async def get_expiring_permits(days: int = 30, company_id: str | None = None):
     """
     Get workers with permits expiring within specified days.
     """
     try:
         workers_ref = db.collection("workers")
+        if company_id:
+            workers_ref = workers_ref.where("company_id", "==", company_id)
         workers = workers_ref.stream()
 
         expiring_workers = []
@@ -267,12 +273,14 @@ async def get_expiring_permits(days: int = 30):
 
 
 @router.get("/dashboard")
-async def get_alert_dashboard():
+async def get_alert_dashboard(company_id: str | None = None):
     """
     Get comprehensive alert dashboard data.
     """
     try:
         workers_ref = db.collection("workers")
+        if company_id:
+            workers_ref = workers_ref.where("company_id", "==", company_id)
         workers = workers_ref.stream()
 
         total_workers = 0

@@ -26,7 +26,7 @@
 
 /** Task status display config */
 export const TASK_STATUS_CONFIG = {
-  PENDING: { label: 'Pending', color: 'text-gray-400', bg: 'bg-gray-500/10', icon: 'clock' },
+  PENDING: { label: 'Pending', color: 'text-muted-foreground', bg: 'bg-muted0/10', icon: 'clock' },
   IN_PROGRESS: { label: 'In Progress', color: 'text-blue-400', bg: 'bg-blue-500/10', icon: 'loader' },
   COMPLETED: { label: 'Completed', color: 'text-emerald-400', bg: 'bg-emerald-500/10', icon: 'check' },
   BLOCKED_HITL: { label: 'Blocked – HITL Required', color: 'text-red-400', bg: 'bg-red-500/10', icon: 'alert-triangle' },

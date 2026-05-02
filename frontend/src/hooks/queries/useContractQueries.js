@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useAuthStore } from "@/store/useAuthStore";
 import {
   generateContracts,
   listContracts,
@@ -8,9 +9,10 @@ import {
 } from "@/services/api";
 
 export function useContracts(status, workerId) {
+  const selectedCompanyId = useAuthStore((s) => s.selectedCompanyId);
   return useQuery({
-    queryKey: ["contracts", status, workerId],
-    queryFn: () => listContracts(status, workerId),
+    queryKey: ["contracts", status, workerId, selectedCompanyId],
+    queryFn: () => listContracts(status, workerId, selectedCompanyId),
     refetchInterval: 10000,
   });
 }

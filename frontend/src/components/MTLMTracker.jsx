@@ -17,8 +17,8 @@ export default function MTLMTracker() {
   if (isLoading) {
     return (
       <div className="permit-surface animate-pulse p-6">
-        <div className="h-4 w-32 rounded bg-slate-200" />
-        <div className="mt-4 h-10 w-48 rounded bg-slate-200" />
+        <div className="h-4 w-32 rounded bg-muted" />
+        <div className="mt-4 h-10 w-48 rounded bg-muted" />
       </div>
     );
   }
@@ -31,10 +31,10 @@ export default function MTLMTracker() {
   return (
     <div className="permit-surface p-5">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           MTLM Levy Structure
         </p>
-        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600">
+        <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold text-muted-foreground">
           Effective {effectiveDate}
         </span>
       </div>
@@ -47,8 +47,8 @@ export default function MTLMTracker() {
             onClick={() => setSelectedSector(sector)}
             className={`rounded-md px-2 py-1 text-[10px] font-semibold transition-colors ${
               selectedSector === sector
-                ? "bg-indigo-100 text-indigo-800"
-                : "bg-slate-50 text-slate-500 hover:bg-slate-100"
+                ? "bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300"
+                : "bg-muted text-muted-foreground hover:bg-muted/80"
             }`}
           >
             {sector}
@@ -64,27 +64,27 @@ export default function MTLMTracker() {
             return (
               <div
                 key={tierKey}
-                className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2.5"
+                className="flex items-center justify-between rounded-lg bg-muted px-3 py-2.5"
               >
                 <div>
-                  <p className="text-xs font-semibold text-slate-700">{label}</p>
-                  <p className="text-[10px] text-slate-400">Ratio: {tierData.ratio}</p>
+                  <p className="text-xs font-semibold text-foreground">{label}</p>
+                  <p className="text-[10px] text-muted-foreground">Ratio: {tierData.ratio}</p>
                 </div>
-                <span className="font-mono text-sm font-bold text-slate-800">
+                <span className="font-mono text-sm font-bold text-foreground">
                   RM {tierData.levy_rm?.toLocaleString() || "—"}
                 </span>
               </div>
             );
           })
         ) : (
-          <div className="rounded-lg bg-slate-50 p-4 text-center text-xs text-slate-400">
+          <div className="rounded-lg bg-muted p-4 text-center text-xs text-muted-foreground">
             No tier data available for {selectedSector}
           </div>
         )}
       </div>
 
       {/* Footer note */}
-      <p className="mt-3 text-[10px] text-slate-400">
+      <p className="mt-3 text-[10px] text-muted-foreground">
         Levy per worker per year. Ratio = foreign workers ÷ total workforce.
       </p>
     </div>

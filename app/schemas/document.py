@@ -1,5 +1,5 @@
 from datetime import date
-from typing import Literal, Optional
+from typing import Literal, Optional, List, Any
 from pydantic import BaseModel, Field, field_validator, ConfigDict
 
 DOCUMENT_TYPES = {
@@ -60,31 +60,65 @@ class PassportInfo(BaseModel):
     nationality: Optional[str] = None
     passport_number: Optional[str] = None
     issue_date: Optional[date] = None
-    expiry_date: Optional[str] = None
+    expiry_date: Optional[date] = None
+    issuing_country: Optional[str] = None
+    renewal_required: Optional[bool] = None
     document_id: Optional[str] = None
     source: Literal["parsed", "manual"] = "parsed"
+
 
 class MedicalInformation(BaseModel):
     source: Literal["raw_file"] = "raw_file"
     document_id: Optional[str] = None
     storage_path: Optional[str] = None
     document_type: str = "medical_record"
+    filename: Optional[str] = None
+    content_type: Optional[str] = None
+
+
+class ChildInfo(BaseModel):
+    name: Optional[str] = None
+    age: Optional[str] = None
+
 
 class GeneralInformation(BaseModel):
+    full_name: Optional[str] = None
+    date_of_birth: Optional[date] = None
+    gender: Optional[str] = None
+    nationality: Optional[str] = None
+
+    height_cm: Optional[str] = None
+    weight_kg: Optional[str] = None
+
     marital_status: Optional[str] = None
     dependent_details: Optional[str] = None
+    children: Optional[List[Any]] = None
+
+    father_name: Optional[str] = None
+    mother_name: Optional[str] = None
+    spouse_name: Optional[str] = None
+
     address: Optional[str] = None
     emergency_contact_name: Optional[str] = None
     emergency_contact_phone: Optional[str] = None
-    family_background: Optional[str] = None
+
     education_history: Optional[str] = None
-    employment_history: Optional[str] = None
+    employment_history: Optional[List[str]] = None
+
+    has_travel_history: Optional[str] = None
+    travel_history_details: Optional[str] = None
     past_overseas_travel_history: Optional[str] = None
 
+    sector: Optional[str] = None
+    permit_class: Optional[str] = None
+    employment_date: Optional[date] = None
+
+
 class WorkerCreateRequest(BaseModel):
-    passport: PassportInfo
-    medical_information: MedicalInformation
-    general_information: GeneralInformation
+    worker_id: str
+    passport: PassportInfo = PassportInfo()
+    medical_information: MedicalInformation = MedicalInformation()
+    general_information: GeneralInformation = GeneralInformation()
 
 class ConfirmDocumentResponse(BaseModel):
     status: str

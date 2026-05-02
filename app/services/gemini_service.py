@@ -7,13 +7,12 @@ from typing import Dict, Optional
 from dotenv import load_dotenv
 load_dotenv()
 
-import google.genai as genai
 from google.genai import types
+
+from app.services.gemini_client import get_client, call_with_rotation
 
 VISION_MODEL = os.getenv("GEMINI_VISION_MODEL", "gemini-2.5-flash")
 REASONING_MODEL = os.getenv("GEMINI_REASONING_MODEL", "gemini-2.5-flash")
-
-_client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 DOCUMENT_PROMPTS = {
     "passport": """
@@ -29,6 +28,8 @@ Analyze this passport document and extract the following information in JSON for
 
 Check if the passport has less than 12 months validity remaining.
 If yes, flag it as "renewal_required": true.
+
+any date should be in this format (YYYY-MM-DD)
 
 Return only valid JSON.
 """,
@@ -239,7 +240,11 @@ def parse_document(image_url: str, document_type: str, prompt_override: Optional
                 image_data = f.read()
 
         part = types.Part.from_bytes(data=image_data, mime_type=mime_type)
-        response = _client.models.generate_content(model=VISION_MODEL, contents=[prompt, part])
+
+        def _call(client):
+            return client.models.generate_content(model=VISION_MODEL, contents=[prompt, part])
+
+        response = call_with_rotation(_call)
         return {
             "success": True,
             "document_type": document_type,
@@ -254,11 +259,15 @@ def parse_document(image_url: str, document_type: str, prompt_override: Optional
 def generate_text(prompt: str, system_prompt: Optional[str] = None) -> Dict:
     full_prompt = f"{system_prompt}\n\n{prompt}" if system_prompt else prompt
     try:
-        response = _client.models.generate_content(
-            model=REASONING_MODEL,
-            contents=full_prompt,
-            config=types.GenerateContentConfig(temperature=0.2, max_output_tokens=2000),
-        )
+
+        def _call(client):
+            return client.models.generate_content(
+                model=REASONING_MODEL,
+                contents=full_prompt,
+                config=types.GenerateContentConfig(temperature=0.2, max_output_tokens=2000),
+            )
+
+        response = call_with_rotation(_call)
         return {"success": True, "text": response.text, "model": REASONING_MODEL,
                 "timestamp": datetime.now().isoformat()}
     except Exception as e:
@@ -273,11 +282,15 @@ def generate_justification_letter(worker_data: Dict, application_type: str, cont
         prompt = prompt_fn(worker_data, context)
 
     try:
-        response = _client.models.generate_content(
-            model=REASONING_MODEL,
-            contents=prompt,
-            config=types.GenerateContentConfig(temperature=0.3, max_output_tokens=2000),
-        )
+
+        def _call(client):
+            return client.models.generate_content(
+                model=REASONING_MODEL,
+                contents=prompt,
+                config=types.GenerateContentConfig(temperature=0.3, max_output_tokens=2000),
+            )
+
+        response = call_with_rotation(_call)
         return {
             "success": True,
             "application_type": application_type,

@@ -1,0 +1,10 @@
+{
+  "$schema": "https://langgra.ph/schema.json",
+  "dependencies": ["./"],
+  "graphs": {
+    "vdr": "./app/agents/graph.py:vdr_graph",
+    "compliance": "./app/agents/graph.py:compliance_graph",
+    "master": "./app/agents/master_graph.py:master_graph"
+  },
+  "env": ".env"
+}

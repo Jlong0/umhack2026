@@ -122,29 +122,34 @@ export async function getComplianceGraph(workerId) {
 	return apiRequest(`/agents/workflows/${workerId}/graph`, { method: "GET" });
 }
 
-export async function listAllWorkflows() {
-	return apiRequest("/agents/workflows", { method: "GET" });
+export async function listAllWorkflows(companyId = null) {
+	const qs = companyId ? `?company_id=${encodeURIComponent(companyId)}` : "";
+	return apiRequest(`/agents/workflows${qs}`, { method: "GET" });
 }
 
 // Alert APIs
-export async function scanAllWorkers() {
-	return apiRequest("/alerts/scan", { method: "GET" });
+export async function scanAllWorkers(companyId = null) {
+	const qs = companyId ? `?company_id=${encodeURIComponent(companyId)}` : "";
+	return apiRequest(`/alerts/scan${qs}`, { method: "GET" });
 }
 
 export async function getWorkerAlerts(workerId) {
 	return apiRequest(`/alerts/worker/${workerId}`, { method: "GET" });
 }
 
-export async function getCriticalAlerts() {
-	return apiRequest("/alerts/critical", { method: "GET" });
+export async function getCriticalAlerts(companyId = null) {
+	const qs = companyId ? `?company_id=${encodeURIComponent(companyId)}` : "";
+	return apiRequest(`/alerts/critical${qs}`, { method: "GET" });
 }
 
-export async function getExpiringPermits(days = 30) {
-	return apiRequest(`/alerts/expiring?days=${days}`, { method: "GET" });
+export async function getExpiringPermits(days = 30, companyId = null) {
+	const qs = companyId ? `&company_id=${encodeURIComponent(companyId)}` : "";
+	return apiRequest(`/alerts/expiring?days=${days}${qs}`, { method: "GET" });
 }
 
-export async function getAlertDashboard() {
-	return apiRequest("/alerts/dashboard", { method: "GET" });
+export async function getAlertDashboard(companyId = null) {
+	const qs = companyId ? `?company_id=${encodeURIComponent(companyId)}` : "";
+	return apiRequest(`/alerts/dashboard${qs}`, { method: "GET" });
 }
 
 // HITL APIs
@@ -155,8 +160,9 @@ export async function setMedicalResult(workerId, result) {
 	});
 }
 
-export async function listHITLWorkers() {
-	return apiRequest("/hitl/workers", { method: "GET" });
+export async function listHITLWorkers(companyId = null) {
+	const qs = companyId ? `?company_id=${encodeURIComponent(companyId)}` : "";
+	return apiRequest(`/hitl/workers${qs}`, { method: "GET" });
 }
 
 export async function resolveWorkerFields(workerId, fields) {
@@ -166,8 +172,9 @@ export async function resolveWorkerFields(workerId, fields) {
 	});
 }
 
-export async function listPendingInterrupts() {
-	return apiRequest("/hitl/interrupts", { method: "GET" });
+export async function listPendingInterrupts(companyId = null) {
+	const qs = companyId ? `?company_id=${encodeURIComponent(companyId)}` : "";
+	return apiRequest(`/hitl/interrupts${qs}`, { method: "GET" });
 }
 
 export async function getInterruptDetails(workerId) {
@@ -181,8 +188,9 @@ export async function resolveInterrupt(workerId, decision, notes = null, modifie
 	});
 }
 
-export async function getInterruptStatistics() {
-	return apiRequest("/hitl/interrupts/stats", { method: "GET" });
+export async function getInterruptStatistics(companyId = null) {
+	const qs = companyId ? `?company_id=${encodeURIComponent(companyId)}` : "";
+	return apiRequest(`/hitl/interrupts/stats${qs}`, { method: "GET" });
 }
 
 // Simulator APIs
@@ -213,6 +221,36 @@ export async function listWorkers() {
 	return apiRequest("/workers", { method: "GET" });
 }
 
+export async function inviteWorker(payload) {
+	return apiRequest("/workers/invite", {
+		method: "POST",
+		body: JSON.stringify(payload),
+	});
+}
+
+export async function getWorkerCredentials(workerId) {
+	return apiRequest(`/workers/${workerId}/credentials`, { method: "GET" });
+}
+
+export async function assignAllLoginCodes() {
+	return apiRequest("/workers/assign-login-codes", { method: "POST" });
+}
+
+export async function updateWorkerContact(workerId, payload) {
+	return apiRequest(`/workers/${workerId}/update-contact`, {
+		method: "PATCH",
+		body: JSON.stringify(payload),
+	});
+}
+
+export async function listWorkerObligations(workerId) {
+	return apiRequest(`/workers/${workerId}/obligations`, { method: "GET" });
+}
+
+export async function listCompanies() {
+	return apiRequest("/companies", { method: "GET" });
+}
+
 export async function getDocumentFields(documentType) {
 	return apiRequest(`/documents/fields/${documentType}`, { method: "GET" });
 }
@@ -232,10 +270,11 @@ export async function generateContracts(templateFile) {
 	return apiRequest("/contracts/generate", { method: "POST", body });
 }
 
-export async function listContracts(status, workerId) {
+export async function listContracts(status, workerId, companyId = null) {
 	const params = new URLSearchParams();
 	if (status) params.set("status", status);
 	if (workerId) params.set("worker_id", workerId);
+	if (companyId) params.set("company_id", companyId);
 	const qs = params.toString() ? `?${params}` : "";
 	return apiRequest(`/contracts${qs}`, { method: "GET" });
 }
@@ -263,6 +302,21 @@ export async function getSyncCheck() {
 	return apiRequest("/agents/sync-check", { method: "GET" });
 }
 
+// Chat / AI Command Console APIs
+export async function sendChatMessage(message, history = [], pendingToolResult = null) {
+	return apiRequest("/chat/command", {
+		method: "POST",
+		body: JSON.stringify({ message, history, pending_tool_result: pendingToolResult }),
+	});
+}
+
+export async function executeToolCall(toolName, args = {}) {
+	return apiRequest("/chat/execute-tool", {
+		method: "POST",
+		body: JSON.stringify({ tool_name: toolName, args }),
+	});
+}
+
 export async function resolveSyncConflict(workerId, field) {
 	return apiRequest(`/agents/sync-check/${workerId}/resolve?field=${encodeURIComponent(field)}`, { method: "POST" });
 }
@@ -278,4 +332,130 @@ export async function confirmHandoff(handoffId) {
 
 export async function rejectHandoff(handoffId, notes = "") {
 	return apiRequest(`/agents/handoffs/${handoffId}/reject?notes=${encodeURIComponent(notes)}`, { method: "POST" });
+}
+
+export async function updateJtksmDecision(workerId, decision, notes = "") {
+  return apiRequest(`/workers/${workerId}/jtksm-decision`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      decision,
+      notes,
+    }),
+  });
+}
+
+export async function updateVdrDecision(workerId, decision, notes = "") {
+  return apiRequest(`/workers/${workerId}/vdr-decision`, {
+    method: "PATCH",
+    body: JSON.stringify({ decision, notes }),
+  });
+}
+
+export async function completeVdrSubmission(workerId, receipt) {
+  return apiRequest(`/workers/${workerId}/vdr-complete`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      receipt_id: receipt?.receipt_id,
+      receipt,
+    }),
+  });
+}
+
+export async function markTransitComplete(workerId) {
+  return apiRequest(`/workers/${workerId}/transit-complete`, {
+    method: "PATCH",
+  });
+}
+
+export async function simulateFomemaGovResult(workerId, result, notes = "") {
+  return apiRequest(`/workers/${workerId}/simulate-fomema-gov-result`, {
+    method: "POST",
+    body: JSON.stringify({ result, notes }),
+  });
+}
+
+export async function getWorkerStatus(workerId) {
+  return apiRequest(`/workers/${workerId}/status`);
+}
+
+export async function getWorker(workerId) {
+  return apiRequest(`/workers/${workerId}`);
+}
+
+export async function approveJTKSM(workerId) {
+  return apiRequest(`/gates/${workerId}/approve-jtksm`, { method: "POST" });
+}
+
+export async function confirmArrival(workerId) {
+  return apiRequest(`/gates/${workerId}/confirm-arrival`, { method: "POST" });
+}
+
+export async function approveFOMEMA(workerId, result = "suitable") {
+  return apiRequest(`/gates/${workerId}/approve-fomema`, {
+    method: "POST",
+    body: JSON.stringify({ result }),
+  });
+}
+
+export async function issuePermit(workerId) {
+  return apiRequest(`/gates/${workerId}/issue-permit`, { method: "POST" });
+}
+
+export async function getVisaLetter(workerId) {
+  return apiRequest(`/gates/${workerId}/visa-letter`);
+}
+
+export async function acknowledgeVisa(workerId) {
+  return apiRequest(`/gates/${workerId}/acknowledge-visa`, { method: "POST" });
+}
+
+export async function triggerNotify(workerId = null) {
+  return apiRequest("/notify/trigger", {
+    method: "POST",
+    body: JSON.stringify(workerId ? { worker_id: workerId } : {}),
+  });
+}
+
+export async function getNotifyBotStatus() {
+  return apiRequest("/notify/bot-status");
+}
+
+export async function setupNotifyBot() {
+  return apiRequest("/notify/bot-setup", { method: "POST" });
+}
+
+// Orchestration APIs
+export async function startOrchestration(workerId, triggerReason = "manual") {
+  return apiRequest("/orchestration/start", {
+    method: "POST",
+    body: JSON.stringify({ worker_id: workerId, trigger_reason: triggerReason }),
+  });
+}
+
+export async function getOrchestrationStatus(sessionId) {
+  return apiRequest(`/orchestration/${sessionId}/status`, { method: "GET" });
+}
+
+export async function getOrchestrationGraph(sessionId) {
+  return apiRequest(`/orchestration/${sessionId}/graph`, { method: "GET" });
+}
+
+export async function getOrchestrationTrace(sessionId) {
+  return apiRequest(`/orchestration/${sessionId}/trace`, { method: "GET" });
+}
+
+export async function resumeOrchestration(sessionId, decision, notes = null, modifiedData = null) {
+  return apiRequest(`/orchestration/${sessionId}/resume`, {
+    method: "POST",
+    body: JSON.stringify({ decision, notes, modified_data: modifiedData }),
+  });
+}
+
+export async function listOrchestrationSessions(workerId = null) {
+  const qs = workerId ? `?worker_id=${encodeURIComponent(workerId)}` : "";
+  return apiRequest(`/orchestration/sessions${qs}`, { method: "GET" });
+}
+
+export async function cancelOrchestrationSession(sessionId) {
+  return apiRequest(`/orchestration/${sessionId}`, { method: "DELETE" });
 }

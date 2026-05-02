@@ -25,6 +25,24 @@ class UpsertCompanyRequest(BaseModel):
     quota_balance: dict = Field(default_factory=dict)
 
 
+@router.get("")
+async def list_companies():
+    try:
+        companies = []
+        for doc in db.collection("companies").stream():
+            data = doc.to_dict() or {}
+            companies.append({
+                "id": doc.id,
+                "company_id": doc.id,
+                **data,
+            })
+
+        companies.sort(key=lambda company: company.get("company_name") or company.get("name") or company["id"])
+        return {"companies": companies, "total": len(companies)}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to list companies: {exc}")
+
+
 @router.post("")
 async def upsert_company(payload: UpsertCompanyRequest):
     try:

@@ -24,6 +24,16 @@ if [ ! -f ".env" ]; then
 # Backend runtime configuration
 FIREBASE_CREDENTIALS_PATH=serviceAccountkey.json
 
+# Firestore
+FIRESTORE_DATABASE_ID=(default)
+
+# LangSmith / Studio (dev-only)
+# Create a key at https://smith.langchain.com/settings
+LANGSMITH_API_KEY=YOUR_LANGSMITH_API_KEY
+LANGSMITH_TRACING=true
+LANGCHAIN_TRACING_V2=true
+LANGCHAIN_PROJECT=permitiq-local
+
 # Z.AI GLM API (for multimodal document processing)
 # Get your API key from: https://open.bigmodel.cn/
 ZHIPU_API_KEY=
@@ -31,6 +41,24 @@ ZHIPU_API_KEY=
 # Arize Phoenix Observability (optional)
 PHOENIX_ENABLED=false
 EOF
+fi
+
+ensure_env_kv() {
+    local key="$1"
+    local value="$2"
+    local file=".env"
+    if ! grep -q "^${key}=" "$file"; then
+        echo "${key}=${value}" >> "$file"
+    fi
+}
+
+# If .env already existed, make sure it has the newer keys (do not overwrite).
+if [ -f ".env" ]; then
+    ensure_env_kv "FIRESTORE_DATABASE_ID" "(default)"
+    ensure_env_kv "LANGSMITH_API_KEY" "YOUR_LANGSMITH_API_KEY"
+    ensure_env_kv "LANGSMITH_TRACING" "true"
+    ensure_env_kv "LANGCHAIN_TRACING_V2" "true"
+    ensure_env_kv "LANGCHAIN_PROJECT" "permitiq-local"
 fi
 
 echo "✅ Setup complete!"

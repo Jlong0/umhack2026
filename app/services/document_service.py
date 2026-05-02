@@ -2,12 +2,16 @@ import os
 from pathlib import Path
 from uuid import uuid4
 from datetime import datetime, timezone, date
+
+from fastapi import HTTPException
+
 from app.config import REQUIRED_WORKER_FIELDS
 from app.firebase_config import db, bucket
 from app.schemas.document import WorkerCreateRequest
-from app.services.worker_service import create_worker
+from app.services.worker_service import create_worker, update_worker
 from app.services.task_service import create_tasks_from_obligations
 from app.services.compliance_reasoning_service import generate_compliance_obligations
+from app.services.workflow_status_service import refresh_vdr_status
 
 LOCAL_UPLOAD_DIR = Path("uploads")
 
@@ -112,41 +116,68 @@ def serialize_dates(obj):
     else:
         return obj
 
+def deep_merge_dict(existing: dict, incoming: dict) -> dict:
+    result = dict(existing or {})
+
+    for key, value in (incoming or {}).items():
+        if isinstance(value, dict) and isinstance(result.get(key), dict):
+            result[key] = deep_merge_dict(result[key], value)
+        else:
+            result[key] = value
+
+    return result
+
+
 def create_worker_from_payload(payload: WorkerCreateRequest):
     raw = payload.model_dump(exclude_none=True)
+    worker_id = raw.get("worker_id")
 
-    # 🔒 enforce structure
-    worker_data = {
+    if not worker_id:
+        raise HTTPException(status_code=400, detail="worker_id is required")
+
+    worker_ref = db.collection("workers").document(worker_id)
+    existing_doc = worker_ref.get()
+
+    if not existing_doc.exists:
+        raise HTTPException(status_code=404, detail="Worker not found")
+
+    existing_worker = existing_doc.to_dict()
+
+    incoming_worker_data = {
         "passport": raw.get("passport") or {},
         "medical_information": raw.get("medical_information") or {},
         "general_information": raw.get("general_information") or {},
     }
 
-    worker_data = serialize_dates(worker_data)
+    incoming_worker_data = serialize_dates(incoming_worker_data)
 
-    # 🔍 validate
+    worker_data = deep_merge_dict(existing_worker, incoming_worker_data)
+
     missing_fields = get_missing_required_fields(worker_data)
 
-    # 📌 status flags
-    worker_data["review_status"] = "pending_review"
-    worker_data["workflow_status"] = "not_started"
-    worker_data["created_at"] = datetime.now(timezone.utc).isoformat()
-    worker_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(timezone.utc).isoformat()
+
+    worker_data["updated_at"] = now
 
     if missing_fields:
         worker_data["data_status"] = "incomplete"
         worker_data["missing_fields"] = missing_fields
+        worker_data["review_status"] = "pending"
+        worker_data["workflow_status"] = "missing_information"
     else:
         worker_data["data_status"] = "complete"
         worker_data["missing_fields"] = []
+        worker_data["review_status"] = "pending_review"
+        worker_data["workflow_status"] = "ready_for_admin_review"
+        refresh_vdr_status(worker_ref, worker_data)
 
-    # ✅ create worker
-    worker_id = create_worker(worker_data)
+    update_worker(worker_id, worker_data)
 
     return {
-        "status": "pending_review",
+        "status": worker_data["review_status"],
         "worker_id": worker_id,
         "data_status": worker_data["data_status"],
+        "workflow_status": worker_data["workflow_status"],
         "missing_fields": worker_data["missing_fields"],
     }
 

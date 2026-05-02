@@ -1,14 +1,66 @@
+import random
+import string
+from datetime import datetime, timezone, timedelta
+
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+from typing import Optional, Dict, Any
 
 from app.schemas.document import ConfirmDocumentResponse, WorkerCreateRequest
 from app.schemas.worker import WorkerCreate
 from app.services.document_service import create_worker_from_payload
 from app.services.worker_service import create_worker
-from app.firebase_config import db
+from app.firebase_config import db, bucket
 from app.constants.application_fields import STAGE_1_PHASES, STAGE_2_PHASES
+from app.services.workflow_sync_service import update_workflow_doc
 
 router = APIRouter()
 
+
+class WorkerInviteRequest(BaseModel):
+    name: str
+    email: str
+    whatsapp: str
+    company_id: str = "demo-company"
+
+
+class JTKSMDecision(BaseModel):
+    decision: str  # approve | reject
+    notes: str | None = None
+
+
+class VDRDecision(BaseModel):
+    decision: str  # approve | reject
+    notes: str | None = None
+
+
+class VDRCompleteRequest(BaseModel):
+    receipt_id: Optional[str] = None
+    receipt: Optional[Dict[str, Any]] = None
+
+
+class MockFomemaGovResult(BaseModel):
+    result: str  # fit | unfit
+    notes: str | None = None
+
+def _generate_login_code(name: str) -> str:
+    first = name.split()[0].lower()
+    first = "".join(c for c in first if c.isalnum())
+    digits = "".join(random.choices(string.digits, k=4))
+    return f"{first}{digits}"
+
+
+@router.get("/workers/{worker_id}")
+def get_worker(worker_id: str):
+    doc = db.collection("workers").document(worker_id).get()
+
+    if not doc.exists:
+        raise HTTPException(status_code=404, detail="Worker not found")
+
+    data = doc.to_dict()
+    data["worker_id"] = doc.id
+
+    return data
 
 @router.get("/workers")
 def list_workers_detail():
@@ -35,6 +87,8 @@ def list_workers_detail():
 
         result.append({
             "worker_id": wid,
+            "company_id": w.get("company_id"),
+            "company_name": company.get("company_name") or company.get("name"),
 
             # keep full nested data for frontend/admin review
             "passport": passport,
@@ -47,10 +101,40 @@ def list_workers_detail():
             "nationality": passport.get("nationality") or w.get("nationality"),
             "sector": general.get("sector") or w.get("sector"),
 
+            "email": w.get("email"),
+            "whatsapp": w.get("whatsapp"),
+            "login_code": w.get("login_code"),
+
             "review_status": w.get("review_status"),
             "workflow_status": w.get("workflow_status"),
             "data_status": w.get("data_status"),
             "missing_fields": w.get("missing_fields", []),
+
+            "current_gate": w.get("current_gate"),
+            "jtksm_status": w.get("jtksm_status"),
+            "jtksm_notes": w.get("jtksm_notes"),
+            "jtksm_decided_at": w.get("jtksm_decided_at"),
+
+            "workflow_complete": w.get("workflow_complete", False),
+
+            "vdr_status": w.get("vdr_status"),
+            "vdr_submission_status": w.get("vdr_submission_status"),
+            "vdr_receipt_id": w.get("vdr_receipt_id"),
+            "vdr_submitted_at": w.get("vdr_submitted_at"),
+            "vdr_requirements": w.get("vdr_requirements", {}),
+
+            "transit_status": w.get("transit_status"),
+            "arrival_confirmed_at": w.get("arrival_confirmed_at"),
+
+            "fomema_status": w.get("fomema_status"),
+            "fomema_result": w.get("fomema_result"),
+            "fomema_checked_at": w.get("fomema_checked_at"),
+
+            "plks_status": w.get("plks_status"),
+            "plks_receipt_id": w.get("plks_receipt_id"),
+            "plks_submitted_at": w.get("plks_submitted_at"),
+            "active_status": w.get("active_status"),
+            "activated_at": w.get("activated_at"),
 
             "stage_1": {k: {"label": v["label"], "data": phase_data(v)} for k, v in STAGE_1_PHASES.items()},
             "stage_2": {k: {"label": v["label"], "data": phase_data(v)} for k, v in STAGE_2_PHASES.items()},
@@ -58,6 +142,262 @@ def list_workers_detail():
             "validation_errors": comp.get("flags", []),
         })
     return {"workers": result, "total": len(result)}
+
+
+@router.get("/workers/{worker_id}/obligations")
+def list_worker_obligations(worker_id: str):
+    try:
+        docs = db.collection("worker_obligations").where("worker_id", "==", worker_id).stream()
+        obligations = []
+        for doc in docs:
+            data = doc.to_dict() or {}
+            obligations.append({"id": doc.id, **data})
+
+        obligations.sort(key=lambda item: item.get("date") or "")
+        return {"worker_id": worker_id, "obligations": obligations, "total": len(obligations)}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to list obligations: {exc}")
+
+
+@router.post("/workers/invite")
+def invite_worker(payload: WorkerInviteRequest):
+    existing = list(db.collection("workers").stream())
+    next_num = len(existing) + 1
+    worker_id = f"worker-{next_num:03d}"
+
+    while db.collection("workers").document(worker_id).get().exists:
+        next_num += 1
+        worker_id = f"worker-{next_num:03d}"
+
+    login_code = _generate_login_code(payload.name)
+    now = datetime.now(timezone.utc).isoformat()
+
+    db.collection("workers").document(worker_id).set({
+        "worker_id": worker_id,
+        "company_id": payload.company_id,
+        "full_name": payload.name,
+        "master_name": payload.name,
+        "email": payload.email,
+        "whatsapp": payload.whatsapp,
+        "login_code": login_code,
+        "passport": {"full_name": payload.name},
+        "general_information": {},
+        "medical_information": {},
+        "review_status": "pending",
+        "current_gate": "JTKSM",
+        "jtksm_status": "pending",
+        "jtksm_notes": None,
+        "jtksm_decided_at": None,
+        "workflow_status": "jtksm_pending",
+        "workflow_complete": False,
+        "data_status": "incomplete",
+        "missing_fields": [
+            {
+                "section": "passport",
+                "label": "Passport Information",
+                "reason": "Passport details are missing.",
+            },
+            {
+                "section": "general_information",
+                "label": "General Information",
+                "reason": "General worker information is missing.",
+            },
+            {
+                "section": "medical_information",
+                "label": "Medical Information",
+                "reason": "Medical checkup record is missing.",
+            },
+        ],
+        "invited_at": now,
+        "created_at": now,
+        "updated_at": now,
+    })
+
+    db.collection("workflows").document(worker_id).set({
+        "worker_id": worker_id,
+        "company_id": payload.company_id,
+        "status": "active",
+
+        "workflow_stage": "init",
+        "current_gate": "JTKSM",
+        "workflow_status": "jtksm_pending",
+        "workflow_complete": False,
+
+        "agent_statuses": {
+            "supervisor": "done",
+            "auditor": "running",
+            "company_audit": "pending",
+            "strategist": "pending",
+            "vdr_filing": "pending",
+            "plks_monitor": "pending",
+            "filing": "pending",
+            "hitl": "running",
+        },
+
+        "execution_trace": [
+            {
+                "agent": "supervisor",
+                "step": "done",
+                "summary": "Workflow initialized for invited worker.",
+                "timestamp": now,
+            },
+            {
+                "agent": "auditor",
+                "step": "running",
+                "summary": "Waiting for passport, general information, and medical information.",
+                "timestamp": now,
+            },
+        ],
+
+        "started_at": now,
+        "last_updated": now,
+    })
+
+    update_workflow_doc(worker_id, {
+        "company_id": payload.company_id,
+        "current_gate": "JTKSM",
+        "workflow_status": "jtksm_pending",
+        "workflow_complete": False,
+    })
+
+    return {
+        "worker_id": worker_id,
+        "name": payload.name,
+        "login_code": login_code,
+        "email": payload.email,
+        "whatsapp": payload.whatsapp,
+        "current_gate": "JTKSM",
+        "jtksm_status": "pending",
+    }
+
+
+@router.get("/workers/{worker_id}/credentials")
+def get_worker_credentials(worker_id: str):
+    doc = db.collection("workers").document(worker_id).get()
+    if not doc.exists:
+        raise HTTPException(status_code=404, detail="Worker not found")
+    data = doc.to_dict()
+    name = (
+        data.get("full_name")
+        or (data.get("passport") or {}).get("full_name")
+        or data.get("master_name", "")
+    )
+    return {
+        "worker_id": worker_id,
+        "name": name,
+        "login_code": data.get("login_code"),
+        "email": data.get("email"),
+        "whatsapp": data.get("whatsapp"),
+    }
+
+
+@router.patch("/workers/{worker_id}/resolve-fields")
+def resolve_worker_fields(worker_id: str, updates: dict):
+    worker_ref = db.collection("workers").document(worker_id)
+    worker_doc = worker_ref.get()
+
+    if not worker_doc.exists:
+        raise HTTPException(status_code=404, detail="Worker not found")
+
+    update_data = {}
+
+    for field_path, value in updates.items():
+        if value is None or value == "":
+            continue
+
+        # Firestore accepts dot notation for nested updates
+        update_data[field_path] = value
+
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+
+    worker_ref.update(update_data)
+
+    updated_worker = worker_ref.get().to_dict()
+    missing_fields = build_missing_sections(updated_worker)
+
+    worker_ref.set({
+        "missing_fields": missing_fields,
+        "data_status": "complete" if not missing_fields else "incomplete",
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }, merge=True)
+
+    return {
+        "worker_id": worker_id,
+        "updated_fields": update_data,
+        "missing_fields": missing_fields,
+        "data_status": "complete" if not missing_fields else "incomplete",
+    }
+
+
+@router.post("/workers/assign-login-codes")
+def assign_all_login_codes():
+    """Backfill login codes for every worker that doesn't have one. Idempotent."""
+    now = datetime.now(timezone.utc).isoformat()
+    assigned = []
+    skipped = []
+
+    for doc in db.collection("workers").stream():
+        data = doc.to_dict() or {}
+        if data.get("login_code"):
+            name = (
+                data.get("full_name")
+                or (data.get("passport") or {}).get("full_name")
+                or data.get("master_name", doc.id)
+            )
+            skipped.append({
+                "worker_id": doc.id,
+                "name": name,
+                "login_code": data["login_code"],
+                "email": data.get("email"),
+                "whatsapp": data.get("whatsapp"),
+            })
+            continue
+
+        name = (
+            data.get("full_name")
+            or (data.get("passport") or {}).get("full_name")
+            or data.get("master_name", doc.id)
+        )
+        code = _generate_login_code(name)
+        db.collection("workers").document(doc.id).update({
+            "login_code": code,
+            "updated_at": now,
+        })
+        assigned.append({
+            "worker_id": doc.id,
+            "name": name,
+            "login_code": code,
+            "email": data.get("email"),
+            "whatsapp": data.get("whatsapp"),
+        })
+
+    all_workers = assigned + skipped
+    all_workers.sort(key=lambda w: w["worker_id"])
+    return {
+        "assigned": len(assigned),
+        "already_had_code": len(skipped),
+        "workers": all_workers,
+    }
+
+
+class UpdateContactRequest(BaseModel):
+    email: str = ""
+    whatsapp: str = ""
+
+
+@router.patch("/workers/{worker_id}/update-contact")
+def update_worker_contact(worker_id: str, payload: UpdateContactRequest):
+    """Update email and/or WhatsApp number for an existing worker."""
+    doc_ref = db.collection("workers").document(worker_id)
+    if not doc_ref.get().exists:
+        raise HTTPException(status_code=404, detail="Worker not found")
+    update: dict = {"updated_at": datetime.now(timezone.utc).isoformat()}
+    if payload.email:
+        update["email"] = payload.email
+    if payload.whatsapp:
+        update["whatsapp"] = payload.whatsapp
+    doc_ref.update(update)
+    return {"worker_id": worker_id, **update}
 
 
 @router.post("/workers")
@@ -79,3 +419,325 @@ def create_worker_endpoint(payload: WorkerCreateRequest):
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+def get_signed_file_url(storage_path: str) -> str:
+    blob = bucket.blob(storage_path)
+
+    return blob.generate_signed_url(
+        version="v4",
+        expiration=timedelta(minutes=30),
+        method="GET",
+    )
+
+
+@router.get("/workers/{worker_id}/medical-image-url")
+def get_worker_medical_image_url(worker_id: str):
+    doc = db.collection("workers").document(worker_id).get()
+
+    if not doc.exists:
+        raise HTTPException(status_code=404, detail="Worker not found")
+
+    worker = doc.to_dict()
+    medical_info = worker.get("medical_information", {})
+    storage_path = medical_info.get("storage_path")
+
+    if not storage_path:
+        raise HTTPException(status_code=404, detail="No medical image found")
+
+    return {
+        "worker_id": worker_id,
+        "url": get_signed_file_url(storage_path),
+    }
+
+
+@router.patch("/workers/{worker_id}/jtksm-decision")
+def update_jtksm_decision(worker_id: str, body: JTKSMDecision):
+    worker_ref = db.collection("workers").document(worker_id)
+    worker_doc = worker_ref.get()
+
+    if not worker_doc.exists:
+        raise HTTPException(status_code=404, detail="Worker not found")
+
+    now = datetime.now(timezone.utc).isoformat()
+
+    if body.decision == "approve":
+        worker = worker_doc.to_dict()
+
+        medical = worker.get("medical_information", {}) or {}
+        missing_fields = worker.get("missing_fields", []) or {}
+
+        update_data = {
+            "jtksm_status": "approved",
+            "current_gate": "VDR_PENDING",
+            "workflow_status": "vdr_pending",
+            "vdr_status": "pending",
+            "vdr_requirements": {
+                "profile_complete": worker.get("data_status") == "complete",
+                "medical_uploaded": bool(medical.get("storage_path") or medical.get("document_id")),
+                "health_check_approved": worker.get("health_check_result") == "approve",
+                "contract_signed": bool(worker.get("contract_signed")),
+                "contract_reviewed": bool(worker.get("contract_reviewed")),
+            },
+            "jtksm_notes": body.notes,
+            "jtksm_decided_at": now,
+            "updated_at": now,
+        }
+
+    elif body.decision == "reject":
+        update_data = {
+            "jtksm_status": "rejected",
+            "current_gate": "JTKSM",
+            "workflow_status": "jtksm_rejected",
+            "review_status": "rejected",
+            "jtksm_notes": body.notes,
+            "jtksm_decided_at": now,
+            "updated_at": now,
+        }
+
+    else:
+        raise HTTPException(status_code=400, detail="decision must be approve or reject")
+
+    worker_ref.set(update_data, merge=True)
+    update_workflow_doc(worker_id, update_data)
+
+    return {
+        "worker_id": worker_id,
+        "jtksm_status": update_data["jtksm_status"],
+        "current_gate": update_data["current_gate"],
+        "workflow_status": update_data["workflow_status"],
+        "vdr_status": update_data.get("vdr_status"),
+    }
+
+
+@router.patch("/workers/{worker_id}/vdr-decision")
+def update_vdr_decision(worker_id: str, body: VDRDecision):
+    worker_ref = db.collection("workers").document(worker_id)
+    worker_doc = worker_ref.get()
+
+    if not worker_doc.exists:
+        raise HTTPException(status_code=404, detail="Worker not found")
+
+    worker = worker_doc.to_dict()
+    now = datetime.now(timezone.utc).isoformat()
+
+    requirements = worker.get("vdr_requirements", {}) or {}
+
+    if body.decision == "approve":
+        if not requirements or not all(requirements.values()):
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "message": "VDR cannot be approved yet. Some requirements are still pending.",
+                    "requirements": requirements,
+                },
+            )
+
+        update_data = {
+            "vdr_status": "ready_for_gov_submission",
+            "current_gate": "VDR_PENDING",
+            "workflow_status": "vdr_gov_submission_pending",
+            "vdr_notes": body.notes,
+            "vdr_decided_at": now,
+            "updated_at": now,
+        }
+
+    elif body.decision == "reject":
+        update_data = {
+            "vdr_status": "rejected",
+            "current_gate": "VDR_PENDING",
+            "workflow_status": "vdr_rejected",
+            "vdr_notes": body.notes,
+            "vdr_decided_at": now,
+            "updated_at": now,
+        }
+
+    else:
+        raise HTTPException(status_code=400, detail="decision must be approve or reject")
+
+    worker_ref.set(update_data, merge=True)
+    update_workflow_doc(worker_id, update_data)
+
+    return {
+        "worker_id": worker_id,
+        "current_gate": update_data["current_gate"],
+        "workflow_status": update_data["workflow_status"],
+        "vdr_status": update_data["vdr_status"],
+    }
+
+
+@router.patch("/workers/{worker_id}/vdr-complete")
+def complete_vdr_submission(worker_id: str, body: VDRCompleteRequest):
+    worker_ref = db.collection("workers").document(worker_id)
+    worker_doc = worker_ref.get()
+
+    if not worker_doc.exists:
+        raise HTTPException(status_code=404, detail="Worker not found")
+
+    now = datetime.now(timezone.utc).isoformat()
+
+    update_data = {
+        "vdr_status": "complete",
+        "vdr_submission_status": "submitted",
+        "vdr_receipt_id": body.receipt_id,
+        "vdr_receipt": body.receipt,
+        "vdr_submitted_at": now,
+
+        "current_gate": "TRANSIT",
+        "workflow_status": "awaiting_transit",
+        "transit_status": "awaiting_arrival",
+
+        "workflow_complete": False,
+        "updated_at": now,
+    }
+
+    worker_ref.set(update_data, merge=True)
+    update_workflow_doc(worker_id, update_data)
+
+    return {
+        "worker_id": worker_id,
+        "vdr_status": "complete",
+        "current_gate": "TRANSIT",
+        "workflow_status": "awaiting_transit",
+        "transit_status": "awaiting_arrival",
+        "receipt_id": body.receipt_id,
+    }
+
+
+@router.patch("/workers/{worker_id}/transit-complete")
+def mark_transit_complete(worker_id: str):
+    worker_ref = db.collection("workers").document(worker_id)
+    worker_doc = worker_ref.get()
+
+    if not worker_doc.exists:
+        raise HTTPException(status_code=404, detail="Worker not found")
+
+    worker = worker_doc.to_dict()
+
+    if worker.get("current_gate") != "TRANSIT":
+        raise HTTPException(
+            status_code=400,
+            detail="Worker is not currently in transit stage.",
+        )
+
+    now = datetime.now(timezone.utc).isoformat()
+
+    update_data = {
+        "transit_status": "arrived",
+        "arrival_confirmed_at": now,
+
+        "current_gate": "FOMEMA",
+        "workflow_status": "fomema_pending",
+        "fomema_status": "pending",
+
+        "updated_at": now,
+    }
+
+    worker_ref.set(update_data, merge=True)
+    update_workflow_doc(worker_id, update_data)
+
+    return {
+        "worker_id": worker_id,
+        "current_gate": "FOMEMA",
+        "workflow_status": "fomema_pending",
+        "transit_status": "arrived",
+        "fomema_status": "pending",
+    }
+
+
+@router.post("/workers/{worker_id}/simulate-fomema-gov-result")
+def simulate_fomema_gov_result(worker_id: str, body: MockFomemaGovResult):
+    worker_ref = db.collection("workers").document(worker_id)
+    worker_doc = worker_ref.get()
+
+    if not worker_doc.exists:
+        raise HTTPException(status_code=404, detail="Worker not found")
+
+    worker = worker_doc.to_dict()
+
+    if worker.get("current_gate") != "FOMEMA":
+        raise HTTPException(
+            status_code=400,
+            detail="Worker is not currently in FOMEMA stage.",
+        )
+
+    if body.result not in ["fit", "unfit"]:
+        raise HTTPException(status_code=400, detail="result must be fit or unfit")
+
+    passport = worker.get("passport", {}) or {}
+    now = datetime.now(timezone.utc).isoformat()
+
+    # 1. Simulate government/FOMEMA sending a result
+    gov_result = {
+        "worker_id": worker_id,
+        "passport_number": passport.get("passport_number"),
+        "result": body.result,
+        "notes": body.notes,
+        "source": "mock_fomema_government_api",
+        "received_at": now,
+    }
+
+    db.collection("mock_gov_fomema_results").document(worker_id).set(gov_result, merge=True)
+
+    # 2. Process/extract that gov result into worker workflow state
+    if body.result == "fit":
+        update_data = {
+            "fomema_status": "fit",
+            "fomema_result": "fit",
+            "fomema_result_source": "mock_gov_fomema_results",
+            "fomema_checked_at": now,
+            "fomema_notes": body.notes,
+
+            "current_gate": "PLKS_ENDORSE",
+            "workflow_status": "plks_pending",
+            "plks_status": "pending",
+
+            "updated_at": now,
+        }
+
+    else:
+        update_data = {
+            "fomema_status": "unfit",
+            "fomema_result": "unfit",
+            "fomema_result_source": "mock_gov_fomema_results",
+            "fomema_checked_at": now,
+            "fomema_notes": body.notes,
+
+            "current_gate": "FOMEMA",
+            "workflow_status": "fomema_rejected",
+            "review_status": "rejected",
+            "plks_status": "blocked",
+            "requires_hitl": True,
+            "halt_reason": "FOMEMA result unfit. Worker cannot proceed to PLKS endorsement.",
+
+            "updated_at": now,
+        }
+
+    worker_ref.set(update_data, merge=True)
+    update_workflow_doc(worker_id, update_data)
+
+    return {
+        "worker_id": worker_id,
+        "gov_result": gov_result,
+        "current_gate": update_data["current_gate"],
+        "workflow_status": update_data["workflow_status"],
+        "fomema_status": update_data["fomema_status"],
+        "plks_status": update_data.get("plks_status"),
+        "halt_reason": update_data.get("halt_reason"),
+    }
+
+@router.get("/workers/{worker_id}/status")
+def get_worker_status(worker_id: str):
+    doc = db.collection("workers").document(worker_id).get()
+
+    if not doc.exists:
+        raise HTTPException(status_code=404, detail="Worker not found")
+
+    worker = doc.to_dict()
+
+    return {
+        "worker_id": worker_id,
+        "jtksm_status": worker.get("jtksm_status", "pending"),
+        "workflow_status": worker.get("workflow_status"),
+        "current_gate": worker.get("current_gate", "JTKSM"),
+    }

@@ -1,8 +1,6 @@
 import { create } from "zustand";
 import { normalizeTasksResponse } from "@/services/taskAdapter";
 
-const DEFAULT_MOCK_WORKER_ID = "demo-worker-001";
-
 export const useWorkerStore = create((set) => ({
   workerId: null,
   jobId: null,
@@ -45,7 +43,7 @@ export const useWorkerStore = create((set) => ({
 
   setTasks: (tasks, source = "api") =>
     set((state) => ({
-      tasks: normalizeTasksResponse(tasks, state.workerId || DEFAULT_MOCK_WORKER_ID),
+      tasks: normalizeTasksResponse(tasks, state.workerId || null),
       taskSource: source,
     })),
 

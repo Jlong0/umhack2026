@@ -1,14 +1,29 @@
+from __future__ import annotations
+
 import json
 import re
 from uuid import uuid4
 from datetime import datetime, timezone
 from pathlib import Path
 
-import fitz  # pymupdf
-
 from app.firebase_config import db, bucket
 
 LOCAL_UPLOAD_DIR = Path("uploads")
+_FITZ = None
+
+
+def _get_fitz():
+    global _FITZ
+    if _FITZ is None:
+        try:
+            import fitz  # pymupdf
+        except Exception as exc:
+            raise RuntimeError(
+                "PyMuPDF is unavailable. Install the correct package with `pip install PyMuPDF` "
+                "and remove any conflicting `fitz` package."
+            ) from exc
+        _FITZ = fitz
+    return _FITZ
 
 # Maps search phrases in the PDF to worker field keys
 LABEL_TO_FIELD = [
@@ -29,7 +44,7 @@ def _flatten_worker(worker: dict) -> dict:
     passport = worker.get("passport") or {}
     general = worker.get("general_information") or {}
     return {
-        "full_name": worker.get("full_name") or passport.get("full_name") or passport.get("name") or worker.get("name", ""),
+        "full_name": passport.get("full_name") or passport.get("name") or worker.get("name", ""),
         "passport_number": worker.get("passport_number") or passport.get("passport_number", ""),
         "nationality": worker.get("nationality") or passport.get("nationality", ""),
         "sector": worker.get("sector") or general.get("sector", ""),
@@ -40,7 +55,7 @@ def _flatten_worker(worker: dict) -> dict:
     }
 
 
-def _fill_name_blank(page: fitz.Page, name: str):
+def _fill_name_blank(page, name: str):
     """Find the blank line for the employee name (before 'the Employee') and fill it."""
     # Search for all occurrences — pick the one near "the Employee", not "the Company"
     employee_hits = page.search_for("the Employee")
@@ -62,26 +77,27 @@ def _fill_name_blank(page: fitz.Page, name: str):
             break
 
     if target:
-        insert_point = fitz.Point(target.x0 + 2, target.y0 + target.height * 0.8)
+        insert_point = _get_fitz().Point(target.x0 + 2, target.y0 + target.height * 0.8)
     else:
         # Fallback: insert just to the left of "the Employee" text
-        insert_point = fitz.Point(72, emp_rect.y0 + emp_rect.height * 0.8)
+        insert_point = _get_fitz().Point(72, emp_rect.y0 + emp_rect.height * 0.8)
 
     page.insert_text(insert_point, name, fontsize=10, color=(0, 0, 0))
 
 
-def _insert_after_label(page: fitz.Page, label: str, value: str):
+def _insert_after_label(page, label: str, value: str):
     """Find label text on page and insert value right after it on the same baseline."""
     hits = page.search_for(label)
     if not hits:
         return
     rect = hits[0]
-    insert_point = fitz.Point(rect.x1 + 4, rect.y0 + rect.height * 0.8)
+    insert_point = _get_fitz().Point(rect.x1 + 4, rect.y0 + rect.height * 0.8)
     page.insert_text(insert_point, value, fontsize=10, color=(0, 0, 0))
 
 
 def fill_contract_for_worker(template_bytes: bytes, worker: dict) -> bytes:
     flat = _flatten_worker(worker)
+    fitz = _get_fitz()
     doc = fitz.open(stream=template_bytes, filetype="pdf")
 
     for page in doc:
@@ -114,7 +130,7 @@ def _save_pdf_bytes(pdf_bytes: bytes, storage_path: str) -> bool:
 
 def generate_contracts_for_all_workers(template_bytes: bytes, job_id: str):
     """Background task: generate one contract PDF per worker."""
-    workers = db.collection("workers").limit(2).stream()
+    workers = db.collection("workers").stream()
     worker_list = [(w.id, w.to_dict()) for w in workers]
 
     db.collection("contract_jobs").document(job_id).set({
@@ -128,6 +144,7 @@ def generate_contracts_for_all_workers(template_bytes: bytes, job_id: str):
     errors = []
     for worker_id, worker in worker_list:
         try:
+            flat = _flatten_worker(worker)
             pdf_bytes = fill_contract_for_worker(template_bytes, worker)
             filename = f"{uuid4()}.pdf"
             storage_path = f"contracts/{filename}"
@@ -135,7 +152,7 @@ def generate_contracts_for_all_workers(template_bytes: bytes, job_id: str):
 
             db.collection("contracts").add({
                 "worker_id": worker_id,
-                "worker_name": worker.get("full_name") or worker.get("name", "Unknown"),
+                "worker_name": flat["full_name"] or "Unknown",
                 "generated_pdf_path": storage_path,
                 "signed_pdf_path": None,
                 "status": "generated",
@@ -151,3 +168,103 @@ def generate_contracts_for_all_workers(template_bytes: bytes, job_id: str):
         "done": done,
         "errors": errors,
     })
+
+
+def generate_contract_for_worker(worker_id: str, template_bytes: bytes | None = None):
+    """
+    Generate one contract PDF for one worker.
+    Used after admin approves health check.
+    """
+    worker_ref = db.collection("workers").document(worker_id)
+    worker_doc = worker_ref.get()
+
+    if not worker_doc.exists:
+        return {
+            "success": False,
+            "error": "Worker not found",
+        }
+
+    worker = worker_doc.to_dict()
+
+    # Avoid duplicate generated contract for same worker
+    existing = (
+        db.collection("contracts")
+        .where("worker_id", "==", worker_id)
+        .where("status", "in", ["generated", "signed", "reviewed"])
+        .limit(1)
+        .stream()
+    )
+
+    existing_doc = next(existing, None)
+    if existing_doc:
+        data = existing_doc.to_dict()
+        return {
+            "success": True,
+            "contract_id": existing_doc.id,
+            "status": "already_exists",
+            "generated_pdf_path": data.get("generated_pdf_path"),
+        }
+
+    # If no template bytes passed, load latest template
+    if template_bytes is None:
+        latest_template_doc = db.collection("contract_templates").document("latest").get()
+
+        if not latest_template_doc.exists:
+            return {
+                "success": False,
+                "error": "No contract template found. Please upload a template first.",
+            }
+
+        latest_template = latest_template_doc.to_dict()
+        template_path = latest_template.get("storage_path")
+
+        if not template_path:
+            return {
+                "success": False,
+                "error": "Latest contract template has no storage_path.",
+            }
+
+        if bucket is None:
+            local_name = template_path.split("/")[-1]
+            template_bytes = (LOCAL_UPLOAD_DIR / local_name).read_bytes()
+        else:
+            blob = bucket.blob(template_path)
+            template_bytes = blob.download_as_bytes()
+
+    flat = _flatten_worker(worker)
+    pdf_bytes = fill_contract_for_worker(template_bytes, worker)
+
+    filename = f"{uuid4()}.pdf"
+    storage_path = f"contracts/{filename}"
+    _save_pdf_bytes(pdf_bytes, storage_path)
+
+    now = datetime.now(timezone.utc).isoformat()
+    contract_ref = db.collection("contracts").document()
+
+    contract_ref.set({
+        "contract_id": contract_ref.id,
+        "worker_id": worker_id,
+        "company_id": worker.get("company_id"),
+        "worker_name": flat["full_name"] or "Unknown",
+        "generated_pdf_path": storage_path,
+        "signed_pdf_path": None,
+        "status": "generated",
+        "source": "auto_generated_after_medical_approval",
+        "created_at": now,
+        "updated_at": now,
+        "reviewed_at": None,
+    })
+
+    worker_ref.set({
+        "contract_generated": True,
+        "contract_id": contract_ref.id,
+        "contract_generated_at": now,
+        "updated_at": now,
+    }, merge=True)
+
+    return {
+        "success": True,
+        "contract_id": contract_ref.id,
+        "status": "generated",
+        "generated_pdf_path": storage_path,
+    }

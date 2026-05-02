@@ -1,8 +1,17 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useHITLWorkers, useResolveWorkerFields } from "@/hooks/queries/useHITLQueries";
-import { AlertCircle, CheckCircle, Shield, FileText, Eye } from "lucide-react";
+import { AlertCircle, CheckCircle, Shield, FileText, Eye, Send, Plane, Stethoscope } from "lucide-react";
 import { useContracts, useReviewContract, useContractPdfUrl } from "@/hooks/queries/useContractQueries";
+import { approveJTKSM, confirmArrival, approveFOMEMA, issuePermit, triggerNotify } from "@/services/api";
+import { PageHeader } from "@/components/ui/page-header";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { Button } from "@/components/ui/button";
+import { PageSkeleton } from "@/components/ui/page-skeleton";
+import { ErrorState } from "@/components/ui/error-state";
+import { useAuthStore } from "@/store/useAuthStore";
+import { useQueryClient } from "@tanstack/react-query";
 
 function ContractReviewTab() {
 	const [selectedContract, setSelectedContract] = useState(null);
@@ -36,13 +45,13 @@ function ContractReviewTab() {
 
 	return (
 		<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-			<div className="rounded-xl border border-gray-200 bg-white shadow-sm">
-				<div className="border-b border-gray-100 px-5 py-4">
-					<h2 className="text-lg font-bold text-gray-900">Signed Contracts</h2>
+			<div className="rounded-xl border border-border bg-card shadow-sm">
+				<div className="border-b border-border px-5 py-4">
+					<h2 className="text-lg font-bold text-foreground">Signed Contracts</h2>
 				</div>
 				<div className="max-h-[600px] overflow-y-auto p-4 space-y-2">
 					{contracts.length === 0 ? (
-						<div className="text-center py-12 text-gray-500">
+						<div className="text-center py-12 text-muted-foreground">
 							<CheckCircle className="w-10 h-10 mx-auto mb-3 text-green-500" />
 							<p className="font-medium">No signed contracts pending review</p>
 						</div>
@@ -53,14 +62,14 @@ function ContractReviewTab() {
 							className={`w-full text-left rounded-xl border p-4 transition-all ${
 								selectedContract?.contract_id === c.contract_id
 									? "border-indigo-400 bg-indigo-50"
-									: "border-gray-100 hover:border-indigo-200 hover:bg-gray-50"
+									: "border-border hover:border-indigo-200 hover:bg-muted"
 							}`}
 						>
 							<div className="flex items-center gap-3">
 								<FileText className="w-5 h-5 text-amber-500" />
 								<div>
-									<p className="font-semibold text-gray-900 text-sm">{c.worker_name}</p>
-									<p className="text-xs text-gray-400 mt-0.5">
+									<p className="font-semibold text-foreground text-sm">{c.worker_name}</p>
+									<p className="text-xs text-muted-foreground mt-0.5">
 										Signed {c.signed_at ? new Date(c.signed_at).toLocaleDateString() : "—"}
 									</p>
 								</div>
@@ -70,12 +79,12 @@ function ContractReviewTab() {
 				</div>
 			</div>
 
-			<div className="rounded-xl border border-gray-200 bg-white shadow-sm">
-				<div className="border-b border-gray-100 px-5 py-4">
-					<h2 className="text-lg font-bold text-gray-900">Review</h2>
+			<div className="rounded-xl border border-border bg-card shadow-sm">
+				<div className="border-b border-border px-5 py-4">
+					<h2 className="text-lg font-bold text-foreground">Review</h2>
 				</div>
 				{!selectedContract ? (
-					<div className="flex h-96 items-center justify-center text-gray-400">
+					<div className="flex h-96 items-center justify-center text-muted-foreground">
 						<div className="text-center">
 							<Eye className="w-8 h-8 mx-auto mb-2 opacity-40" />
 							<p className="text-sm">Select a contract to review</p>
@@ -84,21 +93,21 @@ function ContractReviewTab() {
 				) : (
 					<div className="p-5 space-y-4">
 						<div>
-							<p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Signed Contract</p>
+							<p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Signed Contract</p>
 							{pdfUrl ? (
-								<iframe src={pdfUrl} className="w-full h-64 rounded-lg border border-gray-200" title="Signed contract" />
+								<iframe src={pdfUrl} className="w-full h-64 rounded-lg border border-border" title="Signed contract" />
 							) : (
-								<div className="h-64 rounded-lg border border-dashed border-gray-200 flex items-center justify-center text-gray-400 text-sm">
+								<div className="h-64 rounded-lg border border-dashed border-border flex items-center justify-center text-muted-foreground text-sm">
 									Loading PDF...
 								</div>
 							)}
 						</div>
 						<div>
-							<p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Passport Image</p>
+							<p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Passport Image</p>
 							{passportUrl ? (
-								<img src={passportUrl} alt="Passport" className="w-full max-h-48 object-contain rounded-lg border border-gray-200" />
+								<img src={passportUrl} alt="Passport" className="w-full max-h-48 object-contain rounded-lg border border-border" />
 							) : (
-								<div className="h-32 rounded-lg border border-dashed border-gray-200 flex items-center justify-center text-gray-400 text-sm">
+								<div className="h-32 rounded-lg border border-dashed border-border flex items-center justify-center text-muted-foreground text-sm">
 									No passport image found
 								</div>
 							)}
@@ -122,74 +131,111 @@ function ContractReviewTab() {
 	);
 }
 
+
+
+
 export default function HITLPage() {
 	const navigate = useNavigate();
 	const [activeTab, setActiveTab] = useState("interrupts");
 	const [selectedWorker, setSelectedWorker] = useState(null);
 	const [fieldValues, setFieldValues] = useState({});
+	const [selectedMissingSection, setSelectedMissingSection] = useState(null);
 
-	const { data: workersData, isLoading, isError } = useHITLWorkers();
+	const { data: workersData, isLoading, isError, refetch } = useHITLWorkers();
 	const resolveMutation = useResolveWorkerFields(selectedWorker?.worker_id);
 
-	const workers = workersData?.workers || [];
+	const selectedCompanyId = useAuthStore((state) => state.selectedCompanyId);
+	const workers = (workersData?.workers || []).filter(
+		(w) => !selectedCompanyId || w.company_id === selectedCompanyId
+	);
+
 	const pendingCount = workers.filter((w) => w.status === "pending").length;
 
 	function handleSelectWorker(worker) {
 		setSelectedWorker(worker);
-		const initial = {};
-		worker.missing_fields?.forEach((f) => { initial[f.field] = f.value || ""; });
-		setFieldValues(initial);
+		setFieldValues({});
+		setSelectedMissingSection(null);
+	}
+
+	function setNestedField(path, value) {
+		setFieldValues((prev) => ({
+			...prev,
+			[path]: value,
+		}));
+	}
+
+	function getFieldValue(path) {
+		return fieldValues[path] || "";
 	}
 
 	function handleUpdate() {
+		if (!selectedWorker) return;
+
 		resolveMutation.mutate(fieldValues, {
-			onSuccess: () => setSelectedWorker(null),
+			onSuccess: () => {
+				setSelectedWorker(null);
+				setFieldValues({});
+				setSelectedMissingSection(null);
+				refetch();
+			},
 		});
 	}
 
-	if (isLoading) return <div className="p-6 text-gray-500">Loading...</div>;
-	if (isError) return <div className="p-6 text-red-500">Failed to load workers. Is the backend running?</div>;
+	const queryClient = useQueryClient();
+	const [gateLoading, setGateLoading] = useState(false);
+	const [remindLoading, setRemindLoading] = useState(false);
+
+	async function handleGateAction(actionFn, ...args) {
+		setGateLoading(true);
+		try {
+			await actionFn(...args);
+			queryClient.invalidateQueries({ queryKey: ["hitlWorkers"] });
+			queryClient.invalidateQueries({ queryKey: ["allWorkflows"] });
+			queryClient.invalidateQueries({ queryKey: ["pendingInterrupts"] });
+			setSelectedWorker(null);
+		} catch (err) {
+			console.error("Gate action failed:", err);
+		} finally {
+			setGateLoading(false);
+		}
+	}
+
+	if (isLoading) return <PageSkeleton variant="detail" />;
+	if (isError) return <ErrorState title="Failed to load workers" message="Unable to connect to the backend. Please check that the server is running." onRetry={() => refetch()} />;
 
 	return (
 		<div className="space-y-6">
-			<div className="flex items-center justify-between">
-				<div>
-					<h1 className="text-2xl font-bold text-gray-900">Human-in-the-Loop Interrupts</h1>
-					<p className="text-sm text-gray-600 mt-1">High-stakes compliance decisions requiring human approval</p>
-				</div>
-				<div className="flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700">
-					<Shield className="h-3.5 w-3.5" />
-					{pendingCount} Pending
-				</div>
-			</div>
+			<PageHeader
+				title="Human-in-the-Loop Interrupts"
+				description="High-stakes compliance decisions requiring human approval"
+				actions={
+					<StatusBadge variant="warning" icon={<Shield className="h-3.5 w-3.5" />}>
+						{pendingCount} Pending
+					</StatusBadge>
+				}
+			/>
 
-			{/* Tab bar */}
-			<div className="flex gap-2 border-b border-gray-200">
-				<button
-					onClick={() => setActiveTab("interrupts")}
-					className={`px-4 py-2 text-sm font-medium border-b-2 transition ${activeTab === "interrupts" ? "border-indigo-600 text-indigo-700" : "border-transparent text-gray-500 hover:text-gray-700"}`}
-				>
-					Workflow Interrupts
-				</button>
-				<button
-					onClick={() => setActiveTab("contracts")}
-					className={`px-4 py-2 text-sm font-medium border-b-2 transition ${activeTab === "contracts" ? "border-indigo-600 text-indigo-700" : "border-transparent text-gray-500 hover:text-gray-700"}`}
-				>
-					Contract Review
-				</button>
-			</div>
+			<Tabs defaultValue="interrupts">
+				<TabsList>
+					<TabsTrigger value="interrupts">Workflow Interrupts</TabsTrigger>
+					<TabsTrigger value="contracts">Contract Review</TabsTrigger>
+				</TabsList>
 
-			{activeTab === "contracts" ? <ContractReviewTab /> : (
+				<TabsContent value="contracts">
+					<ContractReviewTab />
+				</TabsContent>
+
+				<TabsContent value="interrupts">
 			<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 				{/* Left: worker list */}
-				<div className="rounded-xl border border-gray-200 bg-white shadow-sm">
-					<div className="border-b border-gray-100 px-5 py-4">
-						<h2 className="text-lg font-bold text-gray-900">Pending Interrupts</h2>
+				<div className="rounded-xl border border-border bg-card shadow-sm">
+					<div className="border-b border-border px-5 py-4">
+						<h2 className="text-lg font-bold text-foreground">Pending Interrupts</h2>
 					</div>
 					<div className="p-4">
 						<table className="w-full text-sm">
 							<thead>
-								<tr className="text-xs text-gray-400 border-b border-gray-100">
+								<tr className="text-xs text-muted-foreground border-b border-border">
 									<th className="text-left pb-2 font-medium">Name</th>
 									<th className="text-left pb-2 font-medium">Status</th>
 									<th className="pb-2" />
@@ -199,17 +245,15 @@ export default function HITLPage() {
 								{workers.map((worker) => (
 									<tr
 										key={worker.worker_id}
-										className={`border-b border-gray-50 last:border-0 ${worker.status === "pending" ? "cursor-pointer hover:bg-gray-50" : ""} ${selectedWorker?.worker_id === worker.worker_id ? "bg-blue-50" : ""}`}
+									className={`border-b border-border last:border-0 ${worker.status === "pending" ? "cursor-pointer hover:bg-muted" : ""} ${selectedWorker?.worker_id === worker.worker_id ? "bg-blue-50 dark:bg-blue-950/30" : ""}`}
 										onClick={() => worker.status === "pending" && handleSelectWorker(worker)}
 									>
-										<td className="py-3 font-medium text-gray-900">{worker.full_name}</td>
+										<td className="py-3 font-medium text-foreground">{worker.full_name}</td>
 										<td className="py-3">
 											{worker.status === "pending" ? (
-												<span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">Pending</span>
+												<StatusBadge variant="warning">Pending</StatusBadge>
 											) : (
-												<span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700">
-													<CheckCircle className="w-3 h-3" /> Complete
-												</span>
+												<StatusBadge variant="success" icon={<CheckCircle className="w-3 h-3" />}>Complete</StatusBadge>
 											)}
 										</td>
 										<td className="py-3 text-right">
@@ -223,30 +267,103 @@ export default function HITLPage() {
 				</div>
 
 				{/* Right: detail + form */}
-				<div className="rounded-xl border border-gray-200 bg-white shadow-sm">
-					<div className="border-b border-gray-100 px-5 py-4">
-						<h2 className="text-lg font-bold text-gray-900">Interrupt Details</h2>
+				<div className="rounded-xl border border-border bg-card shadow-sm">
+					<div className="border-b border-border px-5 py-4">
+						<h2 className="text-lg font-bold text-foreground">Interrupt Details</h2>
 					</div>
 					{!selectedWorker ? (
-						<div className="flex h-64 items-center justify-center text-gray-400 text-sm">
+						<div className="flex h-64 items-center justify-center text-muted-foreground text-sm">
 							Select a pending worker to review
 						</div>
-					) : selectedWorker.interrupt_type === "health_check" ? (
+					) : selectedWorker.interrupt_type === "jtksm_review" || selectedWorker.current_gate === "JTKSM" || selectedWorker.current_gate === "gate_1_jtksm" ? (
+					<div className="space-y-5 p-5">
+						<div>
+							<p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Worker</p>
+							<p className="font-medium text-foreground">{selectedWorker.full_name}</p>
+						</div>
+						<div className="rounded-lg bg-violet-50 border border-violet-200 p-3 text-sm text-violet-900 dark:bg-violet-950/40 dark:border-violet-800 dark:text-violet-300">
+							<strong>JTKSM Gate Review</strong> — Worker data has been uploaded. Review completeness and approve to advance to VDR submission.
+						</div>
+						{selectedWorker.reason && (
+							<div className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-900 dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-300">
+								{selectedWorker.reason}
+							</div>
+						)}
+						<button
+							onClick={() => handleGateAction(approveJTKSM, selectedWorker.worker_id)}
+							disabled={gateLoading}
+							className="w-full flex items-center justify-center gap-2 rounded-lg bg-violet-600 py-2.5 text-sm font-semibold text-white hover:bg-violet-500 disabled:opacity-50 transition"
+						>
+							<CheckCircle className="w-4 h-4" />
+							{gateLoading ? "Processing..." : "Approve JTKSM → Advance to VDR"}
+						</button>
+					</div>
+				) : selectedWorker.interrupt_type === "arrival_confirmation" || selectedWorker.current_gate === "TRANSIT" ? (
+					<div className="space-y-5 p-5">
+						<div>
+							<p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Worker</p>
+							<p className="font-medium text-foreground">{selectedWorker.full_name}</p>
+						</div>
+						<div className="rounded-lg bg-cyan-50 border border-cyan-200 p-3 text-sm text-cyan-900 dark:bg-cyan-950/40 dark:border-cyan-800 dark:text-cyan-300">
+							<strong>Arrival Confirmation</strong> — This worker has acknowledged their visa letter and is now in transit. Please confirm you have met and picked up this worker.
+						</div>
+						<div className="flex items-center gap-3 rounded-lg bg-muted/60 p-3">
+							<Plane className="h-8 w-8 text-cyan-500" />
+							<div>
+								<p className="text-sm font-medium text-foreground">Worker is in transit</p>
+								<p className="text-xs text-muted-foreground">Confirm arrival to advance to FOMEMA</p>
+							</div>
+						</div>
+						<button
+							onClick={() => handleGateAction(confirmArrival, selectedWorker.worker_id)}
+							disabled={gateLoading}
+							className="w-full flex items-center justify-center gap-2 rounded-lg bg-cyan-600 py-2.5 text-sm font-semibold text-white hover:bg-cyan-500 disabled:opacity-50 transition"
+						>
+							<Plane className="w-4 h-4" />
+							{gateLoading ? "Processing..." : "Confirm Arrival → Advance to FOMEMA"}
+						</button>
+					</div>
+				) : selectedWorker.interrupt_type === "fomema_medical_pending" || selectedWorker.current_gate === "FOMEMA" ? (
+					<div className="space-y-5 p-5">
+						<div>
+							<p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Worker</p>
+							<p className="font-medium text-foreground">{selectedWorker.full_name}</p>
+						</div>
+						<div className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-900 dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-300">
+							<strong>FOMEMA Medical Review</strong> — Worker has completed their FOMEMA medical checkup. Review the results and approve to advance to PLKS Endorse.
+						</div>
+						<div className="flex items-center gap-3 rounded-lg bg-muted/60 p-3">
+							<Stethoscope className="h-8 w-8 text-amber-500" />
+							<div>
+								<p className="text-sm font-medium text-foreground">Medical checkup completed</p>
+								<p className="text-xs text-muted-foreground">Review FOMEMA result and approve to proceed</p>
+							</div>
+						</div>
+						<button
+							onClick={() => handleGateAction(approveFOMEMA, selectedWorker.worker_id, "suitable")}
+							disabled={gateLoading}
+							className="w-full flex items-center justify-center gap-2 rounded-lg bg-amber-600 py-2.5 text-sm font-semibold text-white hover:bg-amber-500 disabled:opacity-50 transition"
+						>
+							<Stethoscope className="w-4 h-4" />
+							{gateLoading ? "Processing..." : "Approve FOMEMA → Advance to PLKS Endorse"}
+						</button>
+					</div>
+				) : selectedWorker.interrupt_type === "health_check" ? (
 						<div className="space-y-5 p-5">
 							<div>
-								<p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Worker</p>
-								<p className="font-medium text-gray-900">{selectedWorker.full_name}</p>
+								<p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Worker</p>
+								<p className="font-medium text-foreground">{selectedWorker.full_name}</p>
 							</div>
-							<div className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-900">
+						<div className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-900 dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-300">
 								{selectedWorker.reason}
 							</div>
 							{selectedWorker.medical_form_url && (
 								<div>
-									<p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Uploaded Medical Form</p>
+									<p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Uploaded Medical Form</p>
 									<img
 										src={selectedWorker.medical_form_url}
 										alt="Medical form"
-										className="rounded-lg border border-gray-200 max-h-48 object-contain w-full"
+										className="rounded-lg border border-border max-h-48 object-contain w-full"
 									/>
 								</div>
 							)}
@@ -260,51 +377,199 @@ export default function HITLPage() {
 					) : (
 						<div className="space-y-5 p-5">
 							<div>
-								<p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Worker</p>
-								<p className="font-medium text-gray-900">{selectedWorker.full_name}</p>
+								<p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Worker</p>
+								<p className="font-medium text-foreground">{selectedWorker.full_name}</p>
 							</div>
-							<div className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-900">
+						<div className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-900 dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-300">
 								{selectedWorker.reason}
 							</div>
 							{selectedWorker.passport_image_url && (
 								<div>
-									<p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Uploaded Passport</p>
+									<p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Uploaded Passport</p>
 									<img
 										src={selectedWorker.passport_image_url}
 										alt="Passport"
-										className="rounded-lg border border-gray-200 max-h-48 object-contain"
+										className="rounded-lg border border-border max-h-48 object-contain"
 									/>
 								</div>
 							)}
 							{selectedWorker.missing_fields?.length > 0 && (
-								<div className="space-y-3">
-									<p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Fill Missing Fields</p>
-									{selectedWorker.missing_fields.map((f) => (
-										<div key={f.field}>
-											<label className="block text-xs text-gray-500 mb-1">{f.label}</label>
-											<input
-												type="text"
-												value={fieldValues[f.field] || ""}
-												onChange={(e) => setFieldValues((prev) => ({ ...prev, [f.field]: e.target.value }))}
-												className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400"
-												placeholder={`Enter ${f.label}`}
-											/>
+								<div className="space-y-4">
+									<div>
+										<p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
+											Missing Sections
+										</p>
+
+										<div className="mt-2 grid gap-2 sm:grid-cols-2">
+											{selectedWorker.missing_fields.map((item) => {
+												const itemKey = item.section || item.field;
+												const selectedKey =
+													selectedMissingSection?.section || selectedMissingSection?.field;
+
+												return (
+													<button
+														key={itemKey}
+														type="button"
+														onClick={() => setSelectedMissingSection(item)}
+														className={`rounded-lg border p-3 text-left transition ${
+															selectedKey === itemKey
+																? "border-blue-400 bg-blue-50"
+																: "border-amber-200 bg-amber-50 hover:bg-amber-100"
+														}`}
+													>
+														<p className="text-sm font-semibold text-gray-900">
+															{item.label || item.section || item.field}
+														</p>
+
+														<p className="mt-1 text-xs text-gray-500">
+															{item.items?.length
+																? `${item.items.length} missing item${item.items.length > 1 ? "s" : ""}`
+																: item.reason || "Click to view details"}
+														</p>
+													</button>
+												);
+											})}
 										</div>
-									))}
+									</div>
+
+									{selectedMissingSection && (
+										<div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+											<p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+												Selected Section
+											</p>
+
+											<p className="mt-2 text-sm font-semibold text-slate-900">
+												{selectedMissingSection.label ||
+													selectedMissingSection.section ||
+													selectedMissingSection.field}
+											</p>
+
+											<p className="mt-1 text-sm text-slate-600">
+												{selectedMissingSection.reason || "This section requires review."}
+											</p>
+
+											<div className="mt-4">
+												<p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+													Existing Data
+												</p>
+
+												{selectedMissingSection.data &&
+												Object.keys(selectedMissingSection.data).length > 0 ? (
+													<div className="mt-2 space-y-2">
+														{Object.entries(selectedMissingSection.data).map(([key, value]) => {
+															const isMissing =
+																value === null ||
+																value === undefined ||
+																value === "";
+
+															return (
+																<div
+																	key={key}
+																	className="flex items-start justify-between gap-3 rounded-lg border border-slate-100 bg-white px-3 py-2 text-sm"
+																>
+																	<span className="font-medium capitalize text-slate-600">
+																		{key.replaceAll("_", " ")}
+																	</span>
+
+																	<span
+																		className={`text-right ${
+																			isMissing ? "text-rose-500" : "text-slate-900"
+																		}`}
+																	>
+																		{isMissing ? "Missing" : String(value)}
+																	</span>
+																</div>
+															);
+														})}
+													</div>
+												) : (
+													<p className="mt-2 text-sm text-rose-500">
+														No existing data found in this section.
+													</p>
+												)}
+											</div>
+
+											<div className="mt-4">
+												<p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+													Missing Items
+												</p>
+
+												{selectedMissingSection.items?.length > 0 ? (
+													<div className="mt-2 space-y-3">
+														{selectedMissingSection.items.map((missingItem) => {
+															const fieldPath = missingItem.field;
+
+															return (
+																<div
+																	key={fieldPath || missingItem.label}
+																	className="rounded-lg border border-rose-100 bg-white px-3 py-3"
+																>
+																	<label className="block text-xs font-semibold text-slate-500">
+																		{missingItem.label || fieldPath}
+																	</label>
+
+																	<input
+																		type="text"
+																		value={getFieldValue(fieldPath)}
+																		onChange={(e) => setNestedField(fieldPath, e.target.value)}
+																		placeholder={`Enter ${missingItem.label || fieldPath}`}
+																		className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400"
+																	/>
+																</div>
+															);
+														})}
+													</div>
+												) : (
+													<p className="mt-2 text-sm text-slate-500">
+														No specific missing items listed.
+													</p>
+												)}
+											</div>
+										</div>
+									)}
 								</div>
 							)}
-							<button
-								onClick={handleUpdate}
-								disabled={resolveMutation.isPending}
-								className="w-full rounded-lg bg-blue-600 py-2.5 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
-							>
-								{resolveMutation.isPending ? "Updating..." : "Update"}
-							</button>
+							<div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+								<button
+									onClick={handleUpdate}
+									disabled={resolveMutation.isPending || Object.keys(fieldValues).length === 0}
+									className="w-full rounded-lg bg-blue-600 py-2.5 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
+								>
+									{resolveMutation.isPending ? "Updating..." : "Update Selected Fields"}
+								</button>
+
+								{selectedWorker?.whatsapp ? (
+									<button
+										type="button"
+										disabled={remindLoading}
+										onClick={async () => {
+											setRemindLoading(true);
+											try { await triggerNotify(selectedWorker.worker_id); }
+											catch {}
+											finally { setRemindLoading(false); }
+										}}
+										className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 py-2.5 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"
+									>
+										<Send className="h-4 w-4" />
+										{remindLoading ? "Sending..." : "Remind Worker"}
+									</button>
+								) : (
+									<button
+										type="button"
+										disabled
+										className="flex w-full items-center justify-center gap-2 rounded-lg bg-slate-200 py-2.5 text-sm font-semibold text-slate-400"
+									>
+										<Send className="h-4 w-4" />
+										No WhatsApp
+									</button>
+								)}
+							</div>
 						</div>
 					)}
 				</div>
 			</div>
-			)}
+			</TabsContent>
+			</Tabs>
 		</div>
 	);
 }
