@@ -58,22 +58,19 @@ export default function MedicalReviewPage() {
 	}
 
 	return (
-		<div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
-			<div className="bg-white rounded-2xl shadow-lg max-w-md w-full p-8 space-y-6">
-				<button
-					onClick={() => navigate("/hitl")}
-					className="flex items-center gap-1 text-sm text-gray-400 hover:text-gray-700"
-				>
+		<div className="min-h-screen bg-muted flex items-center justify-center p-6">
+			<div className="bg-card rounded-2xl shadow-lg max-w-md w-full p-8 space-y-6">
+				<button onClick={() => navigate("/hitl")} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
 					<ArrowLeft className="w-4 h-4" /> Back
 				</button>
 
 				<div>
-					<h1 className="text-xl font-bold text-gray-900">Medical Review</h1>
-					<p className="text-sm text-gray-500 mt-1">{workerName}</p>
+					<h1 className="text-xl font-bold text-foreground">Medical Review</h1>
+					<p className="text-sm text-muted-foreground mt-1">{workerName}</p>
 				</div>
 
-				<div className="rounded-xl border border-gray-200 overflow-hidden">
-					<div className="bg-gray-100 px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+				<div className="rounded-xl border border-border overflow-hidden">
+					<div className="bg-muted px-4 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
 						FOMEMA / Medical Checkup Form
 					</div>
 
@@ -97,8 +94,8 @@ export default function MedicalReviewPage() {
 				<div
 					className={`rounded-xl p-4 flex items-center gap-3 ${
 						MOCK_RESULT === "approve"
-							? "bg-green-50 border border-green-200"
-							: "bg-red-50 border border-red-200"
+							? "bg-green-50 border border-green-200 dark:bg-green-950/40 dark:border-green-800" 
+							: "bg-red-50 border border-red-200 dark:bg-red-950/40 dark:border-red-800"
 					}`}
 				>
 					{MOCK_RESULT === "approve" ? (
@@ -115,10 +112,8 @@ export default function MedicalReviewPage() {
 						>
 							Result: {MOCK_RESULT === "approve" ? "Approved" : "Rejected"}
 						</p>
-						<p className="text-xs text-gray-500 mt-0.5">
-							{MOCK_RESULT === "approve"
-								? "Worker is medically fit."
-								: "Worker did not pass medical screening."}
+						<p className="text-xs text-muted-foreground mt-0.5">
+							{MOCK_RESULT === "approve" ? "Worker is medically fit." : "Worker did not pass medical screening."}
 						</p>
 					</div>
 				</div>

@@ -106,7 +106,7 @@ export default function IntentPreviewModal() {
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
 
       {/* Modal */}
-      <div className="relative mx-4 w-full max-w-lg rounded-2xl border border-red-500/20 bg-gray-900 shadow-2xl shadow-red-500/10">
+      <div className="relative mx-4 w-full max-w-lg rounded-2xl border border-red-500/20 bg-card shadow-2xl shadow-red-500/10">
         {/* Header */}
         <div className="border-b border-red-500/20 bg-red-500/5 px-6 py-4">
           <div className="flex items-center gap-3">
@@ -129,13 +129,13 @@ export default function IntentPreviewModal() {
         {/* Body */}
         <div className="space-y-4 px-6 py-5">
           {/* Action Description */}
-          <div className="rounded-lg border border-white/5 bg-white/[0.02] p-4">
-            <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+          <div className="rounded-lg border border-border bg-muted p-4">
+            <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               Proposed Action
             </div>
-            <p className="text-sm text-gray-200">{data.action || "Unknown action"}</p>
+            <p className="text-sm text-foreground">{data.action || "Unknown action"}</p>
             {data.message && (
-              <p className="mt-2 text-xs text-gray-400">{data.message}</p>
+              <p className="mt-2 text-xs text-muted-foreground">{data.message}</p>
             )}
           </div>
 
@@ -146,7 +146,7 @@ export default function IntentPreviewModal() {
                 ? "border-red-500/30 bg-red-500/5"
                 : "border-amber-500/30 bg-amber-500/5"
             }`}>
-              <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+              <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Financial Impact
               </div>
               <div className={`text-2xl font-bold ${
@@ -155,7 +155,7 @@ export default function IntentPreviewModal() {
                 RM {fineAmount.toLocaleString()}
               </div>
               {data.computed_data?.liability_level && (
-                <p className="mt-1 text-xs text-gray-400">
+                <p className="mt-1 text-xs text-muted-foreground">
                   Liability Level: {data.computed_data.liability_level}
                 </p>
               )}
@@ -164,20 +164,20 @@ export default function IntentPreviewModal() {
 
           {/* Worker Info */}
           {data.worker_id && (
-            <div className="text-xs text-gray-500">
-              Worker: <span className="font-mono text-gray-300">{data.worker_id}</span>
+            <div className="text-xs text-muted-foreground">
+              Worker: <span className="font-mono text-foreground">{data.worker_id}</span>
             </div>
           )}
 
           {/* Mandatory Checkbox */}
-          <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-white/5 bg-white/[0.02] p-3 transition-colors hover:bg-white/[0.04]">
+          <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-muted p-3 transition-colors hover:bg-muted/80">
             <input
               type="checkbox"
               checked={isChecked}
               onChange={(e) => setIsChecked(e.target.checked)}
-              className="mt-0.5 h-4 w-4 rounded border-gray-600 bg-gray-800 accent-red-500"
+              className="mt-0.5 h-4 w-4 rounded border-border bg-muted accent-red-500"
             />
-            <span className="text-xs text-gray-300">
+            <span className="text-xs text-muted-foreground">
               I confirm this action is authorized under Section 55B of the Immigration Act
               and understand it <strong className="text-red-400">cannot be undone</strong>.
             </span>
@@ -190,7 +190,7 @@ export default function IntentPreviewModal() {
                 type="checkbox"
                 checked={dualConfirmed}
                 onChange={(e) => setDualConfirmed(e.target.checked)}
-                className="mt-0.5 h-4 w-4 rounded border-red-600 bg-gray-800 accent-red-500"
+                className="mt-0.5 h-4 w-4 rounded border-red-600 bg-muted accent-red-500"
               />
               <span className="text-xs text-red-300">
                 <strong>HIGH LIABILITY (RM {fineAmount.toLocaleString()}+)</strong>: I have
@@ -201,10 +201,10 @@ export default function IntentPreviewModal() {
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between border-t border-white/5 px-6 py-4">
+        <div className="flex items-center justify-between border-t border-border px-6 py-4">
           <button
             onClick={handleCancel}
-            className="rounded-lg border border-white/10 px-4 py-2 text-sm text-gray-400 transition-colors hover:bg-white/5 hover:text-gray-200"
+            className="rounded-lg border border-border px-4 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           >
             Cancel
           </button>
@@ -215,7 +215,7 @@ export default function IntentPreviewModal() {
             className={`rounded-lg px-6 py-2 text-sm font-semibold transition-all ${
               canExecute
                 ? "bg-red-600 text-white shadow-lg shadow-red-500/20 hover:bg-red-500"
-                : "cursor-not-allowed bg-gray-700 text-gray-500"
+                : "cursor-not-allowed bg-muted text-muted-foreground"
             }`}
           >
             {!isChecked

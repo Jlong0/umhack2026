@@ -38,12 +38,12 @@ export default function ConfidenceBadge({ score, reasoning, className = "" }) {
       </span>
 
       {reasoning && (
-        <div className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 w-64 -translate-x-1/2 rounded-lg border border-white/10 bg-gray-900 px-3 py-2 text-xs text-gray-300 opacity-0 shadow-xl transition-opacity duration-200 group-hover:pointer-events-auto group-hover:opacity-100">
-          <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+        <div className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 w-64 -translate-x-1/2 rounded-lg border border-border bg-card px-3 py-2 text-xs text-muted-foreground opacity-0 shadow-xl transition-opacity duration-200 group-hover:pointer-events-auto group-hover:opacity-100">
+          <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
             AI Reasoning
           </div>
           {reasoning}
-          <div className="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-gray-900" />
+          <div className="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-card" />
         </div>
       )}
     </div>

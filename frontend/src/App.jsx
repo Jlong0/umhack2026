@@ -21,6 +21,7 @@ import ContractGenerationPage from "@/pages/ContractGenerationPage";
 import WorkerObligationCalendar from "@/pages/WorkerObligationCalendar";
 import WorkerInvitePage from "@/pages/WorkerInvitePage";
 import GraphVisualizerPage from "@/pages/GraphVisualizerPage";
+import LiveOrchestrationPage from "@/pages/LiveOrchestrationPage";
 import MockGovPortalPage from "@/pages/MockGovPortalPage";
 import WorkerLoginPage from "@/pages/WorkerLoginPage";
 import { useAuthStore } from "@/store/useAuthStore";
@@ -86,6 +87,7 @@ function App() {
       >
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/graph" element={<GraphVisualizerPage />} />
+        <Route path="/orchestration/:workerId" element={<LiveOrchestrationPage />} />
         <Route path="/worker-visualizer" element={<WorkerProfilePage />} />
         <Route path="/tool-handoff" element={<ConfirmPage />} />
         <Route path="/workflows" element={<WorkflowsPage />} />

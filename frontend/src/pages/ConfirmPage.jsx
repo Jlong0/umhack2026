@@ -8,6 +8,9 @@ import { cn } from "@/lib/utils";
 import { patchWorkerTask, listPendingHandoffs, confirmHandoff, rejectHandoff } from "@/services/api";
 import { areDependenciesCompleted, isStatusAwaitingApproval } from "@/services/taskAdapter";
 import { useWorkerStore } from "@/store/useWorkerStore";
+import { PageHeader } from "@/components/ui/page-header";
+import { PageSkeleton } from "@/components/ui/page-skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
 
 function ToolApprovalModal({ open, task, payload, onApprove, onDismiss, isApproving }) {
   const approveButtonRef = useRef(null);
@@ -39,21 +42,21 @@ function ToolApprovalModal({ open, task, payload, onApprove, onDismiss, isApprov
         role="dialog"
         aria-modal="true"
         aria-label="Tool approval"
-        className="w-full max-w-xl rounded-2xl border border-slate-200 bg-white p-5 shadow-soft"
+        className="w-full max-w-xl rounded-2xl border border-border bg-card p-5 shadow-soft"
       >
-        <h3 className="text-lg font-semibold text-slate-900">Tool Approval Required</h3>
-        <p className="mt-1 text-sm text-slate-600">
+        <h3 className="text-lg font-semibold text-foreground">Tool Approval Required</h3>
+        <p className="mt-1 text-sm text-muted-foreground">
           {task.taskName} is waiting for a human checkpoint before the graph can continue.
         </p>
 
-        <pre className="mt-4 max-h-60 overflow-auto rounded-lg bg-slate-950 p-4 font-mono text-xs text-emerald-300">
+        <pre className="mt-4 max-h-60 overflow-auto rounded-lg bg-background p-4 font-mono text-xs text-emerald-300">
           {JSON.stringify(payload, null, 2)}
         </pre>
 
         <div className="mt-5 flex flex-wrap justify-end gap-3">
           <button
             type="button"
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+            className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground transition hover:bg-muted"
             onClick={onDismiss}
           >
             Close
@@ -178,19 +181,18 @@ export default function ConfirmPage() {
 
   return (
     <div className="space-y-6">
-      <section className="permit-surface px-5 py-4 sm:px-6">
-        <h2 className="text-xl font-semibold">Interactive Tool Execution & Payload Handoff</h2>
-        <p className="mt-1 text-sm text-slate-600">
-          Resolve graph pauses by approving tool calls and exporting MyEG payloads.
-        </p>
-        <p className="mt-2 text-xs text-slate-500">Worker: {workerId || "demo-worker-001"} | Source: {taskSource}</p>
-      </section>
+      <PageHeader
+        title="Interactive Tool Execution & Payload Handoff"
+        description="Resolve graph pauses by approving tool calls and exporting MyEG payloads."
+      >
+        <p className="mt-2 text-xs text-muted-foreground">Worker: {workerId || "demo-worker-001"} | Source: {taskSource}</p>
+      </PageHeader>
 
       <section className="permit-surface p-5 sm:p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h3 className="text-base font-semibold text-slate-900">Tool Approval Queue</h3>
-            <p className="mt-1 text-sm text-slate-600">
+            <h3 className="text-base font-semibold text-foreground">Tool Approval Queue</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
               Triggered whenever a node requests explicit human approval before continuing execution.
             </p>
           </div>
@@ -206,11 +208,11 @@ export default function ConfirmPage() {
           </button>
         </div>
 
-        <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50/70 p-4 text-sm text-slate-700">
+        <div className="mt-4 rounded-lg border border-border bg-muted p-4 text-sm text-foreground">
           {approvalTask ? (
             <>
-              <p className="font-medium text-slate-900">Pending task: {approvalTask.taskName}</p>
-              <p className="mt-1 text-xs text-slate-600">Status: {approvalTask.status}</p>
+              <p className="font-medium text-foreground">Pending task: {approvalTask.taskName}</p>
+              <p className="mt-1 text-xs text-muted-foreground">Status: {approvalTask.status}</p>
             </>
           ) : (
             <p>No pending approvals at the moment.</p>
@@ -221,11 +223,11 @@ export default function ConfirmPage() {
       <section
         className={cn(
           "permit-surface p-5 sm:p-6",
-          showMyEgPayload ? "border-emerald-200" : "border-slate-200 opacity-70",
+          showMyEgPayload ? "border-emerald-200" : "border-border opacity-70",
         )}
       >
-        <h3 className="text-base font-semibold text-slate-900">MyEG Payload Execution Widget</h3>
-        <p className="mt-1 text-sm text-slate-600">
+        <h3 className="text-base font-semibold text-foreground">MyEG Payload Execution Widget</h3>
+        <p className="mt-1 text-sm text-muted-foreground">
           Visible once upstream dependencies are satisfied for the MyEG handoff node.
         </p>
 
@@ -234,15 +236,15 @@ export default function ConfirmPage() {
             <dl className="mt-4 grid gap-3 rounded-lg border border-emerald-100 bg-emerald-50/40 p-4 sm:grid-cols-2">
               {Object.entries(myEgPayload).map(([key, value]) => (
                 <div key={key}>
-                  <dt className="text-xs uppercase tracking-wide text-slate-500">{key.replace(/_/g, " ")}</dt>
-                  <dd className="mt-1 text-sm font-medium text-slate-800">{String(value)}</dd>
+                  <dt className="text-xs uppercase tracking-wide text-muted-foreground">{key.replace(/_/g, " ")}</dt>
+                  <dd className="mt-1 text-sm font-medium text-foreground">{String(value)}</dd>
                 </div>
               ))}
             </dl>
 
             <button
               type="button"
-              className="mt-4 inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+              className="mt-4 inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-muted"
               onClick={handleCopyPayload}
             >
               <Copy className="h-4 w-4" />
@@ -250,7 +252,7 @@ export default function ConfirmPage() {
             </button>
           </>
         ) : (
-          <p className="mt-4 text-sm text-slate-500">MyEG node is still blocked by upstream dependency status.</p>
+          <p className="mt-4 text-sm text-muted-foreground">MyEG node is still blocked by upstream dependency status.</p>
         )}
       </section>
 
@@ -293,7 +295,7 @@ function PendingHandoffsSection() {
   return (
     <section className="permit-surface border-amber-200 p-5 sm:p-6 space-y-4">
       <div>
-        <h3 className="text-base font-semibold text-slate-900">Pending Agent Handoffs</h3>
+        <h3 className="text-base font-semibold text-foreground">Pending Agent Handoffs</h3>
         <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1 mt-1 inline-block">
           Simulation mode — no real portal submission will occur
         </p>
@@ -308,19 +310,23 @@ function PendingHandoffsSection() {
       )}
 
       {isLoading ? (
-        <p className="text-sm text-slate-500">Loading...</p>
+        <PageSkeleton variant="table" />
       ) : handoffs.length === 0 ? (
-        <p className="text-sm text-slate-500">No pending handoffs.</p>
+        <EmptyState
+          tone="success"
+          title="No pending handoffs"
+          description="All tool handoffs have been resolved."
+        />
       ) : handoffs.map(h => (
-        <div key={h.handoff_id} className="rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-3">
+        <div key={h.handoff_id} className="rounded-lg border border-border bg-muted p-4 space-y-3">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-sm font-semibold text-slate-900">{h.action_type?.replace(/_/g, " ").toUpperCase()}</p>
-              <p className="text-xs text-slate-500">Triggered by: {h.triggered_by} · Worker: {h.worker_id}</p>
+              <p className="text-sm font-semibold text-foreground">{h.action_type?.replace(/_/g, " ").toUpperCase()}</p>
+              <p className="text-xs text-muted-foreground">Triggered by: {h.triggered_by} · Worker: {h.worker_id}</p>
             </div>
             <span className="text-xs bg-amber-100 text-amber-700 rounded-full px-2 py-0.5">Awaiting</span>
           </div>
-          <pre className="text-xs bg-white border border-slate-200 rounded p-3 overflow-auto max-h-32">
+          <pre className="text-xs bg-card border border-border rounded p-3 overflow-auto max-h-32">
             {JSON.stringify(h.payload, null, 2)}
           </pre>
           <div className="flex gap-2">

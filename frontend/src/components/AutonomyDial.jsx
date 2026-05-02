@@ -8,7 +8,7 @@
 import { useUIStore } from "@/store/useUIStore";
 
 const LEVELS = [
-  { value: 0, label: "Full Manual", desc: "AI takes no actions", color: "text-gray-400" },
+  { value: 0, label: "Full Manual", desc: "AI takes no actions", color: "text-muted-foreground" },
   { value: 33, label: "Suggest Only", desc: "AI suggests, you decide", color: "text-blue-400" },
   { value: 66, label: "Auto + Approval", desc: "AI acts, you approve critical", color: "text-amber-400" },
   { value: 100, label: "Full Auto", desc: "AI handles everything", color: "text-emerald-400" },
@@ -36,7 +36,7 @@ export default function AutonomyDial({ compact = false }) {
   if (compact) {
     return (
       <div className="flex items-center gap-2">
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
           Autonomy
         </span>
         <span className={`text-xs font-semibold ${currentLevel.color}`}>
@@ -47,9 +47,9 @@ export default function AutonomyDial({ compact = false }) {
   }
 
   return (
-    <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4">
+    <div className="rounded-xl border border-border bg-muted p-4">
       <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-gray-200">AI Autonomy Level</h3>
+        <h3 className="text-sm font-semibold text-foreground">AI Autonomy Level</h3>
         <span className={`text-sm font-bold ${currentLevel.color}`}>
           {currentLevel.label}
         </span>
@@ -61,7 +61,7 @@ export default function AutonomyDial({ compact = false }) {
         max="100"
         value={autonomyLevel}
         onChange={handleChange}
-        className="h-2 w-full cursor-pointer appearance-none rounded-full bg-gray-700 accent-blue-500"
+        className="h-2 w-full cursor-pointer appearance-none rounded-full bg-border accent-blue-500"
         aria-label="AI Autonomy Level"
       />
 
@@ -73,7 +73,7 @@ export default function AutonomyDial({ compact = false }) {
             className={`text-[10px] transition-colors ${
               currentLevel.value === level.value
                 ? level.color + " font-semibold"
-                : "text-gray-600 hover:text-gray-400"
+                : "text-muted-foreground hover:text-muted-foreground"
             }`}
           >
             {level.label}
@@ -81,7 +81,7 @@ export default function AutonomyDial({ compact = false }) {
         ))}
       </div>
 
-      <p className="mt-2 text-xs text-gray-500">{currentLevel.desc}</p>
+      <p className="mt-2 text-xs text-muted-foreground">{currentLevel.desc}</p>
     </div>
   );
 }

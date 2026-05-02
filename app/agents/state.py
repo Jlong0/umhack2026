@@ -107,6 +107,13 @@ class WorkerComplianceState(TypedDict):
     next_action: Optional[str]
     workflow_complete: bool
     error_state: Optional[str]
+    workflow_stage: str          # init | docs_validated | strategy_done | ready_to_complete
+    validation_errors: list
+    system_flags: list
+    trace_id: Optional[str]
+    agent_statuses: dict         # { agent_name: "pending"|"running"|"done"|"failed" }
+    execution_trace: list        # [{ agent, step, msg, timestamp }]
+    cluster_statuses: dict       # { cluster_name: "pending"|"running"|"done" }
 
 
 class ParseJobState(TypedDict):
@@ -187,6 +194,13 @@ def create_initial_worker_state(worker_data: dict) -> WorkerComplianceState:
         next_action="audit_documents",
         workflow_complete=False,
         error_state=None,
+        workflow_stage="init",
+        validation_errors=[],
+        system_flags=[],
+        trace_id=None,
+        agent_statuses={},
+        execution_trace=[],
+        cluster_statuses={},
     )
 
 

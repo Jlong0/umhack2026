@@ -10,22 +10,25 @@ import {
 } from "lucide-react";
 import { listWorkerObligations, listWorkers } from "@/services/api";
 import { useAuthStore } from "@/store/useAuthStore";
+import { PageHeader } from "@/components/ui/page-header";
+import { PageSkeleton } from "@/components/ui/page-skeleton";
+import { ErrorState } from "@/components/ui/error-state";
 
 const obligationTypes = {
   passport: {
     label: "Passport Renewal",
     icon: IdCard,
-    className: "bg-indigo-50 text-indigo-700 border-indigo-200",
+    className: "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-800",
   },
   permit: {
     label: "Permit Renewal",
     icon: FileText,
-    className: "bg-orange-50 text-orange-700 border-orange-200",
+    className: "bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-800",
   },
   health: {
     label: "Annual Health Checkup",
     icon: HeartPulse,
-    className: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    className: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800",
   },
 };
 
@@ -99,7 +102,7 @@ function normalizeObligation(item) {
 function ObligationBadge({ obligation }) {
   const config = obligationTypes[obligation.type];
   const Icon = config?.icon || ClipboardCheck;
-  const className = config?.className || "bg-slate-50 text-slate-700 border-slate-200";
+  const className = config?.className || "bg-muted text-foreground border-border";
 
   return (
     <div
@@ -197,22 +200,14 @@ export default function WorkerObligationCalendar() {
 
   return (
     <div className="space-y-6">
-      <section className="permit-surface px-5 py-4 sm:px-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <h2 className="flex items-center gap-2 text-xl font-semibold text-slate-900">
-              <CalendarDays className="h-5 w-5 text-indigo-700" />
-              Worker Obligation Calendar
-            </h2>
-            <p className="mt-1 text-sm text-slate-600">
-              View passport renewal, permit renewal, and annual health checkup deadlines by worker.
-            </p>
-          </div>
-
+      <PageHeader
+        title="Worker Obligation Calendar"
+        description="View passport renewal, permit renewal, and annual health checkup deadlines by worker."
+        actions={
           <select
             value={selectedWorkerId}
             onChange={(e) => setSelectedWorkerId(e.target.value)}
-            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 lg:w-72"
+            className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary lg:w-72"
           >
             {workers.map((worker) => {
               const id = worker.id || worker.worker_id;
@@ -224,44 +219,38 @@ export default function WorkerObligationCalendar() {
               );
             })}
           </select>
-        </div>
-      </section>
+        }
+      />
 
       {isLoading && (
-        <section className="permit-surface p-6 text-sm text-slate-600">
-          Loading workers...
-        </section>
+        <PageSkeleton variant="table" />
       )}
 
       {error && (
-        <section className="permit-surface border border-rose-200 bg-rose-50 p-6 text-sm text-rose-700">
-          {error}
-        </section>
+        <ErrorState compact message={error} />
       )}
 
       {obligationsError && (
-        <section className="permit-surface border border-amber-200 bg-amber-50 p-6 text-sm text-amber-700">
-          {obligationsError}
-        </section>
+        <ErrorState compact message={obligationsError} />
       )}
 
       {!isLoading && !error && selectedWorker && (
         <>
           <section className="grid gap-4 md:grid-cols-3">
             <div className="permit-surface p-5">
-              <p className="text-xs uppercase tracking-wide text-slate-500">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">
                 Worker
               </p>
-              <p className="mt-2 text-lg font-semibold text-slate-900">
+              <p className="mt-2 text-lg font-semibold text-foreground">
                 {selectedWorker.full_name || selectedWorker.name || "Unnamed Worker"}
               </p>
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-muted-foreground">
                 {selectedWorker.nationality || "Unknown nationality"}
               </p>
             </div>
 
             <div className="permit-surface p-5">
-              <p className="text-xs uppercase tracking-wide text-slate-500">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">
                 Passport Expiry
               </p>
               <p className="mt-2 text-lg font-semibold text-indigo-800">
@@ -270,7 +259,7 @@ export default function WorkerObligationCalendar() {
             </div>
 
             <div className="permit-surface p-5">
-              <p className="text-xs uppercase tracking-wide text-slate-500">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">
                 Permit Expiry
               </p>
               <p className="mt-2 text-lg font-semibold text-orange-800">
@@ -285,25 +274,25 @@ export default function WorkerObligationCalendar() {
                 <button
                   type="button"
                   onClick={() => setMonthDate(addMonths(monthDate, -1))}
-                  className="rounded-lg border border-slate-200 p-2 text-slate-600 hover:bg-slate-50"
+                  className="rounded-lg border border-border p-2 text-muted-foreground hover:bg-muted"
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </button>
 
-                <h3 className="text-lg font-semibold text-slate-900">
+                <h3 className="text-lg font-semibold text-foreground">
                   {formatMonth(monthDate)}
                 </h3>
 
                 <button
                   type="button"
                   onClick={() => setMonthDate(addMonths(monthDate, 1))}
-                  className="rounded-lg border border-slate-200 p-2 text-slate-600 hover:bg-slate-50"
+                  className="rounded-lg border border-border p-2 text-muted-foreground hover:bg-muted"
                 >
                   <ChevronRight className="h-4 w-4" />
                 </button>
               </div>
 
-              <div className="grid grid-cols-7 gap-2 text-center text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <div className="grid grid-cols-7 gap-2 text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
                   <div key={day}>{day}</div>
                 ))}
@@ -322,13 +311,13 @@ export default function WorkerObligationCalendar() {
                       key={day ? day.toISOString() : `empty-${index}`}
                       className={`min-h-28 rounded-xl border p-2 ${
                         day
-                          ? "border-slate-200 bg-white"
-                          : "border-transparent bg-slate-50"
+                          ? "border-border bg-card"
+                          : "border-transparent bg-muted"
                       } ${isToday ? "ring-2 ring-indigo-300" : ""}`}
                     >
                       {day && (
                         <>
-                          <p className="text-sm font-semibold text-slate-700">
+                          <p className="text-sm font-semibold text-foreground">
                             {day.getDate()}
                           </p>
 
@@ -349,28 +338,28 @@ export default function WorkerObligationCalendar() {
             </article>
 
             <aside className="permit-surface p-5 sm:p-6">
-              <h3 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
+              <h3 className="flex items-center gap-2 text-lg font-semibold text-foreground">
                 <ClipboardCheck className="h-5 w-5 text-indigo-700" />
                 Upcoming Obligations
               </h3>
 
               <div className="mt-4 space-y-3">
                 {obligationsLoading ? (
-                  <p className="text-sm text-slate-500">Loading obligations...</p>
+                  <p className="text-sm text-muted-foreground">Loading obligations...</p>
                 ) : upcomingObligations.length === 0 ? (
-                  <p className="text-sm text-slate-500">
+                  <p className="text-sm text-muted-foreground">
                     No upcoming obligations found.
                   </p>
                 ) : (
                   upcomingObligations.map((item) => {
                     const config = obligationTypes[item.type] || {};
                     const Icon = config.icon || ClipboardCheck;
-                    const badgeClass = config.className || "bg-slate-50 text-slate-700 border-slate-200";
+                    const badgeClass = config.className || "bg-muted text-foreground border-border";
 
                     return (
                       <div
                         key={item.id}
-                        className="rounded-xl border border-slate-200 bg-white p-3"
+                        className="rounded-xl border border-border bg-card p-3"
                       >
                         <div className="flex items-start gap-3">
                           <div className={`rounded-lg border p-2 ${badgeClass}`}>
@@ -378,16 +367,16 @@ export default function WorkerObligationCalendar() {
                           </div>
 
                           <div>
-                            <p className="font-medium text-slate-900">
+                            <p className="font-medium text-foreground">
                               {item.title}
                             </p>
-                            <p className="text-sm text-slate-600">
+                            <p className="text-sm text-muted-foreground">
                               {formatDate(item.date)}
                             </p>
-                            <p className="mt-1 text-xs text-slate-500">
+                            <p className="mt-1 text-xs text-muted-foreground">
                               {item.description}
                             </p>
-                            <span className="mt-2 inline-flex rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">
+                            <span className="mt-2 inline-flex rounded-full bg-muted px-2 py-1 text-xs font-medium text-muted-foreground">
                               {item.status}
                             </span>
                           </div>

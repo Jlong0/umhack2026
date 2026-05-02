@@ -1,0 +1,478 @@
+
+=== DIRECTORY TREE (max depth 3, source files only) ===
+.env
+.github
+.github\agents
+.github\agents\api-architect.agent.md
+.github\agents\doublecheck.agent.md
+.github\agents\expert-react-frontend-engineer.agent.md
+.github\agents\frontend-performance-investigator.agent.md
+.github\agents\ms-sql-dba.agent.md
+.github\agents\openapi-to-application.agent.md
+.github\agents\polyglot-test-builder.agent.md
+.github\agents\polyglot-test-fixer.agent.md
+.github\agents\polyglot-test-generator.agent.md
+.github\agents\polyglot-test-implementer.agent.md
+.github\agents\polyglot-test-linter.agent.md
+.github\agents\polyglot-test-planner.agent.md
+.github\agents\polyglot-test-researcher.agent.md
+.github\agents\polyglot-test-tester.agent.md
+.github\agents\postgresql-dba.agent.md
+.github\agents\python-mcp-expert.agent.md
+.github\agents\software-engineer-agent-v1.agent.md
+.github\agents\tdd-green.agent.md
+.github\copilot-instructions.md
+.github\skills
+.github\skills\acquire-codebase-knowledge
+.github\skills\acquire-codebase-knowledge\assets
+.github\skills\acquire-codebase-knowledge\references
+.github\skills\acquire-codebase-knowledge\scripts
+.github\skills\acquire-codebase-knowledge\SKILL.md
+.github\skills\misc-skill-1.md
+.github\skills\misc-skill-2.md
+.github\skills\openapi-to-application-code
+.github\skills\openapi-to-application-code\SKILL.md
+.github\skills\polyglot-test-agent
+.github\skills\polyglot-test-agent\SKILL.md
+.github\skills\polyglot-test-agent\unit-test-generation.prompt.md
+.github\skills\postgresql-code-review
+.github\skills\postgresql-code-review\SKILL.md
+.github\skills\postgresql-optimization
+.github\skills\postgresql-optimization\SKILL.md
+.github\skills\premium-frontend-ui
+.github\skills\premium-frontend-ui\SKILL.md
+.github\skills\python-mcp-server-generator
+.github\skills\python-mcp-server-generator\SKILL.md
+.github\skills\review-and-refactor
+.github\skills\review-and-refactor\SKILL.md
+.github\skills\sql-code-review
+.github\skills\sql-code-review\SKILL.md
+.github\skills\sql-optimization
+.github\skills\sql-optimization\SKILL.md
+.github\workflows
+.github\workflows\ci.yml
+.gitignore
+.idea
+.idea\.gitignore
+.idea\codeStyles
+.idea\codeStyles\codeStyleConfig.xml
+.idea\inspectionProfiles
+.idea\inspectionProfiles\profiles_settings.xml
+.idea\inspectionProfiles\Project_Default.xml
+.idea\misc.xml
+.idea\modules.xml
+.idea\umhack2026.iml
+.idea\vcs.xml
+app
+app\agents
+app\agents\__init__.py
+app\agents\contract_agent.py
+app\agents\diff_tracker.py
+app\agents\firebase_checkpointer.py
+app\agents\graph.py
+app\agents\langsmith_trace.py
+app\agents\master_graph.py
+app\agents\nodes.py
+app\agents\orchestrator.py
+app\agents\state.py
+app\agents\trace.py
+app\config.py
+app\constants
+app\constants\__init__.py
+app\constants\application_fields.py
+app\firebase_config.py
+app\main.py
+app\observability
+app\observability\__init__.py
+app\observability\phoenix.py
+app\routes
+app\routes\__init__.py
+app\routes\agent.py
+app\routes\alerts.py
+app\routes\analytics.py
+app\routes\chat.py
+app\routes\company.py
+app\routes\compliance.py
+app\routes\contract.py
+app\routes\document.py
+app\routes\hitl.py
+app\routes\medical.py
+app\routes\mock_gov.py
+app\routes\plks.py
+app\routes\realtime.py
+app\routes\simulator.py
+app\routes\task.py
+app\routes\vdr.py
+app\routes\worker.py
+app\schemas
+app\schemas\__init__.py
+app\schemas\document.py
+app\schemas\task.py
+app\schemas\worker.py
+app\services
+app\services\chat_agent.py
+app\services\compliance_reasoning_service.py
+app\services\document_service.py
+app\services\document_triage_service.py
+app\services\gemini_service.py
+app\services\parse_job_service.py
+app\services\plks_service.py
+app\services\realtime_service.py
+app\services\task_service.py
+app\services\vdr_service.py
+app\services\worker_service.py
+app\tools
+app\tools\__init__.py
+app\tools\compliance_tools.py
+app\utils
+app\utils\helpers.py
+app\workers
+app\workers\__init__.py
+app\workers\celery_app.py
+app\workers\tasks.py
+docs
+docs\BACKEND_SETUP.md
+docs\CLAUDE.md
+docs\codebase
+docs\codebase\.codebase-scan.txt
+docs\enhancement_plan.md
+docs\FRONTEND_RECONSTRUCTION.md
+docs\FrontendNewestPRD.md
+docs\frontendPRD.md
+docs\implement_plan.md
+docs\IMPLEMENTATION_SUMMARY.md
+docs\INTEGRATION_CHANGES.md
+docs\Plan.md
+docs\REMAINING_BACKEND_BUGS.md
+docs\SKILLS_INSTALLED.md
+frontend
+frontend\.env.local
+frontend\.gitignore
+frontend\eslint.config.js
+frontend\index.html
+frontend\jsconfig.json
+frontend\package-lock.json
+frontend\package.json
+frontend\postcss.config.js
+frontend\public
+frontend\public\favicon.svg
+frontend\public\icons.svg
+frontend\README.md
+frontend\src
+frontend\src\App.css
+frontend\src\App.jsx
+frontend\src\assets
+frontend\src\assets\hero.png
+frontend\src\assets\react.svg
+frontend\src\assets\vite.svg
+frontend\src\components
+frontend\src\components\AICommandConsole.jsx
+frontend\src\components\AppLayout.jsx
+frontend\src\components\AuditLogDrawer.jsx
+frontend\src\components\AutonomyDial.jsx
+frontend\src\components\ComplianceBreachBanner.jsx
+frontend\src\components\ConfidenceBadge.jsx
+frontend\src\components\ErrorBoundary.jsx
+frontend\src\components\FileUpload.jsx
+frontend\src\components\IntentPreviewModal.jsx
+frontend\src\components\MTLMTracker.jsx
+frontend\src\components\ParsedForm.jsx
+frontend\src\components\StatutoryExposureCalculator.jsx
+frontend\src\components\TaskList.jsx
+frontend\src\components\ui
+frontend\src\components\WorkerLayout.jsx
+frontend\src\hooks
+frontend\src\hooks\queries
+frontend\src\hooks\useFirestoreStream.js
+frontend\src\hooks\useParseJobPolling.js
+frontend\src\hooks\useWorkerTasksPolling.js
+frontend\src\index.css
+frontend\src\lib
+frontend\src\lib\utils.js
+frontend\src\main.jsx
+frontend\src\pages
+frontend\src\pages\AdminLoginPage.jsx
+frontend\src\pages\AlertsPage.jsx
+frontend\src\pages\ConfirmPage.jsx
+frontend\src\pages\ContractGenerationPage.jsx
+frontend\src\pages\Dashboard.jsx
+frontend\src\pages\DualSyncPage.jsx
+frontend\src\pages\GraphVisualizerPage.jsx
+frontend\src\pages\HITLPage.jsx
+frontend\src\pages\LandingPage.jsx
+
+=== STACK DETECTION (manifest files) ===
+
+--- package-lock.json ---
+{
+  "name": "permiteq-workspace",
+  "lockfileVersion": 3,
+  "requires": true,
+  "packages": {
+    "": {
+      "name": "permiteq-workspace",
+      "dependencies": {
+        "fastapi": "^0.0.8",
+        "python-dateutil": "^0.0.1",
+        "pytz": "^10.1.1",
+        "tenacity": "^1.0.4"
+      },
+      "devDependencies": {
+        "concurrently": "^9.2.1"
+      }
+    },
+    "node_modules/accepts": {
+      "version": "1.3.8",
+      "resolved": "https://registry.npmjs.org/accepts/-/accepts-1.3.8.tgz",
+      "integrity": "sha512-PYAthTa2m2VKxuvSD3DPC/Gy+U+sOA1LAuT8mkmRuvw+NACSaeXEQ+NHcVF7rONl6qcaxV3Uuemwawk+7+SJLw==",
+      "license": "MIT",
+      "dependencies": {
+        "mime-types": "~2.1.34",
+        "negotiator": "0.6.3"
+      },
+      "engines": {
+        "node": ">= 0.6"
+      }
+    },
+    "node_modules/ansi-regex": {
+      "version": "5.0.1",
+      "resolved": "https://registry.npmjs.org/ansi-regex/-/ansi-regex-5.0.1.tgz",
+      "integrity": "sha512-quJQXlTSUGL2LH9SUXo8VwsY4soanhgo6LNSm84E1LBcE8s3O0wpdiRzyR9z/ZZJMlMWv37qOOb9pdJlMUEKFQ==",
+      "dev": true,
+      "license": "MIT",
+      "engines": {
+        "node": ">=8"
+      }
+    },
+    "node_modules/ansi-styles": {
+      "version": "4.3.0",
+      "resolved": "https://registry.npmjs.org/ansi-styles/-/ansi-styles-4.3.0.tgz",
+      "integrity": "sha512-zbB9rCJAT1rbjiVDb2hqKFHNYLxgtk8NURxZ3IZwD3F6NtxbXZQCnnSi1Lkx+IDohdPlFp222wVALIheZJQSEg==",
+      "dev": true,
+      "license": "MIT",
+      "dependencies": {
+        "color-convert": "^2.0.1"
+      },
+      "engines": {
+        "node": ">=8"
+      },
+      "funding": {
+        "url": "https://github.com/chalk/ansi-styles?sponsor=1"
+      }
+    },
+    "node_modules/array-flatten": {
+      "version": "1.1.1",
+      "resolved": "https://registry.npmjs.org/array-flatten/-/array-flatten-1.1.1.tgz",
+      "integrity": "sha512-PCVAQswWemu6UdxsDFFX/+gVeYqKAod3D3UVm91jHwynguOwAvYPhx8nNlM++NqRcK6CxxpUafjmhIdKiHibqg==",
+      "license": "MIT"
+    },
+    "node_modules/basic-auth": {
+      "version": "2.0.1",
+      "resolved": "https://registry.npmjs.org/basic-auth/-/basic-auth-2.0.1.tgz",
+      "integrity": "sha512-NF+epuEdnUYVlGuhaxbbq+dvJttwLnGY+YixlXlME5KpQ5W3CnXA5cVTneY3SPbPDRkcjMbifrwmFYcClgOZeg==",
+      "license": "MIT",
+      "dependencies": {
+        "safe-buffer": "5.1.2"
+      },
+      "engines": {
+        "node": ">= 0.8"
+      }
+    },
+    "node_modules/basic-auth/node_modules/safe-buffer": {
+      "version": "5.1.2",
+      "resolved": "https://registry.npmjs.org/safe-buffer/-/safe-buffer-5.1.2.tgz",
+      "integrity": "sha512-Gd2UZBJDkXlY7GbJxfsE8/nvKkUEU1G38c1siN6QP6a9PT9MmHB8GnpscSmMJSoF8LOIrt8ud/wPtojys4G6+g==",
+      "license": "MIT"
+    },
+
+[TRUNCATED] Showing first 80 of 1286 lines.
+--- package.json ---
+{
+  "name": "permiteq-workspace",
+  "private": true,
+  "scripts": {
+    "dev:frontend": "npm --prefix frontend run dev",
+    "dev:backend": ".venv\\\\Scripts\\\\python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8001",
+    "dev:full": "concurrently -k -n BACKEND,FRONTEND -c yellow.bold,cyan.bold \"npm run dev:backend\" \"npm run dev:frontend\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  },
+  "dependencies": {
+    "fastapi": "^0.0.8",
+    "python-dateutil": "^0.0.1",
+    "pytz": "^10.1.1",
+    "tenacity": "^1.0.4"
+  }
+}
+
+--- requirements.txt ---
+# ── Core Framework ────────────────────────────────────────
+fastapi
+uvicorn[standard]
+python-dotenv
+python-multipart
+pydantic>=2.0.0
+pydantic-settings
+
+# ── Firebase / Firestore / Storage ────────────────────────
+firebase-admin
+google-cloud-firestore    # Async Firestore client
+google-cloud-storage      # Firebase Storage operations
+
+# ── Queue & Cache (CRITICAL — was missing) ────────────────
+celery[redis]
+redis[asyncio]            # aioredis compatible
+flower                    # Celery monitoring dashboard (optional but useful)
+
+# ── LangGraph & LangChain ─────────────────────────────────
+langgraph>=0.2.0
+langgraph-checkpoint      # State persistence / checkpointing
+langchain>=0.3.0
+langchain-core>=0.3.0
+langchain-community>=0.3.0
+langchain-openai          # GLM uses OpenAI-compatible interface
+
+# ── GLM Integration (Z.AI) ────────────────────────────────
+zhipuai>=2.0.0
+openai                    # OpenAI-compatible shim for GLM API calls
+
+# ── Gemini Integration (Temporary for testing) ────────────
+google-generativeai       # Gemini API with key rotation for testing/optimization
+
+# ── Observability & Tracing ───────────────────────────────
+opentelemetry-api
+opentelemetry-sdk
+opentelemetry-instrumentation-fastapi
+arize-phoenix>=4.0.0
+arize-phoenix-otel
+langsmith>=0.1.0
+
+# ── Document Processing ───────────────────────────────────
+pdfplumber                # Replaces pypdf2 (actively maintained, better extraction)
+pillow
+pytesseract
+pdf2image
+python-magic              # File type detection before routing to GLM vs OCR
+
+# ── HTTP & Async ──────────────────────────────────────────
+httpx
+aiofiles
+anyio
+
+# ── Utilities ─────────────────────────────────────────────
+python-dateutil
+pytz
+uuid6                     # Better UUID generation for document IDs
+orjson                    # Faster JSON serialization (important for Firestore payloads)
+tenacity                  # Retry logic for API calls (GLM, Firestore)
+
+=== ENTRY POINTS ===
+Found: run.py
+
+=== LINTING AND FORMATTING CONFIG ===
+No linting or formatting config files found in project root.
+
+=== ENVIRONMENT VARIABLE TEMPLATES ===
+No .env.example or .env.template found. Identify required environment variables by searching the code and config for environment variable reads.
+
+=== TODO / FIXME / HACK (production code only, test dirs excluded) ===
+.github\skills\acquire-codebase-knowledge\scripts\scan.py:28: TODO_LIMIT = 60
+.github\skills\acquire-codebase-knowledge\scripts\scan.py:291: """Search for TODO/FIXME/HACK comments."""
+.github\skills\acquire-codebase-knowledge\scripts\scan.py:291: """Search for TODO/FIXME/HACK comments."""
+.github\skills\acquire-codebase-knowledge\scripts\scan.py:291: """Search for TODO/FIXME/HACK comments."""
+.github\skills\acquire-codebase-knowledge\scripts\scan.py:293: patterns = ["TODO", "FIXME", "HACK"]
+.github\skills\acquire-codebase-knowledge\scripts\scan.py:293: patterns = ["TODO", "FIXME", "HACK"]
+.github\skills\acquire-codebase-knowledge\scripts\scan.py:293: patterns = ["TODO", "FIXME", "HACK"]
+.github\skills\acquire-codebase-knowledge\scripts\scan.py:320: return todos[:TODO_LIMIT]
+.github\skills\acquire-codebase-knowledge\scripts\scan.py:617: # TODOs
+.github\skills\acquire-codebase-knowledge\scripts\scan.py:620: print_section("TODO / FIXME / HACK (production code only, test dirs excluded)", todos, output_file)
+.github\skills\acquire-codebase-knowledge\scripts\scan.py:620: print_section("TODO / FIXME / HACK (production code only, test dirs excluded)", todos, output_file)
+.github\skills\acquire-codebase-knowledge\scripts\scan.py:620: print_section("TODO / FIXME / HACK (production code only, test dirs excluded)", todos, output_file)
+.github\skills\acquire-codebase-knowledge\scripts\scan.py:622: print_section("TODO / FIXME / HACK (production code only, test dirs excluded)", ["None found."], output_file)
+.github\skills\acquire-codebase-knowledge\scripts\scan.py:622: print_section("TODO / FIXME / HACK (production code only, test dirs excluded)", ["None found."], output_file)
+.github\skills\acquire-codebase-knowledge\scripts\scan.py:622: print_section("TODO / FIXME / HACK (production code only, test dirs excluded)", ["None found."], output_file)
+frontend\src\pages\WorkerProfilePage.jsx:407: // TODO: Replace with `POST /agents/chat` when backend team implements it
+
+=== GIT RECENT COMMITS (last 20) ===
+2692fbd remove unneccessary pages in nav bar
+af4f859 complete workers list to send message to whatsapp
+28b8e62 feat: Add AI Command Console and chat functionality
+e3bdb07 feat: implement worker invitation feature with login code generation
+6f3bfa1 feat: seperate worker and admin login
+ce856e3 feat: add Graph Visualizer and Mock Gov Portal pages
+f6a494a GitHub Actions CI (Continuous Integration) workflow ,v2
+245aa61 GitHub Actions CI (Continuous Integration) workflow
+20c44ec Merge branch 'main' of https://github.com/Jlong0/umhack2026
+9814a96 final
+c09244c move doc into docs
+07b177a feat: add MIT License to the project
+ea43653 Merge branch 'main' of https://github.com/Jlong0/umhack2026
+c212426 test file
+28ad97e feat: add custom AgentNode component for enhanced node representation in WorkflowDetailPage; integrate with ReactFlow
+417d1b3 feat: enhance README with detailed problem definition, user stories, and feature prioritization; clarify PermitIQ's unique value proposition
+dd5830a feat: remove UploadPage references and update related components; handle potential null values in foreign worker ratio display
+ee25ab2 feat: update README with comprehensive project overview and problem statement; add project guidelines and implementation plan documentation
+2e780d1 Merge pull request #13 from Jlong0/testtx3
+8e5879e Merge branch 'testtx3' of https://github.com/Jlong0/umhack2026 into testtx3
+
+=== HIGH-CHURN FILES (last 90 days, top 20) ===
+  20 frontend/src/services/api.js
+  13 frontend/src/components/AppLayout.jsx
+  13 frontend/src/App.jsx
+  10 app/routes/worker.py
+  10 frontend/src/pages/worker/WorkerUploadPage.jsx
+  10 app/services/glm_service.py
+   9 app/main.py
+   9 app/services/document_service.py
+   9 app/routes/document.py
+   9 .gitignore
+   8 frontend/src/pages/WorkerProfilePage.jsx
+   8 app/schemas/document.py
+   7 frontend/src/pages/Dashboard.jsx
+   7 frontend/src/pages/HITLPage.jsx
+   7 frontend/src/pages/UploadPage.jsx
+   6 app/agents/nodes.py
+   6 app/firebase_config.py
+   6 app/routes/agent.py
+   6 frontend/package-lock.json
+   6 frontend/package.json
+
+=== MONOREPO SIGNALS ===
+No monorepo signals detected.
+
+=== CODE METRICS ===
+Total files scanned: 223
+Total lines of code: 28730
+
+Files by language:
+  Other: 89
+  Python: 65
+  JavaScript/React: 42
+  JavaScript: 27
+
+Top 10 largest files:
+pitching_deck.pdf: 1162.5KB
+SAD.pdf: 884.8KB
+STAD.pdf: 259.2KB
+frontend\package-lock.json: 225.8KB
+PermitAI PRD.pdf: 171.4KB
+.github\skills\misc-skill-2.md: 47.8KB
+package-lock.json: 45.9KB
+app\agents\nodes.py: 42.9KB
+app\services\plks_service.py: 30.6KB
+docs\implement_plan.md: 28.6KB
+
+=== CI/CD PIPELINES ===
+CI/CD: GitHub Actions
+
+=== CONTAINERS & ORCHESTRATION ===
+No containerization configs detected.
+
+=== SECURITY & COMPLIANCE ===
+No security configs detected.
+
+=== PERFORMANCE & TESTING ===
+No performance testing configs detected.
+
+=== SCAN COMPLETE ===

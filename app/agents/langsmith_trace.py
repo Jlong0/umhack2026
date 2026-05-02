@@ -48,6 +48,14 @@ def trace_node(node_name: str, graph_name: str = "compliance"):
             result = func(state, *args, **kwargs)
             return result
 
+        wrapper.__langsmith_extra__ = lambda state: {
+            "metadata": {
+                "graph": graph_name,
+                "node": node_name,
+                "worker_id": state.get("worker_id"),
+                "stage": state.get("workflow_stage"),
+            }
+        }
         return wrapper
 
     return decorator
