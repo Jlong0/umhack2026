@@ -59,17 +59,21 @@ def route_supervisor(state: WorkerComplianceState) -> Literal[
         return "hitl"
     if state.get("workflow_complete") or state.get("error_state"):
         return "end"
-    action = state.get("next_action")
-    mapping = {
-        "audit_documents": "auditor",
-        "company_audit": "company_audit",
-        "vdr_filing": "vdr_filing",
-        "plks_monitor": "plks_monitor",
-        "calculate_strategy": "strategist",
-        "prepare_filing": "filing",
-        "hitl_review": "hitl",
-    }
-    return mapping.get(action, "end")
+    current_gate = state.get("current_gate")
+    if current_gate in {"gate_1_jtksm"}:
+        return "company_audit"
+    if current_gate in {"gate_2_kdn"}:
+        return "vdr_filing"
+    if current_gate in {"gate_3_jim"}:
+        return "plks_monitor"
+    stage = state.get("workflow_stage", "init")
+    if stage == "init":
+        return "auditor"
+    if stage == "docs_validated":
+        return "strategist"
+    if stage == "strategy_done":
+        return "filing" if state.get("compliance_status") == "renewal_pending" else "end"
+    return "end"
 
 
 def route_after_hitl(state: WorkerComplianceState) -> Literal["supervisor", "end"]:
