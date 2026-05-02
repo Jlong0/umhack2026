@@ -15,9 +15,10 @@ import {
 export function useAllWorkflows() {
   const selectedCompanyId = useAuthStore((s) => s.selectedCompanyId);
   return useQuery({
-    queryKey: ["workflows", selectedCompanyId],
+    queryKey: ["allWorkflows", selectedCompanyId],
     queryFn: () => listAllWorkflows(selectedCompanyId),
-    staleTime: 15 * 1000,
+    staleTime: 10 * 1000,
+    refetchInterval: 10 * 1000,
   });
 }
 

@@ -1,21 +1,28 @@
-import { X, MessageSquare, Shield } from "lucide-react";
+import { X, MessageSquare, Shield, ExternalLink } from "lucide-react";
 
 const AGENT_DESCRIPTIONS = {
-  supervisor:    "Routes the workflow between agents based on current compliance stage.",
-  auditor:       "Audits worker documents, checks passport validity and FOMEMA requirements.",
-  company_audit: "Verifies company gate (JTKSM Section 60K, Act 446, quota balance).",
-  strategist:    "Calculates MTLM levy, EP salary compliance, and deadlock risk.",
-  vdr_filing:    "Checks VDR filing prerequisites — documents, biometrics, succession plan.",
-  plks_monitor:  "Monitors post-arrival FOMEMA registration and PLKS issuance.",
-  filing:        "Prepares permit renewal filing package.",
-  hitl:          "Pauses workflow for human review and decision.",
+  supervisor:    "Routes the workflow between agents based on current compliance stage. Acts as the central coordinator.",
+  auditor:       "Audits worker documents, checks passport validity (12+ month rule) and FOMEMA medical requirements.",
+  company_audit: "Verifies company eligibility — JTKSM Section 60K approval, Act 446 housing certificate, and sector quota balance.",
+  strategist:    "Calculates MTLM levy costs, EP salary compliance, and identifies potential compliance deadlocks.",
+  vdr_filing:    "Checks VDR filing prerequisites — passport scan, biometric photo, signed contracts, and succession plan.",
+  plks_monitor:  "Monitors post-arrival compliance gates — FOMEMA registration deadline and PLKS permit issuance.",
+  filing:        "Prepares the permit renewal filing package for government submission.",
+  hitl:          "Pauses the automated workflow when a human decision is required — e.g. deadlocks, expired permits, or policy conflicts.",
 };
 
 const STATUS_COLORS = {
-  running: "bg-teal-500 text-white",
-  done:    "bg-teal-900 text-teal-300",
-  failed:  "bg-red-900 text-red-300",
+  running: "bg-amber-500 text-white",
+  done:    "bg-emerald-600 text-white",
+  failed:  "bg-red-600 text-white",
   pending: "bg-slate-700 text-slate-400",
+};
+
+const STATUS_LABELS = {
+  running: "In Progress",
+  done:    "Completed",
+  failed:  "Failed",
+  pending: "Pending",
 };
 
 export default function AgentDetailModal({ agent, label, status, trace, onClose, onDiscuss }) {
@@ -27,8 +34,8 @@ export default function AgentDetailModal({ agent, label, status, trace, onClose,
           <div className="flex items-center gap-3">
             <Shield className="h-5 w-5 text-teal-400" />
             <span className="font-semibold text-slate-100">{label}</span>
-            <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${STATUS_COLORS[status] || STATUS_COLORS.pending}`}>
-              {status === "done" ? "Completed" : status}
+            <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_COLORS[status] || STATUS_COLORS.pending}`}>
+              {STATUS_LABELS[status] || status}
             </span>
           </div>
           <button onClick={onClose} className="text-slate-500 hover:text-slate-300">
@@ -39,21 +46,45 @@ export default function AgentDetailModal({ agent, label, status, trace, onClose,
         {/* Description */}
         <p className="px-5 py-3 text-sm text-slate-400">{AGENT_DESCRIPTIONS[agent] || "Compliance agent."}</p>
 
-        {/* Execution trace */}
+        {/* Execution trace — human-readable summaries */}
         <div className="px-5 pb-2">
-          <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500">
-            <span className="text-teal-500">›_</span> Execution Trace
-          </p>
-          <div className="max-h-52 overflow-y-auto rounded-lg bg-slate-950 p-3 font-mono text-xs text-slate-300 space-y-1.5">
+          <div className="mb-2 flex items-center justify-between">
+            <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500">
+              <span className="text-amber-500">›_</span> Activity Log
+            </p>
+            <a
+              href={`https://smith.langchain.com/o/default/projects/p/foreign-worker-compliance`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 text-[10px] text-indigo-400 hover:text-indigo-300"
+            >
+              <ExternalLink className="h-3 w-3" /> LangSmith
+            </a>
+          </div>
+          <div className="max-h-52 overflow-y-auto rounded-lg bg-slate-950 p-3 space-y-2">
             {trace.length === 0 ? (
-              <span className="text-slate-600">No trace entries yet.</span>
+              <span className="text-slate-600 text-xs italic">No activity recorded yet.</span>
             ) : (
-              trace.map((e, i) => (
-                <div key={i}>
-                  <span className="text-slate-500">[{i + 1}]</span>{" "}
-                  <span className="text-teal-400">[{e.agent}]</span> {e.msg}
-                </div>
-              ))
+              trace.map((e, i) => {
+                const stepColor =
+                  e.step === "running" ? "text-amber-400"
+                  : e.step === "done" ? "text-emerald-400"
+                  : "text-red-400";
+                const stepIcon = e.step === "done" ? "✓" : e.step === "running" ? "▶" : "✗";
+                return (
+                  <div key={i} className="flex items-start gap-2 text-xs">
+                    <span className={`shrink-0 font-bold ${stepColor}`}>{stepIcon}</span>
+                    <div className="flex-1">
+                      <p className="text-slate-200">{e.summary || e.msg}</p>
+                      {e.timestamp && (
+                        <p className="mt-0.5 text-[10px] text-slate-600">
+                          {new Date(e.timestamp).toLocaleTimeString()}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })
             )}
           </div>
         </div>

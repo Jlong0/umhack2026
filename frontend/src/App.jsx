@@ -17,6 +17,7 @@ import WorkersPage from "@/pages/WorkersPage";
 import WorkerUploadPage from "@/pages/worker/WorkerUploadPage";
 import WorkerStatusPage from "@/pages/worker/WorkerStatusPage";
 import WorkerContractPage from "@/pages/worker/WorkerContractPage";
+import WorkerVisaLetterPage from "@/pages/worker/WorkerVisaLetterPage";
 import ContractGenerationPage from "@/pages/ContractGenerationPage";
 import WorkerObligationCalendar from "@/pages/WorkerObligationCalendar";
 import WorkerInvitePage from "@/pages/WorkerInvitePage";
@@ -114,6 +115,7 @@ function App() {
         <Route path="/worker" element={<Navigate to="/worker/upload" replace />} />
         <Route path="/worker/upload" element={<WorkerUploadPage />} />
         <Route path="/worker/status" element={<WorkerStatusPage />} />
+        <Route path="/worker/visa-letter" element={<WorkerVisaLetterPage />} />
         <Route path="/worker/contracts" element={<WorkerContractPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

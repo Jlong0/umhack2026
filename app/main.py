@@ -9,16 +9,22 @@ load_dotenv(dotenv_path=_ENV_PATH)
 # Ensure LangSmith tracing env is set before any agent imports
 os.environ.setdefault("LANGCHAIN_TRACING_V2", "true")
 
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routes import worker, task, document, agent, simulator, hitl, alerts
 from app.routes import vdr, plks, company, compliance, analytics, medical
-from app.routes import realtime, contract, mock_gov, chat, workflow
+from app.routes import realtime, contract, mock_gov, chat, workflow, gate_transition, notify
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    yield  # WhatsApp bot starts only when QR button is pressed or notify is triggered
 
 app = FastAPI(
     title="PermitIQ",
     description="Autonomous Foreign Worker Compliance Engine for Malaysian SMEs",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan,
 )
 
 # CORS middleware for frontend integration
@@ -50,7 +56,8 @@ app.include_router(contract.router)
 app.include_router(mock_gov.router)
 app.include_router(chat.router)
 app.include_router(workflow.router)
-
+app.include_router(gate_transition.router)
+app.include_router(notify.router)
 
 
 @app.get("/")

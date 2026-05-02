@@ -4,6 +4,21 @@ from app.firebase_config import db
 router = APIRouter(prefix="/workflows", tags=["workflows"])
 
 
+@router.get("/{worker_id}/trace")
+def get_workflow_trace(worker_id: str):
+    """Return persisted agent statuses + execution trace for page-reload recovery."""
+    doc = db.collection("workflow_trace").document(worker_id).get()
+    if not doc.exists:
+        return {"worker_id": worker_id, "agent_statuses": {}, "execution_trace": [], "workflow_stage": "init"}
+    data = doc.to_dict()
+    return {
+        "worker_id": worker_id,
+        "agent_statuses": data.get("agent_statuses", {}),
+        "execution_trace": data.get("execution_trace", []),
+        "workflow_stage": data.get("workflow_stage", "init"),
+    }
+
+
 @router.get("")
 def list_workflows():
     result = []

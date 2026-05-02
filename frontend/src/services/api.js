@@ -381,3 +381,45 @@ export async function getWorkerStatus(workerId) {
 export async function getWorker(workerId) {
   return apiRequest(`/workers/${workerId}`);
 }
+
+export async function approveJTKSM(workerId) {
+  return apiRequest(`/gates/${workerId}/approve-jtksm`, { method: "POST" });
+}
+
+export async function confirmArrival(workerId) {
+  return apiRequest(`/gates/${workerId}/confirm-arrival`, { method: "POST" });
+}
+
+export async function approveFOMEMA(workerId, result = "suitable") {
+  return apiRequest(`/gates/${workerId}/approve-fomema`, {
+    method: "POST",
+    body: JSON.stringify({ result }),
+  });
+}
+
+export async function issuePermit(workerId) {
+  return apiRequest(`/gates/${workerId}/issue-permit`, { method: "POST" });
+}
+
+export async function getVisaLetter(workerId) {
+  return apiRequest(`/gates/${workerId}/visa-letter`);
+}
+
+export async function acknowledgeVisa(workerId) {
+  return apiRequest(`/gates/${workerId}/acknowledge-visa`, { method: "POST" });
+}
+
+export async function triggerNotify(workerId = null) {
+  return apiRequest("/notify/trigger", {
+    method: "POST",
+    body: JSON.stringify(workerId ? { worker_id: workerId } : {}),
+  });
+}
+
+export async function getNotifyBotStatus() {
+  return apiRequest("/notify/bot-status");
+}
+
+export async function setupNotifyBot() {
+  return apiRequest("/notify/bot-setup", { method: "POST" });
+}
