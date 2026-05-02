@@ -157,9 +157,27 @@ export default function HITLPage() {
 		setSelectedMissingSection(null);
 	}
 
+	function setNestedField(path, value) {
+		setFieldValues((prev) => ({
+			...prev,
+			[path]: value,
+		}));
+	}
+
+	function getFieldValue(path) {
+		return fieldValues[path] || "";
+	}
+
 	function handleUpdate() {
+		if (!selectedWorker) return;
+
 		resolveMutation.mutate(fieldValues, {
-			onSuccess: () => setSelectedWorker(null),
+			onSuccess: () => {
+				setSelectedWorker(null);
+				setFieldValues({});
+				setSelectedMissingSection(null);
+				refetch();
+			},
 		});
 	}
 
@@ -477,16 +495,30 @@ export default function HITLPage() {
 												</p>
 
 												{selectedMissingSection.items?.length > 0 ? (
-													<ul className="mt-2 space-y-2">
-														{selectedMissingSection.items.map((missingItem) => (
-															<li
-																key={missingItem.field || missingItem.label}
-																className="rounded-lg border border-rose-100 bg-rose-50 px-3 py-2 text-sm text-rose-700"
-															>
-																{missingItem.label || missingItem.field}
-															</li>
-														))}
-													</ul>
+													<div className="mt-2 space-y-3">
+														{selectedMissingSection.items.map((missingItem) => {
+															const fieldPath = missingItem.field;
+
+															return (
+																<div
+																	key={fieldPath || missingItem.label}
+																	className="rounded-lg border border-rose-100 bg-white px-3 py-3"
+																>
+																	<label className="block text-xs font-semibold text-slate-500">
+																		{missingItem.label || fieldPath}
+																	</label>
+
+																	<input
+																		type="text"
+																		value={getFieldValue(fieldPath)}
+																		onChange={(e) => setNestedField(fieldPath, e.target.value)}
+																		placeholder={`Enter ${missingItem.label || fieldPath}`}
+																		className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400"
+																	/>
+																</div>
+															);
+														})}
+													</div>
 												) : (
 													<p className="mt-2 text-sm text-slate-500">
 														No specific missing items listed.
@@ -500,10 +532,10 @@ export default function HITLPage() {
 							<div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
 								<button
 									onClick={handleUpdate}
-									disabled={resolveMutation.isPending}
+									disabled={resolveMutation.isPending || Object.keys(fieldValues).length === 0}
 									className="w-full rounded-lg bg-blue-600 py-2.5 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
 								>
-									{resolveMutation.isPending ? "Updating..." : "Update"}
+									{resolveMutation.isPending ? "Updating..." : "Update Selected Fields"}
 								</button>
 
 								{selectedWorker?.whatsapp ? (

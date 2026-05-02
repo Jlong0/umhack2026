@@ -221,6 +221,44 @@ def get_worker_credentials(worker_id: str):
     }
 
 
+@router.patch("/workers/{worker_id}/resolve-fields")
+def resolve_worker_fields(worker_id: str, updates: dict):
+    worker_ref = db.collection("workers").document(worker_id)
+    worker_doc = worker_ref.get()
+
+    if not worker_doc.exists:
+        raise HTTPException(status_code=404, detail="Worker not found")
+
+    update_data = {}
+
+    for field_path, value in updates.items():
+        if value is None or value == "":
+            continue
+
+        # Firestore accepts dot notation for nested updates
+        update_data[field_path] = value
+
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+
+    worker_ref.update(update_data)
+
+    updated_worker = worker_ref.get().to_dict()
+    missing_fields = build_missing_sections(updated_worker)
+
+    worker_ref.set({
+        "missing_fields": missing_fields,
+        "data_status": "complete" if not missing_fields else "incomplete",
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }, merge=True)
+
+    return {
+        "worker_id": worker_id,
+        "updated_fields": update_data,
+        "missing_fields": missing_fields,
+        "data_status": "complete" if not missing_fields else "incomplete",
+    }
+
+
 @router.post("/workers/assign-login-codes")
 def assign_all_login_codes():
     """Backfill login codes for every worker that doesn't have one. Idempotent."""
