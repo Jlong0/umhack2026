@@ -6,6 +6,7 @@ import {
   startComplianceWorkflow,
   resumeWorkflow,
   getComplianceGraph,
+  updateJtksmDecision,
 } from "@/services/api";
 
 export function useAllWorkflows() {
@@ -14,6 +15,19 @@ export function useAllWorkflows() {
     queryKey: ["workflows", selectedCompanyId],
     queryFn: () => listAllWorkflows(selectedCompanyId),
     staleTime: 15 * 1000,
+  });
+}
+
+export function useJtksmDecision() {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ workerId, decision, notes }) =>
+      updateJtksmDecision(workerId, decision, notes),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["workflows"] });
+      qc.invalidateQueries({ queryKey: ["all-workflows"] });
+    },
   });
 }
 

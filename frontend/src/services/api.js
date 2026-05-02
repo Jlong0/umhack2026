@@ -333,3 +333,18 @@ export async function confirmHandoff(handoffId) {
 export async function rejectHandoff(handoffId, notes = "") {
 	return apiRequest(`/agents/handoffs/${handoffId}/reject?notes=${encodeURIComponent(notes)}`, { method: "POST" });
 }
+
+export async function updateJtksmDecision(workerId, decision, notes = "") {
+  return apiRequest(`/workers/${workerId}/jtksm-decision`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      decision,
+      notes,
+    }),
+  });
+}
+
+
+export async function getWorkerStatus(workerId) {
+  return apiRequest(`/workers/${workerId}/status`);
+}

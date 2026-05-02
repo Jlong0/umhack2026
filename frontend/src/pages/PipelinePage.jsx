@@ -9,7 +9,7 @@
  */
 
 import { useMemo } from "react";
-import { useAllWorkflows } from "@/hooks/queries/useWorkflowQueries";
+import { useAllWorkflows, useJtksmDecision } from "@/hooks/queries/useWorkflowQueries";
 import { useCriticalAlerts } from "@/hooks/queries/useAlertQueries";
 import { useUIStore } from "@/store/useUIStore";
 import { GATE_ORDER, GATE_LABELS, NATIONALITY_FLAGS } from "@/types/worker";
@@ -28,15 +28,22 @@ const GATE_COLORS = {
 
 function WorkerCard({ worker, isBlocked }) {
   const openHITLDrawer = useUIStore((s) => s.openHITLDrawer);
+  const jtksmMutation = useJtksmDecision();
+  const isVdrPending = worker.current_gate === "VDR_PENDING";
 
   const flag = NATIONALITY_FLAGS[worker.nationality] || "🏳️";
   const daysInGate = worker.days_in_gate || 0;
+
+  const isJtksmPending =
+    worker.current_gate === "JTKSM" &&
+    worker.jtksm_status !== "approved" &&
+    worker.jtksm_status !== "rejected";
 
   return (
     <div
       className={`group rounded-xl border-t-2 bg-card/60 p-3 transition-all hover:bg-card ${
         isBlocked
-          ? "border border-red-500/40 shadow-lg shadow-red-500/5 " + "border-t-red-500"
+          ? "border border-red-500/40 shadow-lg shadow-red-500/5 border-t-red-500"
           : "border border-border " + (GATE_COLORS[worker.current_gate] || "border-t-gray-500/60")
       }`}
     >
@@ -45,33 +52,69 @@ function WorkerCard({ worker, isBlocked }) {
           <span className="text-lg">{flag}</span>
           <div>
             <div className="text-sm font-semibold text-foreground">
-              {worker.first_name} {worker.last_name}
+              {worker.full_name || `${worker.first_name || ""} ${worker.last_name || ""}`}
             </div>
             <div className="font-mono text-[10px] text-muted-foreground">
               {worker.worker_id}
             </div>
           </div>
         </div>
-        {worker.ai_metadata?.confidence_score != null && (
-          <ConfidenceBadge
-            score={worker.ai_metadata.confidence_score}
-            reasoning={worker.ai_metadata?.reasoning}
-          />
-        )}
       </div>
 
       <div className="mt-2 flex items-center justify-between">
         <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
           {worker.sector || "—"}
         </span>
-        {daysInGate > 0 && (
-          <span className={`text-[10px] font-medium ${
-            daysInGate > 7 ? "text-amber-400" : "text-muted-foreground"
-          }`}>
-            Day {daysInGate}
-          </span>
-        )}
+
+        <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700">
+          {worker.jtksm_status || "pending"}
+        </span>
       </div>
+
+      {isJtksmPending && (
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <button
+            disabled={jtksmMutation.isPending}
+            onClick={() =>
+              jtksmMutation.mutate({
+                workerId: worker.worker_id,
+                decision: "approve",
+              })
+            }
+            className="rounded-lg bg-emerald-600 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"
+          >
+            Approve
+          </button>
+
+          <button
+            disabled={jtksmMutation.isPending}
+            onClick={() =>
+              jtksmMutation.mutate({
+                workerId: worker.worker_id,
+                decision: "reject",
+              })
+            }
+            className="rounded-lg bg-rose-600 py-1.5 text-xs font-semibold text-white hover:bg-rose-500 disabled:opacity-50"
+          >
+            Reject
+          </button>
+        </div>
+      )}
+
+      {isVdrPending && worker.vdr_requirements && (
+        <div className="mt-3 space-y-1 rounded-lg bg-muted/50 p-2">
+          {Object.entries(worker.vdr_requirements).map(([key, done]) => (
+            <div key={key} className="flex items-center justify-between text-[11px]">
+              <span className="text-muted-foreground">
+                {key.replaceAll("_", " ")}
+              </span>
+              <span className={done ? "text-emerald-600" : "text-amber-600"}>
+                {done ? "Done" : "Pending"}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
 
       {isBlocked && (
         <button

@@ -328,49 +328,87 @@ async def get_compliance_graph(worker_id: str):
 @router.get("/workflows")
 async def list_all_workflows(company_id: Optional[str] = None):
     """
-    List all active workflows.
+    List pipeline board cards.
+
+    Source of truth for current gate/status is workers collection.
+    workflows collection is only used for LangGraph execution details.
     """
     try:
-        workflows_ref = db.collection("workflows")
-        workflows = workflows_ref.stream()
+        workers_ref = db.collection("workers")
 
-        worker_cache = {}
         if company_id:
-            worker_docs = db.collection("workers").where("company_id", "==", company_id).stream()
-            worker_cache = {doc.id: True for doc in worker_docs}
+            workers_ref = workers_ref.where("company_id", "==", company_id)
 
         result = []
-        for workflow in workflows:
-            if company_id and workflow.id not in worker_cache:
-                continue
 
-            data = workflow.to_dict()
-            current_state = data.get("current_state", {})
+        for doc in workers_ref.stream():
+            worker = doc.to_dict()
+            worker_id = doc.id
+
+            passport = worker.get("passport", {}) or {}
+            general = worker.get("general_information", {}) or {}
+
+            full_name = (
+                passport.get("full_name")
+                or worker.get("full_name")
+                or worker.get("master_name")
+                or worker_id
+            )
+
+            name_parts = full_name.split(" ", 1)
+
+            # Optional: enrich from workflows collection if it exists
+            workflow_doc = db.collection("workflows").document(worker_id).get()
+            workflow_data = workflow_doc.to_dict() if workflow_doc.exists else {}
+            current_state = workflow_data.get("current_state", {}) or {}
 
             result.append({
-                "worker_id": workflow.id,
-                "status": data.get("status"),
+                "worker_id": worker_id,
+                "company_id": worker.get("company_id"),
+
+                "full_name": full_name,
+                "first_name": name_parts[0],
+                "last_name": name_parts[1] if len(name_parts) > 1 else "",
+
+                # Main pipeline fields from workers
+                "current_gate": worker.get("current_gate") or "JTKSM",
+                "jtksm_status": worker.get("jtksm_status") or "pending",
+                "workflow_status": worker.get("workflow_status"),
+                "review_status": worker.get("review_status"),
+                "data_status": worker.get("data_status"),
+
+                # Optional LangGraph details from workflows
+                "status": workflow_data.get("status", worker.get("workflow_status")),
                 "compliance_status": current_state.get("compliance_status"),
                 "hitl_required": current_state.get("hitl_required", False),
                 "workflow_complete": current_state.get("workflow_complete", False),
-                "started_at": data.get("started_at"),
-                "last_updated": data.get("last_updated"),
-                "first_name": current_state.get("full_name", "").split()[0] if current_state.get("full_name") else "",
-                "last_name": " ".join(current_state.get("full_name", "").split()[1:]) if current_state.get("full_name") else "",
-                "nationality": current_state.get("nationality"),
-                "sector": current_state.get("sector"),
-                "current_gate": current_state.get("current_gate"),
-                "days_in_gate": current_state.get("days_to_expiry"),
+                "started_at": workflow_data.get("started_at"),
+                "last_updated": workflow_data.get("last_updated") or worker.get("updated_at"),
+
+                # Display fields
+                "nationality": (
+                    passport.get("nationality")
+                    or general.get("nationality")
+                    or worker.get("nationality")
+                ),
+                "sector": (
+                    general.get("sector")
+                    or worker.get("sector")
+                    or "—"
+                ),
+                "days_in_gate": worker.get("days_in_gate", current_state.get("days_to_expiry", 0)),
+
+                # Used by PipelinePage blocked state
+                "requires_hitl": bool(worker.get("missing_fields")) or current_state.get("hitl_required", False),
             })
 
         return {
             "total": len(result),
-            "workflows": result
+            "workflows": result,
         }
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to list workflows: {str(e)}")
-# ---------------------------------------------------------------------------
+        raise HTTPException(status_code=500, detail=f"Failed to list workflows: {str(e)}")# ---------------------------------------------------------------------------
 
 @router.get("/handoffs")
 async def list_pending_handoffs():
