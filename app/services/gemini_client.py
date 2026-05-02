@@ -105,8 +105,12 @@ def call_with_rotation(fn, max_retries: int = None):
                                    idx, len(_dead_keys), len(API_KEYS), str(e)[:120])
                 else:
                     consecutive_429 += 1
-                    logger.warning("Key #%d rate-limited (attempt %d): %s",
-                                   idx, attempt + 1, str(e)[:120])
+                    delay = _extract_retry_delay(e)
+                    if delay < 1.0:
+                        delay = min(2 ** consecutive_429, 10.0) # exponential backoff
+                    logger.warning("Key #%d rate-limited (attempt %d). Sleeping %.1fs: %s",
+                                   idx, attempt + 1, delay, str(e)[:120])
+                    time.sleep(delay)
                 last_err = e
                 continue
             raise

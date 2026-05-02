@@ -598,6 +598,8 @@ def supervisor_node(state: WorkerComplianceState) -> WorkerComplianceState:
     elif workflow_stage == "strategy_done":
         if state.get("deadlock_detected"):
             next_action = "hitl_review"
+        elif state.get("compliance_status") in {ComplianceStatus.RENEWAL_PENDING, "renewal_pending"}:
+            next_action = "prepare_filing"
         else:
             result = {**state, "current_agent": AgentType.SUPERVISOR,
                       "agent_observations": observations, "next_action": None,
@@ -625,6 +627,63 @@ def auditor_node(state: WorkerComplianceState) -> WorkerComplianceState:
     missing_docs = []
     now = datetime.now().isoformat()
 
+    # ── Phase 0: Required field validation ────────────────────────────────
+    # Check that essential worker sections exist before proceeding.
+    REQUIRED_FIELDS = {
+        "Passport Information": [
+            ("passport_number", "Passport number"),
+            ("passport_expiry_date", "Passport expiry date"),
+        ],
+        "General Information": [
+            ("full_name", "Full name"),
+            ("nationality", "Nationality"),
+            ("sector", "Employment sector"),
+            ("permit_expiry_date", "Permit expiry date"),
+        ],
+        "Medical Information": [
+            ("fomema_status", "FOMEMA medical status"),
+            ("last_fomema_date", "Last FOMEMA screening date"),
+        ],
+    }
+
+    missing_sections = {}
+    for section, fields in REQUIRED_FIELDS.items():
+        section_missing = []
+        for field_key, label in fields:
+            val = state.get(field_key)
+            if val is None or (isinstance(val, str) and val.strip() == ""):
+                section_missing.append(label)
+                missing_docs.append(field_key)
+        if section_missing:
+            missing_sections[section] = section_missing
+            alerts.append({
+                "type": "missing_section",
+                "severity": "high",
+                "message": f"Missing {section}: {', '.join(section_missing)}",
+                "data": {"section": section, "fields": section_missing},
+            })
+
+    # If critical identity fields are completely absent, flag HITL
+    critical_missing = [f for f in ["passport_number", "full_name", "permit_expiry_date"]
+                        if not state.get(f) or (isinstance(state.get(f), str) and state.get(f).strip() == "")]
+    if len(critical_missing) >= 2:
+        observations.append(
+            f"Critical data gaps detected: {', '.join(critical_missing)}. "
+            "Cannot proceed with compliance checks — human review required."
+        )
+        updated = {**state, "current_agent": AgentType.AUDITOR, "agent_observations": observations,
+                   "tool_calls": tool_calls, "alerts": alerts, "documents_validated": False,
+                   "missing_documents": missing_docs, "next_action": "hitl_review",
+                   "hitl_required": True,
+                   "hitl_reason": "critical_worker_data_missing",
+                   "hitl_data": {"missing_sections": missing_sections, "critical_missing": critical_missing}}
+        post_agent_writeback(updated, {"alerts": alerts})
+        summary = f"HITL required: {len(critical_missing)} critical fields missing"
+        updated = emit("auditor", "done", summary, updated,
+                       detail=f"Missing sections: {', '.join(missing_sections.keys())}")
+        return append_trace(updated, "auditor_node", "completed", summary=summary)
+
+    # ── Phase 1: Passport validity ────────────────────────────────────────
     if state.get("passport_expiry_date") and state.get("permit_expiry_date"):
         check = check_passport_validity(
             passport_expiry=datetime.fromisoformat(state["passport_expiry_date"]),
@@ -636,6 +695,7 @@ def auditor_node(state: WorkerComplianceState) -> WorkerComplianceState:
                            "message": check["action"], "data": check})
             missing_docs.append("passport_renewal_application")
 
+    # ── Phase 2: FOMEMA requirements ──────────────────────────────────────
     if state.get("permit_issue_date"):
         fcheck = calculate_fomema_requirements(
             permit_issue_date=datetime.fromisoformat(state["permit_issue_date"]),
@@ -648,6 +708,7 @@ def auditor_node(state: WorkerComplianceState) -> WorkerComplianceState:
                            "message": f"FOMEMA screening due in {fcheck['days_until_due']} days",
                            "data": fcheck})
 
+    # ── Phase 3: Permit expiry / fines ────────────────────────────────────
     if state.get("permit_expiry_date"):
         days = (datetime.fromisoformat(state["permit_expiry_date"]) - datetime.now()).days
         if days < 0:
@@ -751,7 +812,9 @@ def filing_node(state: WorkerComplianceState) -> WorkerComplianceState:
 def hitl_interrupt_node(state: WorkerComplianceState) -> WorkerComplianceState:
     state = emit("hitl", "running", "Human review required...", state)
     state = append_trace(state, "hitl_interrupt_node", "running")
-    updated = {**state, "current_agent": AgentType.SUPERVISOR, "next_action": "hitl_review"}
+    # Clear hitl_required so route_after_hitl can route back to supervisor
+    updated = {**state, "current_agent": AgentType.SUPERVISOR,
+               "next_action": "hitl_review", "hitl_required": False}
     post_agent_writeback(updated, {"alerts": state.get("alerts", [])})
     updated = emit("hitl", "done", "HITL interrupt raised — awaiting human decision", updated, detail="Workflow paused until reviewer responds.")
     return append_trace(updated, "hitl_interrupt_node", "completed", summary="HITL interrupt raised")
