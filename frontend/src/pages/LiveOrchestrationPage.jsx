@@ -6,7 +6,6 @@ import HITLChatbot from "@/components/HITLChatbot";
 const WS_BASE = (import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8001")
   .replace(/^http/, "ws").replace(/\/+$/, "");
 
-// DAG layout: node positions in a 700×420 SVG viewBox
 const NODES = [
   { id: "supervisor",    label: "Supervisor",     x: 310, y: 30  },
   { id: "auditor",       label: "Auditor",         x: 80,  y: 140 },
@@ -36,10 +35,6 @@ function nodeColor(status) {
   if (status === "done")    return { fill: "#134e4a", stroke: "#0d9488", text: "#5eead4" };
   if (status === "failed")  return { fill: "#450a0a", stroke: "#ef4444", text: "#fca5a5" };
   return { fill: "#1e293b", stroke: "#334155", text: "#94a3b8" };
-}
-
-function edgeActive(src, statuses) {
-  return statuses[src] === "running";
 }
 
 export default function LiveOrchestrationPage() {
@@ -77,15 +72,15 @@ export default function LiveOrchestrationPage() {
     setSelectedNode(null);
   }, []);
 
-  const workflowStatus = agentStatuses.supervisor === "running" || Object.values(agentStatuses).includes("running")
-    ? "RUNNING"
-    : Object.values(agentStatuses).includes("failed") ? "FAILED"
-    : workflowStage === "ready_to_complete" ? "DONE"
-    : "PENDING";
+  const workflowStatus =
+    agentStatuses.supervisor === "running" || Object.values(agentStatuses).includes("running")
+      ? "RUNNING"
+      : Object.values(agentStatuses).includes("failed") ? "FAILED"
+      : workflowStage === "ready_to_complete" ? "DONE"
+      : "PENDING";
 
   return (
     <div className="flex h-full flex-col bg-[#0f172a] text-slate-100">
-      {/* Header */}
       <div className="flex items-center justify-between border-b border-slate-800 px-6 py-3">
         <div>
           <h1 className="text-lg font-semibold">Live Orchestration</h1>
@@ -99,7 +94,7 @@ export default function LiveOrchestrationPage() {
         </div>
         <div className="flex items-center gap-3">
           <span className={`rounded-full px-3 py-1 text-xs font-medium ${wsStatus === "live" ? "bg-teal-900 text-teal-300" : "bg-slate-800 text-slate-400"}`}>
-            ● SSE {wsStatus.toUpperCase()}
+            ● WS {wsStatus.toUpperCase()}
           </span>
           <button onClick={() => navigate(-1)} className="rounded-lg border border-slate-700 px-3 py-1.5 text-xs text-slate-400 hover:text-slate-200">
             ← Back
@@ -107,16 +102,13 @@ export default function LiveOrchestrationPage() {
         </div>
       </div>
 
-      {/* DAG + chatbot layout */}
       <div className="flex flex-1 overflow-hidden">
-        {/* DAG */}
         <div className="flex flex-1 items-center justify-center p-6">
           <svg viewBox="0 0 700 430" className="w-full max-w-2xl" style={{ maxHeight: 420 }}>
-            {/* Edges */}
             {EDGES.map(([src, dst]) => {
               const s = NODES.find(n => n.id === src);
               const d = NODES.find(n => n.id === dst);
-              const active = edgeActive(src, agentStatuses);
+              const active = agentStatuses[src] === "running";
               return (
                 <line
                   key={`${src}-${dst}`}
@@ -134,7 +126,6 @@ export default function LiveOrchestrationPage() {
               );
             })}
 
-            {/* Nodes */}
             {NODES.map((node) => {
               const status = agentStatuses[node.id] || "pending";
               const c = nodeColor(status);
@@ -161,7 +152,6 @@ export default function LiveOrchestrationPage() {
           </svg>
         </div>
 
-        {/* Chatbot panel */}
         {(chatTarget || hitlRequired) && (
           <div className="w-80 border-l border-slate-800">
             <HITLChatbot
@@ -173,7 +163,6 @@ export default function LiveOrchestrationPage() {
         )}
       </div>
 
-      {/* Execution trace footer */}
       {executionTrace.length > 0 && (
         <div className="border-t border-slate-800 px-6 py-2 text-xs text-slate-500 overflow-x-auto whitespace-nowrap">
           {executionTrace.slice(-5).map((e, i) => (
@@ -184,7 +173,6 @@ export default function LiveOrchestrationPage() {
         </div>
       )}
 
-      {/* Node detail modal */}
       {selectedNode && (
         <AgentDetailModal
           agent={selectedNode.id}

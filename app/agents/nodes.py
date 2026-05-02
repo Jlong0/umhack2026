@@ -220,7 +220,7 @@ def pre_form_validator_node(state: VDRState) -> VDRState:
         if quota and capacity and quota > capacity:
             errors.append("Quota exceeds licensed housing capacity. Reduce quota.")
 
-        # Local ratio <= 33%
+        # Foreign ratio <= 33%
         local = state.get("local_employee_count") or 0
         foreign = state.get("foreign_employee_count") or 0
         total = local + foreign
@@ -482,7 +482,7 @@ def fomema_gate_node(state: VDRState) -> VDRState:
             return append_trace(state, "fomema_gate_node", "completed", summary="Paused: FOMEMA pending")
 
         obligations = [
-            {**ob, "status": "pending"} if ob.get("task_type") == "LEVY_PAYMENT" and ob.get("status") == "blocked"
+            {**ob, "status": "pending"} if ob.get("status") == "blocked"
             else ob
             for ob in (state.get("obligations") or [])
         ]

@@ -365,7 +365,7 @@ async def list_all_workflows(company_id: Optional[str] = None):
             # Fall back to worker document for name/nationality/sector
             full_name = current_state.get("full_name") or current_state.get("master_name", "")
             if not full_name:
-                w_doc = db.collection("workers").document(workflow.id).get()
+                w_doc = db.collection("workers").document(worker_id).get()
                 w = w_doc.to_dict() if w_doc.exists else {}
                 full_name = w.get("full_name", "")
                 nationality = w.get("nationality") or current_state.get("nationality")
