@@ -167,7 +167,7 @@ export default function HITLPage() {
 	const [fieldValues, setFieldValues] = useState({});
 	const [selectedMissingSection, setSelectedMissingSection] = useState(null);
 
-	const { data: workersData, isLoading, isError } = useHITLWorkers();
+	const { data: workersData, isLoading, isError, refetch } = useHITLWorkers();
 	const resolveMutation = useResolveWorkerFields(selectedWorker?.worker_id);
 
 	const selectedCompanyId = useAuthStore((state) => state.selectedCompanyId);
@@ -190,7 +190,7 @@ export default function HITLPage() {
 	}
 
 	if (isLoading) return <PageSkeleton variant="detail" />;
-	if (isError) return <ErrorState title="Failed to load workers" message="Unable to connect to the backend. Please check that the server is running." />;
+	if (isError) return <ErrorState title="Failed to load workers" message="Unable to connect to the backend. Please check that the server is running." onRetry={() => refetch()} />;
 
 	return (
 		<div className="space-y-6">

@@ -108,7 +108,7 @@ export default function AdminLoginPage() {
 
             <div className="mt-6 text-center">
               <Link
-                className="text-xs text-muted-foreground transition-colors duration-200 hover:text-blue-600"
+                className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-5 py-2.5 text-xs font-medium text-muted-foreground backdrop-blur-md transition-all duration-300 hover:border-blue-400/40 hover:bg-white/20 hover:text-blue-600 hover:shadow-[0_0_20px_rgba(59,130,246,0.15)] hover:scale-[1.03] active:scale-[0.97] dark:border-white/10 dark:bg-white/5 dark:hover:border-blue-400/30 dark:hover:bg-white/10 dark:hover:text-blue-400"
                 to="/"
               >
                 ← Back to landing

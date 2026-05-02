@@ -414,25 +414,7 @@ export default function UploadPage() {
         <div className="mt-5 rounded-2xl border border-border bg-card p-3 sm:p-4">
           <StepIndicator steps={steps} currentStep={currentStep} onStepClick={setCurrentStep} />
 
-          {/* Progress summary chips */}
-          <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3">
-            {steps.map((step, i) => (
-              <button
-                key={step.label}
-                type="button"
-                onClick={() => setCurrentStep(i)}
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-all",
-                  i === currentStep && "bg-indigo-100 text-indigo-700 ring-1 ring-indigo-300 dark:bg-indigo-950 dark:text-indigo-300 dark:ring-indigo-700",
-                  i !== currentStep && step.isComplete && "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400",
-                  i !== currentStep && !step.isComplete && "bg-muted text-muted-foreground hover:bg-muted/80",
-                )}
-              >
-                {step.isComplete ? <CheckCircle2 className="h-3 w-3" /> : <span className="h-1.5 w-1.5 rounded-full bg-current" />}
-                {step.label}
-              </button>
-            ))}
-          </div>
+
         </div>
       </div>
 
@@ -465,7 +447,7 @@ export default function UploadPage() {
       </div>
 
       {/* ── Navigation ── */}
-      <div className="mt-8 space-y-4">
+      <div className="mt-14 space-y-4">
         {/* Step navigation */}
         <div className="flex items-center justify-between gap-3">
           {currentStep > 0 ? (
