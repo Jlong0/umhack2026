@@ -362,6 +362,20 @@ async def list_all_workflows(company_id: Optional[str] = None):
             workflow_data = workflow_doc.to_dict() if workflow_doc.exists else {}
             current_state = workflow_data.get("current_state", {}) or {}
 
+            # Fall back to worker document for name/nationality/sector
+            full_name = current_state.get("full_name") or current_state.get("master_name", "")
+            if not full_name:
+                w_doc = db.collection("workers").document(workflow.id).get()
+                w = w_doc.to_dict() if w_doc.exists else {}
+                full_name = w.get("full_name", "")
+                nationality = w.get("nationality") or current_state.get("nationality")
+                sector = w.get("sector") or current_state.get("sector")
+            else:
+                nationality = current_state.get("nationality")
+                sector = current_state.get("sector")
+
+            parts = full_name.split() if full_name else []
+
             result.append({
                 "worker_id": worker_id,
                 "company_id": worker.get("company_id"),
@@ -381,6 +395,7 @@ async def list_all_workflows(company_id: Optional[str] = None):
                 "status": workflow_data.get("status", worker.get("workflow_status")),
                 "compliance_status": current_state.get("compliance_status"),
                 "hitl_required": current_state.get("hitl_required", False),
+                "requires_hitl": current_state.get("hitl_required", False),
                 "workflow_complete": current_state.get("workflow_complete", False),
                 "started_at": workflow_data.get("started_at"),
                 "last_updated": workflow_data.get("last_updated") or worker.get("updated_at"),

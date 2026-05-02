@@ -13,7 +13,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routes import worker, task, document, agent, simulator, hitl, alerts
 from app.routes import vdr, plks, company, compliance, analytics, medical
-from app.routes import realtime, contract, mock_gov, chat, workflow
+from app.routes import realtime, contract, mock_gov, chat, workflow, gate_transition
 
 app = FastAPI(
     title="PermitIQ",
@@ -50,6 +50,7 @@ app.include_router(contract.router)
 app.include_router(mock_gov.router)
 app.include_router(chat.router)
 app.include_router(workflow.router)
+app.include_router(gate_transition.router)
 
 
 
