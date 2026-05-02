@@ -28,7 +28,7 @@ export default function WorkerLayout() {
 
       {/* ── Top header ── */}
       <header className="sticky top-0 z-30 border-b border-border bg-card/80 backdrop-blur-sm">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-3 sm:px-6 sm:py-4">
+        <div className="flex w-full items-center justify-between px-4 py-3 sm:px-6 sm:py-4">
           {/* Branding */}
           <div className="flex items-center gap-2.5 sm:gap-3">
             <img src="/logo.png" alt="PermitIQ" className="h-8 w-8 rounded-lg object-contain sm:h-9 sm:w-9" />
@@ -62,7 +62,7 @@ export default function WorkerLayout() {
         </div>
 
         {/* ── Desktop navigation tabs (hidden on mobile) ── */}
-        <div className="mx-auto hidden w-full max-w-6xl px-6 md:block">
+        <div className="hidden w-full px-4 sm:px-6 md:block">
           <nav className="flex gap-1 border-t border-border pt-1" aria-label="Worker navigation">
             {TABS.map((tab) => {
               const isActive = location.pathname.includes(tab.path.split("/").pop());
@@ -87,7 +87,7 @@ export default function WorkerLayout() {
       </header>
 
       {/* ── Main content ── */}
-      <main className="mx-auto w-full max-w-6xl px-4 py-5 sm:px-6 sm:py-6 lg:py-8">
+      <main className="w-full px-4 py-5 sm:px-6 sm:py-6 lg:px-6 lg:py-8">
         <Outlet />
       </main>
 
