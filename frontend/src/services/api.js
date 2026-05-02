@@ -122,29 +122,34 @@ export async function getComplianceGraph(workerId) {
 	return apiRequest(`/agents/workflows/${workerId}/graph`, { method: "GET" });
 }
 
-export async function listAllWorkflows() {
-	return apiRequest("/agents/workflows", { method: "GET" });
+export async function listAllWorkflows(companyId = null) {
+	const qs = companyId ? `?company_id=${encodeURIComponent(companyId)}` : "";
+	return apiRequest(`/agents/workflows${qs}`, { method: "GET" });
 }
 
 // Alert APIs
-export async function scanAllWorkers() {
-	return apiRequest("/alerts/scan", { method: "GET" });
+export async function scanAllWorkers(companyId = null) {
+	const qs = companyId ? `?company_id=${encodeURIComponent(companyId)}` : "";
+	return apiRequest(`/alerts/scan${qs}`, { method: "GET" });
 }
 
 export async function getWorkerAlerts(workerId) {
 	return apiRequest(`/alerts/worker/${workerId}`, { method: "GET" });
 }
 
-export async function getCriticalAlerts() {
-	return apiRequest("/alerts/critical", { method: "GET" });
+export async function getCriticalAlerts(companyId = null) {
+	const qs = companyId ? `?company_id=${encodeURIComponent(companyId)}` : "";
+	return apiRequest(`/alerts/critical${qs}`, { method: "GET" });
 }
 
-export async function getExpiringPermits(days = 30) {
-	return apiRequest(`/alerts/expiring?days=${days}`, { method: "GET" });
+export async function getExpiringPermits(days = 30, companyId = null) {
+	const qs = companyId ? `&company_id=${encodeURIComponent(companyId)}` : "";
+	return apiRequest(`/alerts/expiring?days=${days}${qs}`, { method: "GET" });
 }
 
-export async function getAlertDashboard() {
-	return apiRequest("/alerts/dashboard", { method: "GET" });
+export async function getAlertDashboard(companyId = null) {
+	const qs = companyId ? `?company_id=${encodeURIComponent(companyId)}` : "";
+	return apiRequest(`/alerts/dashboard${qs}`, { method: "GET" });
 }
 
 // HITL APIs
@@ -155,8 +160,9 @@ export async function setMedicalResult(workerId, result) {
 	});
 }
 
-export async function listHITLWorkers() {
-	return apiRequest("/hitl/workers", { method: "GET" });
+export async function listHITLWorkers(companyId = null) {
+	const qs = companyId ? `?company_id=${encodeURIComponent(companyId)}` : "";
+	return apiRequest(`/hitl/workers${qs}`, { method: "GET" });
 }
 
 export async function resolveWorkerFields(workerId, fields) {
@@ -166,8 +172,9 @@ export async function resolveWorkerFields(workerId, fields) {
 	});
 }
 
-export async function listPendingInterrupts() {
-	return apiRequest("/hitl/interrupts", { method: "GET" });
+export async function listPendingInterrupts(companyId = null) {
+	const qs = companyId ? `?company_id=${encodeURIComponent(companyId)}` : "";
+	return apiRequest(`/hitl/interrupts${qs}`, { method: "GET" });
 }
 
 export async function getInterruptDetails(workerId) {
@@ -181,8 +188,9 @@ export async function resolveInterrupt(workerId, decision, notes = null, modifie
 	});
 }
 
-export async function getInterruptStatistics() {
-	return apiRequest("/hitl/interrupts/stats", { method: "GET" });
+export async function getInterruptStatistics(companyId = null) {
+	const qs = companyId ? `?company_id=${encodeURIComponent(companyId)}` : "";
+	return apiRequest(`/hitl/interrupts/stats${qs}`, { method: "GET" });
 }
 
 // Simulator APIs
@@ -262,10 +270,11 @@ export async function generateContracts(templateFile) {
 	return apiRequest("/contracts/generate", { method: "POST", body });
 }
 
-export async function listContracts(status, workerId) {
+export async function listContracts(status, workerId, companyId = null) {
 	const params = new URLSearchParams();
 	if (status) params.set("status", status);
 	if (workerId) params.set("worker_id", workerId);
+	if (companyId) params.set("company_id", companyId);
 	const qs = params.toString() ? `?${params}` : "";
 	return apiRequest(`/contracts${qs}`, { method: "GET" });
 }

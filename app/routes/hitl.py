@@ -185,11 +185,14 @@ def set_nested_value(data: dict, dotted_key: str, value):
 
 
 @router.get("/workers")
-async def list_workers():
+async def list_workers(company_id: str | None = None):
     try:
         workers = []
+        workers_ref = db.collection("workers")
+        if company_id:
+            workers_ref = workers_ref.where("company_id", "==", company_id)
 
-        for doc in db.collection("workers").stream():
+        for doc in workers_ref.stream():
             data = doc.to_dict()
             worker_id = doc.id
 
@@ -320,11 +323,19 @@ async def list_pending_interrupts():
 
 
 @router.get("/interrupts/stats")
-async def get_interrupt_statistics():
+async def get_interrupt_statistics(company_id: str | None = None):
     try:
         total = pending = resolved = 0
         by_type: Dict[str, int] = {}
+        
+        worker_cache = {}
+        if company_id:
+            worker_docs = db.collection("workers").where("company_id", "==", company_id).stream()
+            worker_cache = {doc.id: True for doc in worker_docs}
+
         for workflow in db.collection("workflows").stream():
+            if company_id and workflow.id not in worker_cache:
+                continue
             state = workflow.to_dict().get("current_state", {})
             if state.get("hitl_reason"):
                 total += 1
@@ -479,11 +490,19 @@ async def set_medical_result(worker_id: str, body: MedicalResult):
 
 
 @router.get("/interrupts")
-async def list_pending_interrupts():
+async def list_pending_interrupts(company_id: str | None = None):
     try:
         workflows = db.collection("workflows").where("current_state.hitl_required", "==", True).stream()
+        
+        worker_cache = {}
+        if company_id:
+            worker_docs = db.collection("workers").where("company_id", "==", company_id).stream()
+            worker_cache = {doc.id: True for doc in worker_docs}
+
         interrupts = []
         for workflow in workflows:
+            if company_id and workflow.id not in worker_cache:
+                continue
             data = workflow.to_dict()
             state = data.get("current_state", {})
             interrupts.append({
@@ -500,11 +519,19 @@ async def list_pending_interrupts():
 
 
 @router.get("/interrupts/stats")
-async def get_interrupt_statistics():
+async def get_interrupt_statistics(company_id: str | None = None):
     try:
         total = pending = resolved = 0
         by_type: Dict[str, int] = {}
+        
+        worker_cache = {}
+        if company_id:
+            worker_docs = db.collection("workers").where("company_id", "==", company_id).stream()
+            worker_cache = {doc.id: True for doc in worker_docs}
+
         for workflow in db.collection("workflows").stream():
+            if company_id and workflow.id not in worker_cache:
+                continue
             state = workflow.to_dict().get("current_state", {})
             if state.get("hitl_reason"):
                 total += 1
