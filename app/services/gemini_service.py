@@ -30,6 +30,8 @@ Analyze this passport document and extract the following information in JSON for
 Check if the passport has less than 12 months validity remaining.
 If yes, flag it as "renewal_required": true.
 
+any date should be in this format (YYYY-MM-DD)
+
 Return only valid JSON.
 """,
     "fomema_report": """

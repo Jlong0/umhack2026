@@ -57,6 +57,8 @@ export function useParseJobPolling(jobId) {
     const pollOnce = async () => {
       try {
         const payload = await getParseJob(jobId);
+        console.log("Parse job payload:", payload);
+        console.log("Fields:", payload?.result?.fields);
         if (cancelled) return;
         failCount = 0;
         const status = String(payload?.status ?? "processing").toLowerCase();

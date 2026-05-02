@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useHITLWorkers, useResolveWorkerFields } from "@/hooks/queries/useHITLQueries";
-import { AlertCircle, CheckCircle, Shield, FileText, Eye } from "lucide-react";
+import { AlertCircle, CheckCircle, Shield, FileText, Eye, Send} from "lucide-react";
 import { useContracts, useReviewContract, useContractPdfUrl } from "@/hooks/queries/useContractQueries";
 
 function ContractReviewTab() {
@@ -122,11 +122,43 @@ function ContractReviewTab() {
 	);
 }
 
+
+function buildMissingInfoReminderUrl(worker) {
+	if (!worker?.whatsapp) return null;
+
+	const phone = worker.whatsapp.replace(/[^0-9]/g, "");
+
+	const missingText = (worker.missing_fields || [])
+		.map((section) => {
+			const sectionName = section.label || section.section || "Missing Section";
+
+			const items = section.items?.length
+				? section.items.map((item) => `   - ${item.label || item.field}`).join("\n")
+				: `   - ${section.reason || "Information required"}`;
+
+			return `• ${sectionName}\n${items}`;
+		})
+		.join("\n\n");
+
+	const message =
+		`Hello ${worker.full_name || "there"},\n\n` +
+		`This is a reminder from PermitIQ. Please update the missing information in your Worker Portal:\n\n` +
+		`${missingText || "• Missing worker information"}\n\n` +
+		`Log in here: ${window.location.origin}/login/worker\n\n` +
+		`Worker ID: ${worker.worker_id}\n` +
+		(worker.login_code ? `Login Code: ${worker.login_code}\n\n` : "\n") +
+		`Please complete this as soon as possible. Thank you.`;
+
+	return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+}
+
+
 export default function HITLPage() {
 	const navigate = useNavigate();
 	const [activeTab, setActiveTab] = useState("interrupts");
 	const [selectedWorker, setSelectedWorker] = useState(null);
 	const [fieldValues, setFieldValues] = useState({});
+	const [selectedMissingSection, setSelectedMissingSection] = useState(null);
 
 	const { data: workersData, isLoading, isError } = useHITLWorkers();
 	const resolveMutation = useResolveWorkerFields(selectedWorker?.worker_id);
@@ -136,9 +168,8 @@ export default function HITLPage() {
 
 	function handleSelectWorker(worker) {
 		setSelectedWorker(worker);
-		const initial = {};
-		worker.missing_fields?.forEach((f) => { initial[f.field] = f.value || ""; });
-		setFieldValues(initial);
+		setFieldValues({});
+		setSelectedMissingSection(null);
 	}
 
 	function handleUpdate() {
@@ -277,29 +308,157 @@ export default function HITLPage() {
 								</div>
 							)}
 							{selectedWorker.missing_fields?.length > 0 && (
-								<div className="space-y-3">
-									<p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Fill Missing Fields</p>
-									{selectedWorker.missing_fields.map((f) => (
-										<div key={f.field}>
-											<label className="block text-xs text-gray-500 mb-1">{f.label}</label>
-											<input
-												type="text"
-												value={fieldValues[f.field] || ""}
-												onChange={(e) => setFieldValues((prev) => ({ ...prev, [f.field]: e.target.value }))}
-												className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400"
-												placeholder={`Enter ${f.label}`}
-											/>
+								<div className="space-y-4">
+									<div>
+										<p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
+											Missing Sections
+										</p>
+
+										<div className="mt-2 grid gap-2 sm:grid-cols-2">
+											{selectedWorker.missing_fields.map((item) => {
+												const itemKey = item.section || item.field;
+												const selectedKey =
+													selectedMissingSection?.section || selectedMissingSection?.field;
+
+												return (
+													<button
+														key={itemKey}
+														type="button"
+														onClick={() => setSelectedMissingSection(item)}
+														className={`rounded-lg border p-3 text-left transition ${
+															selectedKey === itemKey
+																? "border-blue-400 bg-blue-50"
+																: "border-amber-200 bg-amber-50 hover:bg-amber-100"
+														}`}
+													>
+														<p className="text-sm font-semibold text-gray-900">
+															{item.label || item.section || item.field}
+														</p>
+
+														<p className="mt-1 text-xs text-gray-500">
+															{item.items?.length
+																? `${item.items.length} missing item${item.items.length > 1 ? "s" : ""}`
+																: item.reason || "Click to view details"}
+														</p>
+													</button>
+												);
+											})}
 										</div>
-									))}
+									</div>
+
+									{selectedMissingSection && (
+										<div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+											<p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+												Selected Section
+											</p>
+
+											<p className="mt-2 text-sm font-semibold text-slate-900">
+												{selectedMissingSection.label ||
+													selectedMissingSection.section ||
+													selectedMissingSection.field}
+											</p>
+
+											<p className="mt-1 text-sm text-slate-600">
+												{selectedMissingSection.reason || "This section requires review."}
+											</p>
+
+											<div className="mt-4">
+												<p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+													Existing Data
+												</p>
+
+												{selectedMissingSection.data &&
+												Object.keys(selectedMissingSection.data).length > 0 ? (
+													<div className="mt-2 space-y-2">
+														{Object.entries(selectedMissingSection.data).map(([key, value]) => {
+															const isMissing =
+																value === null ||
+																value === undefined ||
+																value === "";
+
+															return (
+																<div
+																	key={key}
+																	className="flex items-start justify-between gap-3 rounded-lg border border-slate-100 bg-white px-3 py-2 text-sm"
+																>
+																	<span className="font-medium capitalize text-slate-600">
+																		{key.replaceAll("_", " ")}
+																	</span>
+
+																	<span
+																		className={`text-right ${
+																			isMissing ? "text-rose-500" : "text-slate-900"
+																		}`}
+																	>
+																		{isMissing ? "Missing" : String(value)}
+																	</span>
+																</div>
+															);
+														})}
+													</div>
+												) : (
+													<p className="mt-2 text-sm text-rose-500">
+														No existing data found in this section.
+													</p>
+												)}
+											</div>
+
+											<div className="mt-4">
+												<p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+													Missing Items
+												</p>
+
+												{selectedMissingSection.items?.length > 0 ? (
+													<ul className="mt-2 space-y-2">
+														{selectedMissingSection.items.map((missingItem) => (
+															<li
+																key={missingItem.field || missingItem.label}
+																className="rounded-lg border border-rose-100 bg-rose-50 px-3 py-2 text-sm text-rose-700"
+															>
+																{missingItem.label || missingItem.field}
+															</li>
+														))}
+													</ul>
+												) : (
+													<p className="mt-2 text-sm text-slate-500">
+														No specific missing items listed.
+													</p>
+												)}
+											</div>
+										</div>
+									)}
 								</div>
 							)}
-							<button
-								onClick={handleUpdate}
-								disabled={resolveMutation.isPending}
-								className="w-full rounded-lg bg-blue-600 py-2.5 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
-							>
-								{resolveMutation.isPending ? "Updating..." : "Update"}
-							</button>
+							<div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+								<button
+									onClick={handleUpdate}
+									disabled={resolveMutation.isPending}
+									className="w-full rounded-lg bg-blue-600 py-2.5 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
+								>
+									{resolveMutation.isPending ? "Updating..." : "Update"}
+								</button>
+
+								{buildMissingInfoReminderUrl(selectedWorker) ? (
+									<a
+										href={buildMissingInfoReminderUrl(selectedWorker)}
+										target="_blank"
+										rel="noopener noreferrer"
+										className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 py-2.5 text-sm font-semibold text-white hover:bg-emerald-500"
+									>
+										<Send className="h-4 w-4" />
+										Remind Worker
+									</a>
+								) : (
+									<button
+										type="button"
+										disabled
+										className="flex w-full items-center justify-center gap-2 rounded-lg bg-slate-200 py-2.5 text-sm font-semibold text-slate-400"
+									>
+										<Send className="h-4 w-4" />
+										No WhatsApp
+									</button>
+								)}
+							</div>
 						</div>
 					)}
 				</div>

@@ -1,6 +1,6 @@
 import random
 import string
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -9,7 +9,7 @@ from app.schemas.document import ConfirmDocumentResponse, WorkerCreateRequest
 from app.schemas.worker import WorkerCreate
 from app.services.document_service import create_worker_from_payload
 from app.services.worker_service import create_worker
-from app.firebase_config import db
+from app.firebase_config import db, bucket
 from app.constants.application_fields import STAGE_1_PHASES, STAGE_2_PHASES
 
 router = APIRouter()
@@ -126,7 +126,23 @@ def invite_worker(payload: WorkerInviteRequest):
         "review_status": "pending",
         "workflow_status": "not_started",
         "data_status": "incomplete",
-        "missing_fields": ["passport_number", "nationality", "sector", "permit_class", "permit_expiry_date"],
+        "missing_fields": [
+            {
+                "section": "passport",
+                "label": "Passport Information",
+                "reason": "Passport details are missing.",
+            },
+            {
+                "section": "general_information",
+                "label": "General Information",
+                "reason": "General worker information is missing.",
+            },
+            {
+                "section": "medical_information",
+                "label": "Medical Information",
+                "reason": "Medical checkup record is missing.",
+            },
+        ],
         "invited_at": now,
         "created_at": now,
         "updated_at": now,
@@ -251,3 +267,33 @@ def create_worker_endpoint(payload: WorkerCreateRequest):
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+def get_signed_file_url(storage_path: str) -> str:
+    blob = bucket.blob(storage_path)
+
+    return blob.generate_signed_url(
+        version="v4",
+        expiration=timedelta(minutes=30),
+        method="GET",
+    )
+
+
+@router.get("/workers/{worker_id}/medical-image-url")
+def get_worker_medical_image_url(worker_id: str):
+    doc = db.collection("workers").document(worker_id).get()
+
+    if not doc.exists:
+        raise HTTPException(status_code=404, detail="Worker not found")
+
+    worker = doc.to_dict()
+    medical_info = worker.get("medical_information", {})
+    storage_path = medical_info.get("storage_path")
+
+    if not storage_path:
+        raise HTTPException(status_code=404, detail="No medical image found")
+
+    return {
+        "worker_id": worker_id,
+        "url": get_signed_file_url(storage_path),
+    }

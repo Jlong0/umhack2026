@@ -82,6 +82,7 @@ class GeneralInformation(BaseModel):
     past_overseas_travel_history: Optional[str] = None
 
 class WorkerCreateRequest(BaseModel):
+    worker_id: str
     passport: PassportInfo
     medical_information: MedicalInformation
     general_information: GeneralInformation

@@ -7,6 +7,7 @@ import { useToast } from "@/components/ui/toast";
 import { useParseJobPolling } from "@/hooks/useParseJobPolling";
 import {ApiError, confirmDocument, createWorkerProfile, startComplianceWorkflow, uploadDocument} from "@/services/api";
 import { useWorkerStore } from "@/store/useWorkerStore";
+import { useAuthStore } from "@/store/useAuthStore";
 
 const PASSPORT_FIELDS = [
   { key: "full_name", label: "Full Name", type: "text" },
@@ -75,6 +76,8 @@ export default function UploadPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  const user = useAuthStore((state) => state.user);
+  const workerId = user?.id;
   const jobId = useWorkerStore((state) => state.jobId);
   const documentId = useWorkerStore((state) => state.documentId);
   const parseJobStatus = useWorkerStore((state) => state.parseJobStatus);
@@ -243,6 +246,7 @@ export default function UploadPage() {
 
   const handleConfirm = async () => {
     const workerPayload = {
+      worker_id: workerId,
       passport: formValuesByType.passport,
       medical_information: formValuesByType.health_checkup,
       general_information: formValuesByType.personal_demographic,
