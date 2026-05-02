@@ -12,6 +12,7 @@ from app.services.document_service import create_worker_from_payload
 from app.services.worker_service import create_worker
 from app.firebase_config import db, bucket
 from app.constants.application_fields import STAGE_1_PHASES, STAGE_2_PHASES
+from app.services.workflow_sync_service import update_workflow_doc
 
 router = APIRouter()
 
@@ -114,6 +115,27 @@ def list_workers_detail():
             "jtksm_notes": w.get("jtksm_notes"),
             "jtksm_decided_at": w.get("jtksm_decided_at"),
 
+            "workflow_complete": w.get("workflow_complete", False),
+
+            "vdr_status": w.get("vdr_status"),
+            "vdr_submission_status": w.get("vdr_submission_status"),
+            "vdr_receipt_id": w.get("vdr_receipt_id"),
+            "vdr_submitted_at": w.get("vdr_submitted_at"),
+            "vdr_requirements": w.get("vdr_requirements", {}),
+
+            "transit_status": w.get("transit_status"),
+            "arrival_confirmed_at": w.get("arrival_confirmed_at"),
+
+            "fomema_status": w.get("fomema_status"),
+            "fomema_result": w.get("fomema_result"),
+            "fomema_checked_at": w.get("fomema_checked_at"),
+
+            "plks_status": w.get("plks_status"),
+            "plks_receipt_id": w.get("plks_receipt_id"),
+            "plks_submitted_at": w.get("plks_submitted_at"),
+            "active_status": w.get("active_status"),
+            "activated_at": w.get("activated_at"),
+
             "stage_1": {k: {"label": v["label"], "data": phase_data(v)} for k, v in STAGE_1_PHASES.items()},
             "stage_2": {k: {"label": v["label"], "data": phase_data(v)} for k, v in STAGE_2_PHASES.items()},
             "compliance_state": comp,
@@ -167,6 +189,7 @@ def invite_worker(payload: WorkerInviteRequest):
         "jtksm_notes": None,
         "jtksm_decided_at": None,
         "workflow_status": "jtksm_pending",
+        "workflow_complete": False,
         "data_status": "incomplete",
         "missing_fields": [
             {
@@ -188,6 +211,53 @@ def invite_worker(payload: WorkerInviteRequest):
         "invited_at": now,
         "created_at": now,
         "updated_at": now,
+    })
+
+    db.collection("workflows").document(worker_id).set({
+        "worker_id": worker_id,
+        "company_id": payload.company_id,
+        "status": "active",
+
+        "workflow_stage": "init",
+        "current_gate": "JTKSM",
+        "workflow_status": "jtksm_pending",
+        "workflow_complete": False,
+
+        "agent_statuses": {
+            "supervisor": "done",
+            "auditor": "running",
+            "company_audit": "pending",
+            "strategist": "pending",
+            "vdr_filing": "pending",
+            "plks_monitor": "pending",
+            "filing": "pending",
+            "hitl": "running",
+        },
+
+        "execution_trace": [
+            {
+                "agent": "supervisor",
+                "step": "done",
+                "summary": "Workflow initialized for invited worker.",
+                "timestamp": now,
+            },
+            {
+                "agent": "auditor",
+                "step": "running",
+                "summary": "Waiting for passport, general information, and medical information.",
+                "timestamp": now,
+            },
+        ],
+
+        "started_at": now,
+        "last_updated": now,
+    })
+
+    update_workflow_doc(worker_id, {
+        "company_id": payload.company_id,
+        "current_gate": "JTKSM",
+        "workflow_status": "jtksm_pending",
+        "workflow_complete": False,
     })
 
     return {
@@ -429,25 +499,7 @@ def update_jtksm_decision(worker_id: str, body: JTKSMDecision):
         raise HTTPException(status_code=400, detail="decision must be approve or reject")
 
     worker_ref.set(update_data, merge=True)
-
-    workflow_ref = db.collection("workflows").document(worker_id)
-    workflow_doc = workflow_ref.get()
-
-    if workflow_doc.exists:
-        workflow = workflow_doc.to_dict()
-        current_state = workflow.get("current_state", {}) or {}
-
-        current_state.update({
-            "current_gate": update_data["current_gate"],
-            "jtksm_status": update_data["jtksm_status"],
-            "workflow_status": update_data["workflow_status"],
-            "vdr_status": update_data.get("vdr_status"),
-        })
-
-        workflow_ref.set({
-            "current_state": current_state,
-            "last_updated": now,
-        }, merge=True)
+    update_workflow_doc(worker_id, update_data)
 
     return {
         "worker_id": worker_id,
@@ -504,6 +556,7 @@ def update_vdr_decision(worker_id: str, body: VDRDecision):
         raise HTTPException(status_code=400, detail="decision must be approve or reject")
 
     worker_ref.set(update_data, merge=True)
+    update_workflow_doc(worker_id, update_data)
 
     return {
         "worker_id": worker_id,
@@ -523,7 +576,7 @@ def complete_vdr_submission(worker_id: str, body: VDRCompleteRequest):
 
     now = datetime.now(timezone.utc).isoformat()
 
-    worker_ref.set({
+    update_data = {
         "vdr_status": "complete",
         "vdr_submission_status": "submitted",
         "vdr_receipt_id": body.receipt_id,
@@ -534,8 +587,12 @@ def complete_vdr_submission(worker_id: str, body: VDRCompleteRequest):
         "workflow_status": "awaiting_transit",
         "transit_status": "awaiting_arrival",
 
+        "workflow_complete": False,
         "updated_at": now,
-    }, merge=True)
+    }
+
+    worker_ref.set(update_data, merge=True)
+    update_workflow_doc(worker_id, update_data)
 
     return {
         "worker_id": worker_id,
@@ -577,6 +634,7 @@ def mark_transit_complete(worker_id: str):
     }
 
     worker_ref.set(update_data, merge=True)
+    update_workflow_doc(worker_id, update_data)
 
     return {
         "worker_id": worker_id,
@@ -656,6 +714,7 @@ def simulate_fomema_gov_result(worker_id: str, body: MockFomemaGovResult):
         }
 
     worker_ref.set(update_data, merge=True)
+    update_workflow_doc(worker_id, update_data)
 
     return {
         "worker_id": worker_id,

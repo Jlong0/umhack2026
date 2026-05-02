@@ -1,25 +1,43 @@
 from fastapi import APIRouter, HTTPException
 from app.firebase_config import db
+from app.services.compliance_graph_service import (
+    build_agent_statuses_from_worker,
+    infer_workflow_stage,
+    build_execution_trace_from_worker,
+)
 
-router = APIRouter(prefix="/workflows", tags=["workflows"])
+router = APIRouter()
 
 
-@router.get("/{worker_id}/trace")
+@router.get("/workflows/{worker_id}/trace")
 def get_workflow_trace(worker_id: str):
-    """Return persisted agent statuses + execution trace for page-reload recovery."""
-    doc = db.collection("workflow_trace").document(worker_id).get()
-    if not doc.exists:
-        return {"worker_id": worker_id, "agent_statuses": {}, "execution_trace": [], "workflow_stage": "init"}
-    data = doc.to_dict()
+    worker_ref = db.collection("workers").document(worker_id)
+    worker_doc = worker_ref.get()
+
+    if not worker_doc.exists:
+        raise HTTPException(status_code=404, detail="Worker not found")
+
+    worker = worker_doc.to_dict() or {}
+
+    agent_statuses = build_agent_statuses_from_worker(worker)
+    workflow_stage = infer_workflow_stage(worker)
+    execution_trace = build_execution_trace_from_worker(worker_id, worker)
+
     return {
         "worker_id": worker_id,
-        "agent_statuses": data.get("agent_statuses", {}),
-        "execution_trace": data.get("execution_trace", []),
-        "workflow_stage": data.get("workflow_stage", "init"),
+        "agent_statuses": agent_statuses,
+        "execution_trace": execution_trace,
+        "workflow_stage": workflow_stage,
+        "current_gate": worker.get("current_gate"),
+        "workflow_status": worker.get("workflow_status"),
+        "workflow_complete": (
+            worker.get("workflow_complete") is True
+            or worker.get("current_gate") == "ACTIVE"
+            or worker.get("workflow_status") == "active"
+        ),
     }
 
-
-@router.get("")
+@router.get("/workflows")
 def list_workflows():
     result = []
 

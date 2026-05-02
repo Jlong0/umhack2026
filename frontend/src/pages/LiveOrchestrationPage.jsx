@@ -81,6 +81,9 @@ export default function LiveOrchestrationPage() {
   const [agentStatuses, setAgentStatuses] = useState({});
   const [executionTrace, setExecutionTrace] = useState([]);
   const [workflowStage, setWorkflowStage] = useState("init");
+  const [currentGate, setCurrentGate] = useState(null);
+  const [workflowStatusText, setWorkflowStatusText] = useState(null);
+  const [workflowComplete, setWorkflowComplete] = useState(false);
   const [wsStatus, setWsStatus] = useState("connecting");
   const [selectedNode, setSelectedNode] = useState(null);
   const [chatTarget, setChatTarget] = useState(null);
@@ -94,12 +97,17 @@ export default function LiveOrchestrationPage() {
       .then(r => r.json())
       .then(data => {
         if (data.agent_statuses && Object.keys(data.agent_statuses).length > 0) {
-          setAgentStatuses(prev => ({ ...data.agent_statuses, ...prev }));
+          setAgentStatuses(data.agent_statuses);
         }
+
         if (data.execution_trace?.length > 0) {
-          setExecutionTrace(prev => prev.length > 0 ? prev : data.execution_trace);
+          setExecutionTrace(data.execution_trace);
         }
+
         if (data.workflow_stage) setWorkflowStage(data.workflow_stage);
+        if (data.current_gate) setCurrentGate(data.current_gate);
+        if (data.workflow_status) setWorkflowStatusText(data.workflow_status);
+        setWorkflowComplete(Boolean(data.workflow_complete));
       })
       .catch(() => {});
   }, [workerId]);
@@ -114,16 +122,16 @@ export default function LiveOrchestrationPage() {
       try {
         const data = JSON.parse(e.data);
         if (data.worker_id !== workerId || data.type !== "agent_event") return;
-        setAgentStatuses(prev => {
-          const merged = { ...prev };
-          for (const [k, v] of Object.entries(data.agent_statuses || {})) {
-            if (prev[k] === "done" && v === "running") continue;
-            merged[k] = v;
-          }
-          return merged;
-        });
+        setAgentStatuses(data.agent_statuses);
         setExecutionTrace(data.execution_trace || []);
         setWorkflowStage(data.workflow_stage || "init");
+
+        if (data.current_gate) setCurrentGate(data.current_gate);
+        if (data.workflow_status) setWorkflowStatusText(data.workflow_status);
+        if (typeof data.workflow_complete === "boolean") {
+          setWorkflowComplete(data.workflow_complete);
+        }
+
         if (data.agent_statuses?.hitl === "running") setHitlRequired(true);
       } catch {}
     };
@@ -141,7 +149,8 @@ export default function LiveOrchestrationPage() {
   }, []);
 
   const workflowStatus =
-    Object.values(agentStatuses).includes("running") ? "RUNNING"
+    workflowComplete ? "DONE"
+    : Object.values(agentStatuses).includes("running") ? "RUNNING"
     : Object.values(agentStatuses).includes("failed") ? "FAILED"
     : workflowStage === "ready_to_complete" ? "DONE"
     : Object.values(agentStatuses).some(s => s === "done") ? "RUNNING"
@@ -160,8 +169,31 @@ export default function LiveOrchestrationPage() {
           <h1 className="text-lg font-bold text-gray-900">Live Orchestration</h1>
           <p className="mt-0.5 text-xs text-gray-500">
             Workflow:{" "}
-            <span className="font-semibold" style={{ color: statusColor }}>● {workflowStatus}</span>
-            {workerId && <span className="ml-2 font-mono text-gray-400">{workerId}</span>}
+            <span className="font-semibold" style={{ color: statusColor }}>
+              ● {workflowStatus}
+            </span>
+
+            {workerId && (
+              <span className="ml-2 font-mono text-gray-400">
+                {workerId}
+              </span>
+            )}
+
+            <span className="ml-2 text-gray-400">|</span>
+
+            <span className="ml-2">
+              Gate:{" "}
+              <span className="font-semibold text-gray-700">
+                {currentGate || workflowStage || "unknown"}
+              </span>
+            </span>
+
+            <span className="ml-2">
+              Status:{" "}
+              <span className="font-semibold text-gray-700">
+                {workflowStatusText || "unknown"}
+              </span>
+            </span>
           </p>
         </div>
         <div className="flex items-center gap-3">

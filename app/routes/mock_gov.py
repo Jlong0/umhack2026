@@ -15,6 +15,7 @@ from pydantic import BaseModel
 from typing import Optional, Dict
 
 from app.firebase_config import db
+from app.services.workflow_sync_service import update_workflow_doc
 
 router = APIRouter(prefix="/mock-gov", tags=["mock-gov"])
 
@@ -182,15 +183,28 @@ async def mock_submit_plks(payload: PLKSSubmission):
     })
 
     if payload.worker_id:
-        db.collection("workers").document(payload.worker_id).set({
+        worker_ref = db.collection("workers").document(payload.worker_id)
+        worker_doc = worker_ref.get()
+
+        if not worker_doc.exists:
+            raise HTTPException(status_code=404, detail="Worker not found")
+
+        update_data = {
             "plks_status": "approved",
             "plks_receipt_id": receipt_id,
             "plks_submitted_at": now.isoformat(),
+
             "current_gate": "ACTIVE",
             "workflow_status": "active",
+            "workflow_complete": True,
             "active_status": "active",
+            "activated_at": now.isoformat(),
+
             "updated_at": now.isoformat(),
-        }, merge=True)
+        }
+
+        worker_ref.set(update_data, merge=True)
+        update_workflow_doc(payload.worker_id, update_data)
 
     return {
         "portal": "PLKS",
@@ -200,6 +214,10 @@ async def mock_submit_plks(payload: PLKSSubmission):
         "message": "PLKS application approved successfully (simulated)",
         "estimated_processing": "Immediate demo approval",
         "simulated": True,
+        "worker_id": payload.worker_id,
+        "current_gate": "ACTIVE",
+        "workflow_status": "active",
+        "workflow_complete": True,
     }
 
 
