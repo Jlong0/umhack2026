@@ -232,6 +232,7 @@ async def list_workers():
             if missing_fields:
                 workers.append({
                     "worker_id": worker_id,
+                    "company_id": data.get("company_id"),
                     "full_name": full_name,
                     "whatsapp": data.get("whatsapp"),
                     "login_code": data.get("login_code"),
@@ -248,6 +249,7 @@ async def list_workers():
             elif review_status in ["pending", "pending_review"] and not health_result:
                 workers.append({
                     "worker_id": worker_id,
+                    "company_id": data.get("company_id"),
                     "full_name": full_name,
                     "whatsapp": data.get("whatsapp"),
                     "login_code": data.get("login_code"),
@@ -264,6 +266,7 @@ async def list_workers():
             else:
                 workers.append({
                     "worker_id": worker_id,
+                    "company_id": data.get("company_id"),
                     "full_name": full_name,
                     "whatsapp": data.get("whatsapp"),
                     "login_code": data.get("login_code"),

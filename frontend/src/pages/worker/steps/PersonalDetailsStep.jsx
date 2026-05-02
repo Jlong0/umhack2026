@@ -122,8 +122,8 @@ export default function PersonalDetailsStep({ data, onChange, employmentHistory,
       <Section title="Contact & Address">
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="sm:col-span-2">
-            <Field label="Permanent Home Address" required>
-              <input type="text" placeholder="Full address" className={INPUT} value={data.permanent_address} onChange={(e) => update("permanent_address", e.target.value)} />
+            <Field label="Home Address" required>
+              <input type="text" placeholder="67 Joker Street" className={INPUT} value={data.address} onChange={(e) => update("address", e.target.value)} />
             </Field>
           </div>
           <Field label="Emergency Contact Name" required>

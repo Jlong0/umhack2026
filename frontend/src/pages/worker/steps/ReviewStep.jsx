@@ -104,7 +104,7 @@ export default function ReviewStep({ passportData, supportingDocs, personalDetai
             <DataRow label="Full Name" value={personalDetails.full_name} />
             <DataRow label="Gender" value={personalDetails.gender} />
             <DataRow label="Nationality" value={personalDetails.nationality} />
-            <DataRow label="Address" value={personalDetails.permanent_address} />
+            <DataRow label="Address" value={personalDetails.address} />
             <DataRow label="Emergency Contact" value={personalDetails.emergency_contact_name} />
             <DataRow label="Sector" value={personalDetails.sector} />
             {employmentHistory.filter(Boolean).length > 0 && (

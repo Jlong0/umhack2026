@@ -32,7 +32,7 @@ const INITIAL_PERSONAL = {
   full_name: "", date_of_birth: "", gender: "", nationality: "",
   height_cm: "", weight_kg: "", marital_status: "",
   father_name: "", mother_name: "", spouse_name: "",
-  permanent_address: "", emergency_contact_name: "", emergency_contact_phone: "",
+  address: "", emergency_contact_name: "", emergency_contact_phone: "",
   education_history: "", has_travel_history: "", travel_history_details: "",
   sector: "Manufacturing", permit_class: "PLKS", employment_date: "",
 };
@@ -293,6 +293,15 @@ export default function UploadPage() {
   };
 
   const handleSubmit = async () => {
+    if (!workerId) {
+      toast({
+        title: "Missing worker ID",
+        description: "Please log in again before submitting.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const workerPayload = {
       worker_id: workerId,
 

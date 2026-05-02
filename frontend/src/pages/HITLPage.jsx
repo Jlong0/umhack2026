@@ -9,6 +9,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import { PageSkeleton } from "@/components/ui/page-skeleton";
 import { ErrorState } from "@/components/ui/error-state";
+import { useAuthStore } from "@/store/useAuthStore";
 
 function ContractReviewTab() {
 	const [selectedContract, setSelectedContract] = useState(null);
@@ -169,7 +170,11 @@ export default function HITLPage() {
 	const { data: workersData, isLoading, isError } = useHITLWorkers();
 	const resolveMutation = useResolveWorkerFields(selectedWorker?.worker_id);
 
-	const workers = workersData?.workers || [];
+	const selectedCompanyId = useAuthStore((state) => state.selectedCompanyId);
+	const workers = (workersData?.workers || []).filter(
+		(w) => !selectedCompanyId || w.company_id === selectedCompanyId
+	);
+
 	const pendingCount = workers.filter((w) => w.status === "pending").length;
 
 	function handleSelectWorker(worker) {
