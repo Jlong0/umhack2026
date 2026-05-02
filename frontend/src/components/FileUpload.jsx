@@ -40,7 +40,7 @@ export default function FileUpload({
 		<section className="permit-surface space-y-4 p-5 sm:p-6">
 			<div>
 				<h2 className="text-lg font-semibold">Upload & Polling State</h2>
-				<p className="mt-1 text-sm text-slate-600">
+				<p className="mt-1 text-sm text-muted-foreground">
 					Drag and drop a passport, permit, or PDF to start the parsing job.
 				</p>
 			</div>
@@ -48,7 +48,7 @@ export default function FileUpload({
 			<div
 				className={cn(
 					"node-transition rounded-xl border-2 border-dashed p-6 text-center",
-					isDragActive ? "border-indigo-500 bg-indigo-50" : "border-slate-300 bg-slate-50/70",
+					isDragActive ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-950" : "border-border bg-muted/70",
 				)}
 				onDrop={handleDrop}
 				onDragOver={(event) => {
@@ -68,37 +68,37 @@ export default function FileUpload({
 					onChange={(event) => onFileSelect(event.target.files?.[0] || null)}
 				/>
 
-				<div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-indigo-100 text-indigo-700">
+				<div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
 					<UploadCloud className="h-6 w-6" />
 				</div>
 
-				<p className="text-sm font-medium text-slate-700">
+				<p className="text-sm font-medium text-foreground">
 					Drop file here or{" "}
 					<button
 						type="button"
-						className="text-indigo-700 underline-offset-2 hover:underline"
+						className="text-indigo-700 underline-offset-2 hover:underline dark:text-indigo-400"
 						onClick={() => inputRef.current?.click()}
 					>
 						browse device
 					</button>
 				</p>
 
-				<p className="mt-2 text-xs text-slate-500">Accepted: PDF, PNG, JPEG</p>
+				<p className="mt-2 text-xs text-muted-foreground">Accepted: PDF, PNG, JPEG</p>
 			</div>
 
 			{file ? (
-				<div className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-4 py-3">
+				<div className="flex items-center justify-between rounded-lg border border-border bg-card px-4 py-3">
 					<div className="flex min-w-0 items-center gap-3">
-						<FileText className="h-5 w-5 shrink-0 text-slate-500" />
+						<FileText className="h-5 w-5 shrink-0 text-muted-foreground" />
 						<div className="min-w-0">
-							<p className="truncate text-sm font-medium text-slate-900">{file.name}</p>
-							<p className="text-xs text-slate-500">{formatBytes(file.size)}</p>
+							<p className="truncate text-sm font-medium text-foreground">{file.name}</p>
+							<p className="text-xs text-muted-foreground">{formatBytes(file.size)}</p>
 						</div>
 					</div>
 
 					<button
 						type="button"
-						className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-400"
+						className="rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-400 dark:bg-blue-500 dark:hover:bg-blue-400"
 						onClick={onUpload}
 						disabled={isUploading || isPolling}
 					>
@@ -108,21 +108,20 @@ export default function FileUpload({
 			) : null}
 
 			{(isUploading || isPolling) && (
-				<div className="rounded-lg border border-indigo-200 bg-indigo-50/80 p-4">
-					<div className="mb-2 flex items-center gap-2 text-sm font-medium text-indigo-900">
+				<div className="rounded-lg border border-indigo-200 bg-indigo-50/80 p-4 dark:border-indigo-800 dark:bg-indigo-950/80">
+					<div className="mb-2 flex items-center gap-2 text-sm font-medium text-indigo-900 dark:text-indigo-100">
 						<LoaderCircle className="h-4 w-4 animate-spin" />
 						Agent extracting data...
 					</div>
-					<div className="h-2 overflow-hidden rounded-full bg-indigo-100">
+					<div className="h-2 overflow-hidden rounded-full bg-indigo-100 dark:bg-indigo-900">
 						<div
 							className="h-full rounded-full bg-indigo-500 transition-all duration-300"
 							style={{ width: `${Math.max(8, Math.min(progressValue, 100))}%` }}
 						/>
 					</div>
-					<p className="mt-2 text-xs text-indigo-800">{stepText}</p>
+					<p className="mt-2 text-xs text-indigo-800 dark:text-indigo-300">{stepText}</p>
 				</div>
 			)}
 		</section>
 	);
 }
-

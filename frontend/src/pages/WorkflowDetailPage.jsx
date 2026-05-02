@@ -88,8 +88,8 @@ function TraceSection({ trace }) {
   const seen = new Map();
   for (const e of trace) seen.set(e.node, e);
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-      <h2 className="text-base font-semibold text-gray-900 mb-4">Execution Trace</h2>
+    <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+      <h2 className="text-base font-semibold text-foreground mb-4">Execution Trace</h2>
       <div className="space-y-2">
         {[...seen.values()].map((e, i) => (
           <div key={i} className="flex items-start gap-3 rounded-lg border border-gray-100 bg-gray-50 px-4 py-2.5">

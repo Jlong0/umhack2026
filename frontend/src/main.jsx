@@ -5,7 +5,11 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import App from "@/App";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { ToastProvider, Toaster } from "@/components/ui/toast";
+import { useThemeStore } from "@/store/useThemeStore";
 import "./index.css";
+
+// Initialize theme on mount
+useThemeStore.getState().applyStoredTheme();
 
 const queryClient = new QueryClient({
   defaultOptions: {

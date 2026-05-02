@@ -8,18 +8,7 @@ export default function WorkflowsPage() {
 	const error = queryError?.message || null;
 	const navigate = useNavigate();
 
-	function getStatusBadge(status) {
-		const styles = {
-			active: "bg-blue-100 text-blue-800",
-			completed: "bg-green-100 text-green-800",
-			failed: "bg-red-100 text-red-800",
-		};
-		return (
-			<span className={`px-2 py-1 rounded-full text-xs font-medium ${styles[status] || "bg-gray-100 text-gray-800"}`}>
-				{status}
-			</span>
-		);
-	}
+	const statusVariant = { active: "info", completed: "success", failed: "danger" };
 
 	function getComplianceIcon(status) {
 		switch (status) {
@@ -30,13 +19,7 @@ export default function WorkflowsPage() {
 		}
 	}
 
-	if (loading) {
-		return (
-			<div className="flex items-center justify-center h-64">
-				<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-			</div>
-		);
-	}
+	if (loading) return <PageSkeleton variant="table" />;
 
 	return (
 		<div className="space-y-6">
@@ -57,16 +40,16 @@ export default function WorkflowsPage() {
 					<div
 						key={workflow.worker_id}
 						onClick={() => navigate(`/workflows/${workflow.worker_id}`)}
-						className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-lg transition-shadow cursor-pointer"
+						className="bg-card border border-border rounded-lg p-6 hover:shadow-lg transition-shadow cursor-pointer"
 					>
 						<div className="flex items-start justify-between">
 							<div className="flex items-start space-x-4">
 								{getComplianceIcon(workflow.compliance_status)}
 								<div>
-									<h3 className="font-semibold text-gray-900">Worker ID: {workflow.worker_id}</h3>
-									<div className="flex items-center space-x-3 mt-2">
-										{getStatusBadge(workflow.status)}
-										<span className="text-sm text-gray-600">
+									<h3 className="font-semibold text-foreground">Worker ID: {workflow.worker_id}</h3>
+								<div className="flex items-center space-x-3 mt-2">
+										<StatusBadge variant={statusVariant[workflow.status] || "neutral"}>{workflow.status}</StatusBadge>
+										<span className="text-sm text-muted-foreground">
 											Compliance: <span className="font-medium">{workflow.compliance_status}</span>
 										</span>
 									</div>
@@ -93,7 +76,7 @@ export default function WorkflowsPage() {
 						</div>
 
 						{workflow.workflow_complete && (
-							<div className="mt-4 pt-4 border-t border-gray-200">
+							<div className="mt-4 pt-4 border-t border-border">
 								<span className="text-sm font-medium text-green-600">✓ Workflow Complete</span>
 							</div>
 						)}

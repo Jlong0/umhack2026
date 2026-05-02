@@ -3,6 +3,8 @@ import { FileText, Download, Upload, CheckCircle, Clock } from "lucide-react";
 import { useContracts, useUploadSigned } from "@/hooks/queries/useContractQueries";
 import { getContractPdfUrl } from "@/services/api";
 import { useAuthStore } from "@/store/useAuthStore";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
 
 const STATUS_LABEL = {
   generated: { label: "Awaiting your signature", color: "text-amber-600 bg-amber-50" },
@@ -30,11 +32,11 @@ function ContractRow({ contract }) {
   }
 
   return (
-    <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4">
+    <div className="flex items-center justify-between rounded-xl border border-border bg-card p-4">
       <div className="flex items-center gap-3">
-        <FileText className="h-5 w-5 text-slate-400" />
+        <FileText className="h-5 w-5 text-muted-foreground" />
         <div>
-          <p className="text-sm font-medium text-slate-900">{contract.worker_name}</p>
+          <p className="text-sm font-medium text-foreground">{contract.worker_name}</p>
           <span className={`mt-0.5 inline-block rounded-full px-2 py-0.5 text-xs font-medium ${s.color}`}>
             {s.label}
           </span>
@@ -45,7 +47,7 @@ function ContractRow({ contract }) {
         <button
           onClick={handleDownload}
           disabled={downloading}
-          className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:border-indigo-300 hover:text-indigo-700 disabled:opacity-50 transition"
+          className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:border-indigo-300 hover:text-indigo-700 disabled:opacity-50 transition"
         >
           <Download className="h-3.5 w-3.5" />
           {downloading ? "..." : "Download"}
@@ -88,20 +90,25 @@ export default function WorkerContractPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-bold text-slate-900">My Contracts</h1>
-        {workerName && <p className="text-sm text-slate-500 mt-0.5">Viewing as: {workerName}</p>}
-        <p className="text-sm text-slate-500 mt-1">
+        <h1 className="text-xl font-bold text-foreground">My Contracts</h1>
+        {workerName && <p className="text-sm text-muted-foreground mt-0.5">Viewing as: {workerName}</p>}
+        <p className="text-sm text-muted-foreground mt-1">
           Download your employment contract, sign it, then upload the signed copy.
         </p>
       </div>
 
       {isLoading ? (
-        <div className="text-sm text-slate-400">Loading...</div>
-      ) : contracts.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-slate-200 p-12 text-center text-slate-400">
-          <FileText className="w-10 h-10 mx-auto mb-3 opacity-30" />
-          <p className="text-sm">No contracts available yet.</p>
+        <div className="space-y-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-16 w-full rounded-xl" />
+          ))}
         </div>
+      ) : contracts.length === 0 ? (
+        <EmptyState
+          icon={FileText}
+          title="No contracts available yet"
+          description="Your employer will generate your employment contract once your application is processed."
+        />
       ) : (
         <div className="space-y-3">
           {contracts.map((c) => <ContractRow key={c.contract_id} contract={c} />)}

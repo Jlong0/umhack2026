@@ -2,11 +2,16 @@ import { useState, useRef } from "react";
 import { FileText, Upload, Download, CheckCircle, Clock } from "lucide-react";
 import { useContracts, useGenerateContracts, useUploadSigned } from "@/hooks/queries/useContractQueries";
 import { getContractPdfUrl } from "@/services/api";
+import { PageHeader } from "@/components/ui/page-header";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { Button } from "@/components/ui/button";
+import { PageSkeleton } from "@/components/ui/page-skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
 
-const STATUS_STYLES = {
-  generated: "bg-gray-100 text-gray-700",
-  signed: "bg-amber-100 text-amber-700",
-  reviewed: "bg-emerald-100 text-emerald-700",
+const STATUS_VARIANT = {
+  generated: "neutral",
+  signed: "warning",
+  reviewed: "success",
 };
 
 function UploadSignedButton({ contractId }) {
@@ -57,14 +62,14 @@ export default function ContractGenerationPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Contract Generation</h1>
-        <p className="text-sm text-gray-600 mt-1">Upload a PDF template to generate employment contracts for all workers</p>
-      </div>
+      <PageHeader
+        title="Contract Generation"
+        description="Upload a PDF template to generate employment contracts for all workers"
+      />
 
       {/* Upload Template */}
-      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-        <h2 className="text-base font-semibold text-gray-900 mb-4">Upload Contract Template</h2>
+      <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+        <h2 className="text-base font-semibold text-foreground mb-4">Upload Contract Template</h2>
         <div className="flex items-center gap-4">
           <input
             ref={fileInputRef}
@@ -75,19 +80,18 @@ export default function ContractGenerationPage() {
           />
           <button
             onClick={() => fileInputRef.current.click()}
-            className="flex items-center gap-2 rounded-lg border border-dashed border-gray-300 px-6 py-3 text-sm text-gray-600 hover:border-indigo-400 hover:text-indigo-700 transition"
+            className="flex items-center gap-2 rounded-lg border border-dashed border-border px-6 py-3 text-sm text-muted-foreground hover:border-indigo-400 hover:text-indigo-700 transition"
           >
             <Upload className="h-4 w-4" />
             {templateFile ? templateFile.name : "Choose PDF template"}
           </button>
-          <button
+          <Button
             onClick={handleGenerate}
             disabled={!templateFile || generateMutation.isPending}
-            className="flex items-center gap-2 rounded-lg bg-indigo-600 px-5 py-3 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50 transition"
           >
             <FileText className="h-4 w-4" />
             {generateMutation.isPending ? "Generating..." : "Generate All Contracts"}
-          </button>
+          </Button>
         </div>
         {generateMutation.isSuccess && (
           <p className="mt-3 text-sm text-emerald-600">
@@ -97,37 +101,40 @@ export default function ContractGenerationPage() {
       </div>
 
       {/* Contracts Table */}
-      <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
-        <div className="border-b border-gray-100 px-5 py-4 flex items-center justify-between">
-          <h2 className="text-base font-semibold text-gray-900">Generated Contracts</h2>
-          <span className="text-xs text-gray-500">{contracts.length} total</span>
+      <div className="rounded-xl border border-border bg-card shadow-sm">
+        <div className="border-b border-border px-5 py-4 flex items-center justify-between">
+          <h2 className="text-base font-semibold text-foreground">Generated Contracts</h2>
+          <span className="text-xs text-muted-foreground">{contracts.length} total</span>
         </div>
 
         {isLoading ? (
-          <div className="p-8 text-center text-gray-400 text-sm">Loading...</div>
+          <div className="p-8"><PageSkeleton variant="table" /></div>
         ) : contracts.length === 0 ? (
-          <div className="p-12 text-center text-gray-400">
-            <FileText className="w-10 h-10 mx-auto mb-3 opacity-30" />
-            <p className="text-sm">No contracts yet. Upload a template to get started.</p>
+          <div className="p-6">
+            <EmptyState
+              icon={FileText}
+              title="No contracts yet"
+              description="Upload a template to get started."
+            />
           </div>
         ) : (
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-border">
             {contracts.map((c) => (
               <div key={c.contract_id} className="flex items-center justify-between px-5 py-3">
                 <div className="flex items-center gap-3">
-                  <FileText className="h-4 w-4 text-gray-400" />
+                  <FileText className="h-4 w-4 text-muted-foreground" />
                   <div>
-                    <p className="text-sm font-medium text-gray-900">{c.worker_name}</p>
-                    <p className="text-xs text-gray-400">{new Date(c.created_at).toLocaleDateString()}</p>
+                    <p className="text-sm font-medium text-foreground">{c.worker_name}</p>
+                    <p className="text-xs text-muted-foreground">{new Date(c.created_at).toLocaleDateString()}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_STYLES[c.status] || STATUS_STYLES.generated}`}>
+                  <StatusBadge variant={STATUS_VARIANT[c.status] || "neutral"}>
                     {c.status}
-                  </span>
+                  </StatusBadge>
                   <button
                     onClick={() => handleDownload(c.contract_id, c.worker_name)}
-                    className="text-xs text-gray-500 hover:text-indigo-600 flex items-center gap-1"
+                    className="text-xs text-muted-foreground hover:text-indigo-600 flex items-center gap-1"
                   >
                     <Download className="h-3.5 w-3.5" />
                     Download

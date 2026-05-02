@@ -6,26 +6,82 @@
 
 @layer base {
   :root {
-    --background: 38 46% 98%;
-    --foreground: 217 33% 17%;
-    --card: 0 0% 100%;
-    --card-foreground: 217 33% 17%;
+    /* Light mode palette — slate-50 / white / slate-900 / slate-200 / blue-600 */
+    --background: 210 40% 98%;     /* slate-50  #F8FAFC */
+    --foreground: 222 47% 11%;     /* slate-900 #0F172A */
+    --card: 0 0% 100%;             /* white     #FFFFFF */
+    --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
-    --popover-foreground: 217 33% 17%;
-    --primary: 219 45% 23%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 221 83% 53%;        /* blue-600  #2563EB */
     --primary-foreground: 0 0% 100%;
     --secondary: 210 40% 96%;
-    --secondary-foreground: 221 39% 15%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 44%;
-    --accent: 220 62% 54%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 210 40% 96%;          /* slate-100 #F1F5F9 */
+    --muted-foreground: 215 16% 47%; /* slate-500 #64748B */
+    --accent: 221 83% 53%;
     --accent-foreground: 0 0% 100%;
-    --destructive: 346 77% 49%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --border: 214 32% 89%;
-    --input: 214 32% 89%;
-    --ring: 221 82% 55%;
+    --border: 214 32% 91%;         /* slate-200 #E2E8F0 */
+    --input: 214 32% 91%;
+    --ring: 221 83% 53%;
     --radius: 0.9rem;
+
+    /* Semantic status tokens */
+    --status-success: 142 71% 45%;     /* emerald-600 */
+    --status-success-soft: 149 80% 95%; /* emerald-50  */
+    --status-warning: 38 92% 50%;      /* amber-500   */
+    --status-warning-soft: 48 96% 95%; /* amber-50    */
+    --status-danger: 0 84% 60%;        /* red-500     */
+    --status-danger-soft: 0 86% 97%;   /* red-50      */
+    --status-info: 217 91% 60%;        /* blue-500    */
+    --status-info-soft: 214 95% 95%;   /* blue-50     */
+
+    /* Surface hierarchy for card depth */
+    --surface-0: 210 40% 98%;     /* page bg */
+    --surface-1: 0 0% 100%;       /* primary cards */
+    --surface-2: 0 0% 100%;       /* elevated panels */
+    --surface-3: 0 0% 100%;       /* popovers */
+  }
+
+  html.dark {
+    /* Dark mode palette — deep navy / near-black */
+    --background: 228 60% 3%;       /* #030711  very deep navy-black */
+    --foreground: 210 40% 98%;      /* slate-50  #F8FAFC */
+    --card: 224 50% 6%;             /* #070B14  deep card surface */
+    --card-foreground: 210 40% 98%;
+    --popover: 224 50% 6%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217 91% 60%;         /* blue-500  #3B82F6 */
+    --primary-foreground: 210 40% 98%;
+    --secondary: 222 40% 12%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 222 40% 10%;           /* #0C1425  darker muted */
+    --muted-foreground: 215 20% 55%; /* brighter for readability */
+    --accent: 217 91% 60%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 222 35% 14%;          /* #131D30  subtle visible edge */
+    --input: 222 35% 14%;
+    --ring: 217 91% 60%;
+
+    /* Semantic status tokens — dark */
+    --status-success: 142 71% 45%;
+    --status-success-soft: 155 40% 12%;
+    --status-warning: 38 92% 50%;
+    --status-warning-soft: 32 40% 12%;
+    --status-danger: 0 84% 60%;
+    --status-danger-soft: 0 40% 12%;
+    --status-info: 217 91% 60%;
+    --status-info-soft: 217 40% 12%;
+
+    /* Surface hierarchy — dark */
+    --surface-0: 228 60% 3%;
+    --surface-1: 224 50% 6%;
+    --surface-2: 224 45% 8%;
+    --surface-3: 224 40% 10%;
   }
 
   * {
@@ -40,11 +96,18 @@
       linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.92));
   }
 
+  html.dark body {
+    background-image:
+      radial-gradient(circle at 10% 12%, rgba(99, 102, 241, 0.08), transparent 36%),
+      radial-gradient(circle at 88% 2%, rgba(139, 92, 246, 0.08), transparent 26%),
+      linear-gradient(180deg, rgba(3, 7, 30, 0.98), rgba(15, 23, 42, 0.95));
+  }
+
   h1,
   h2,
   h3,
   h4 {
-    @apply font-heading tracking-tight text-slate-950;
+    @apply font-heading tracking-tight text-foreground;
   }
 
   #root {
@@ -54,7 +117,7 @@
 
 @layer utilities {
   .permit-surface {
-    @apply rounded-2xl border border-slate-200 bg-white/90 shadow-soft backdrop-blur-sm;
+    @apply rounded-2xl border border-border bg-card shadow-soft backdrop-blur-sm;
   }
 
   .node-transition {
@@ -64,6 +127,30 @@
 
 .react-flow__attribution {
   display: none;
+}
+
+/* ReactFlow dark mode overrides */
+html.dark .react-flow__edge {
+  stroke: hsl(var(--muted-foreground));
+}
+
+html.dark .react-flow__controls {
+  box-shadow: 0 0 0 1px hsl(var(--border));
+  background: hsl(var(--card));
+}
+
+html.dark .react-flow__controls button {
+  color: hsl(var(--foreground));
+  background: hsl(var(--card));
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+html.dark .react-flow__controls button:hover {
+  background: hsl(var(--muted));
+}
+
+html.dark .react-flow__minimap {
+  background: hsl(var(--muted));
 }
 
 @media (prefers-reduced-motion: reduce) {
