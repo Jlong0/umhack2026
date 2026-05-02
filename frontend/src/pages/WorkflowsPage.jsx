@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useAllWorkflows } from "@/hooks/queries/useWorkflowQueries";
 import { AlertCircle, CheckCircle, Clock, PlayCircle, Radio } from "lucide-react";
+import { StatusBadge } from "@/components/ui/status-badge";
 
 export default function WorkflowsPage() {
 	const { data, isLoading: loading, error: queryError } = useAllWorkflows();

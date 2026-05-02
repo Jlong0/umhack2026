@@ -2,7 +2,6 @@ import {
   Activity,
   LayoutDashboard,
   Wrench,
-  Workflow,
   AlertCircle,
   Users,
   Calculator,
@@ -56,7 +55,7 @@ const NAV_GROUPS = [
     label: "Planning",
     items: [
       { to: "/simulator", label: "Cost Simulator", icon: Calculator },
-      { to: "/worker-visualizer", label: "Compliance Flow", icon: Workflow },
+      { to: "/workflows", label: "Live Orchestration", icon: Activity },
       { to: "/worker-calendar", label: "Renewal Calendar", icon: CalendarIcon },
     ],
   },
