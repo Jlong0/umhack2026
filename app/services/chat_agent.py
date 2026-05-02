@@ -15,13 +15,12 @@ from typing import Any
 from dotenv import load_dotenv
 load_dotenv()
 
-import google.genai as genai
 from google.genai import types
 
+from app.services.gemini_client import get_client, call_with_rotation
 from app.firebase_config import db
 
 REASONING_MODEL = os.getenv("GEMINI_REASONING_MODEL", "gemini-2.5-flash")
-_client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 SYSTEM_PROMPT = """You are the PermitIQ AI Command Console — an intelligent assistant for HR managers and compliance officers at Malaysian SMEs managing foreign worker permits.
 
@@ -445,7 +444,11 @@ def process_message(message: str, history: list, pending_tool_result: dict | Non
         system_instruction=SYSTEM_PROMPT,
         temperature=0.2,
     )
-    response = _client.models.generate_content(model=REASONING_MODEL, contents=contents, config=cfg)
+
+    def _main_call(client):
+        return client.models.generate_content(model=REASONING_MODEL, contents=contents, config=cfg)
+
+    response = call_with_rotation(_main_call)
 
     # Collect function calls from the response
     function_calls = []
@@ -506,11 +509,14 @@ def process_message(message: str, history: list, pending_tool_result: dict | Non
             parts=[types.Part(text=f"Tool results:\n{results_text}\n\nSummarize for the user in plain English.")],
         ),
     ]
-    summary = _client.models.generate_content(
-        model=REASONING_MODEL,
-        contents=summary_contents,
-        config=types.GenerateContentConfig(temperature=0.2),
-    )
+    def _summary_call(client):
+        return client.models.generate_content(
+            model=REASONING_MODEL,
+            contents=summary_contents,
+            config=types.GenerateContentConfig(temperature=0.2),
+        )
+
+    summary = call_with_rotation(_summary_call)
     return {
         "reply": summary.text or "Done.",
         "tool_calls": tool_calls_out,

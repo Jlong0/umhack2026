@@ -29,7 +29,7 @@ zhipuai>=2.0.0
 openai                    # OpenAI-compatible shim for GLM API calls
 
 # ── Gemini Integration (Temporary for testing) ────────────
-google-generativeai       # Gemini API with key rotation for testing/optimization
+google-genai               # Unified Gemini SDK (Google AI Studio API key auth)
 
 # ── Observability & Tracing ───────────────────────────────
 opentelemetry-api
