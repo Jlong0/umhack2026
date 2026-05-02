@@ -344,9 +344,42 @@ export async function updateJtksmDecision(workerId, decision, notes = "") {
   });
 }
 
+export async function updateVdrDecision(workerId, decision, notes = "") {
+  return apiRequest(`/workers/${workerId}/vdr-decision`, {
+    method: "PATCH",
+    body: JSON.stringify({ decision, notes }),
+  });
+}
+
+export async function completeVdrSubmission(workerId, receipt) {
+  return apiRequest(`/workers/${workerId}/vdr-complete`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      receipt_id: receipt?.receipt_id,
+      receipt,
+    }),
+  });
+}
+
+export async function markTransitComplete(workerId) {
+  return apiRequest(`/workers/${workerId}/transit-complete`, {
+    method: "PATCH",
+  });
+}
+
+export async function simulateFomemaGovResult(workerId, result, notes = "") {
+  return apiRequest(`/workers/${workerId}/simulate-fomema-gov-result`, {
+    method: "POST",
+    body: JSON.stringify({ result, notes }),
+  });
+}
 
 export async function getWorkerStatus(workerId) {
   return apiRequest(`/workers/${workerId}/status`);
+}
+
+export async function getWorker(workerId) {
+  return apiRequest(`/workers/${workerId}`);
 }
 
 export async function approveJTKSM(workerId) {
@@ -389,4 +422,40 @@ export async function getNotifyBotStatus() {
 
 export async function setupNotifyBot() {
   return apiRequest("/notify/bot-setup", { method: "POST" });
+}
+
+// Orchestration APIs
+export async function startOrchestration(workerId, triggerReason = "manual") {
+  return apiRequest("/orchestration/start", {
+    method: "POST",
+    body: JSON.stringify({ worker_id: workerId, trigger_reason: triggerReason }),
+  });
+}
+
+export async function getOrchestrationStatus(sessionId) {
+  return apiRequest(`/orchestration/${sessionId}/status`, { method: "GET" });
+}
+
+export async function getOrchestrationGraph(sessionId) {
+  return apiRequest(`/orchestration/${sessionId}/graph`, { method: "GET" });
+}
+
+export async function getOrchestrationTrace(sessionId) {
+  return apiRequest(`/orchestration/${sessionId}/trace`, { method: "GET" });
+}
+
+export async function resumeOrchestration(sessionId, decision, notes = null, modifiedData = null) {
+  return apiRequest(`/orchestration/${sessionId}/resume`, {
+    method: "POST",
+    body: JSON.stringify({ decision, notes, modified_data: modifiedData }),
+  });
+}
+
+export async function listOrchestrationSessions(workerId = null) {
+  const qs = workerId ? `?worker_id=${encodeURIComponent(workerId)}` : "";
+  return apiRequest(`/orchestration/sessions${qs}`, { method: "GET" });
+}
+
+export async function cancelOrchestrationSession(sessionId) {
+  return apiRequest(`/orchestration/${sessionId}`, { method: "DELETE" });
 }

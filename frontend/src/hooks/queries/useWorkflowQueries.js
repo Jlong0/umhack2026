@@ -7,6 +7,9 @@ import {
   resumeWorkflow,
   getComplianceGraph,
   updateJtksmDecision,
+  updateVdrDecision,
+  markTransitComplete,
+  simulateFomemaGovResult,
 } from "@/services/api";
 
 export function useAllWorkflows() {
@@ -25,6 +28,44 @@ export function useJtksmDecision() {
   return useMutation({
     mutationFn: ({ workerId, decision, notes }) =>
       updateJtksmDecision(workerId, decision, notes),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["workflows"] });
+      qc.invalidateQueries({ queryKey: ["all-workflows"] });
+    },
+  });
+}
+
+export function useVdrDecision() {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ workerId, decision, notes }) =>
+      updateVdrDecision(workerId, decision, notes),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["workflows"] });
+      qc.invalidateQueries({ queryKey: ["all-workflows"] });
+    },
+  });
+}
+
+export function useTransitComplete() {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: (workerId) => markTransitComplete(workerId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["workflows"] });
+      qc.invalidateQueries({ queryKey: ["all-workflows"] });
+    },
+  });
+}
+
+export function useSimulateFomemaGovResult() {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ workerId, result, notes }) =>
+      simulateFomemaGovResult(workerId, result, notes),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["workflows"] });
       qc.invalidateQueries({ queryKey: ["all-workflows"] });

@@ -144,10 +144,18 @@ export default function AICommandConsole() {
       };
       appendMessage(assistantMsg);
     } catch (err) {
-      appendMessage({
-        role: "assistant",
-        content: "Sorry, I couldn't reach the server. Please check that the backend is running.",
-      });
+      let errorMsg;
+      const detail = err?.data?.detail || err?.message || "";
+      if (detail.includes("429") || detail.includes("RESOURCE_EXHAUSTED") || detail.includes("quota")) {
+        errorMsg = "⏳ Gemini API rate limit hit — please wait a moment and try again.";
+      } else if (detail.includes("API key not valid") || detail.includes("API_KEY_INVALID")) {
+        errorMsg = "🔑 Gemini API key is invalid. Please update GEMINI_API_KEYS in your .env file.";
+      } else if (detail.includes("Chat processing failed")) {
+        errorMsg = `⚠️ ${detail}`;
+      } else {
+        errorMsg = "Sorry, I couldn't reach the server. Please check that the backend is running.";
+      }
+      appendMessage({ role: "assistant", content: errorMsg });
     } finally {
       setThinking(false);
     }

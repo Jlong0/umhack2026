@@ -15,6 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.routes import worker, task, document, agent, simulator, hitl, alerts
 from app.routes import vdr, plks, company, compliance, analytics, medical
 from app.routes import realtime, contract, mock_gov, chat, workflow, gate_transition, notify
+from app.routes import orchestration
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -58,6 +59,7 @@ app.include_router(chat.router)
 app.include_router(workflow.router)
 app.include_router(gate_transition.router)
 app.include_router(notify.router)
+app.include_router(orchestration.router)
 
 
 @app.get("/")

@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from typing import Optional, Dict
 from app.firebase_config import db, bucket
 from datetime import datetime, timedelta
+from app.agents.contract_agent import generate_contract_for_worker
 
 router = APIRouter(prefix="/hitl", tags=["hitl"])
 
@@ -342,19 +343,6 @@ async def list_workers(company_id: str | None = None):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.patch("/workers/{worker_id}/medical-result")
-async def set_medical_result(worker_id: str, body: MedicalResult):
-    worker_ref = db.collection("workers").document(worker_id)
-    if not worker_ref.get().exists:
-        raise HTTPException(status_code=404, detail="Worker not found")
-    worker_ref.update({
-        "health_check_result": body.result,
-        "review_status": "reviewed",
-        "health_check_reviewed_at": datetime.now().isoformat(),
-    })
-    return {"worker_id": worker_id, "status": "complete" if body.result == "approve" else "rejected"}
-
-
 @router.get("/interrupts")
 async def list_pending_interrupts():
     try:
@@ -527,20 +515,63 @@ async def resolve_missing_fields(worker_id: str, body: FieldUpdate):
 
 
 
+from datetime import datetime, timezone
+from fastapi import HTTPException
+from app.services.workflow_status_service import refresh_vdr_status
+
+
 @router.patch("/workers/{worker_id}/medical-result")
 async def set_medical_result(worker_id: str, body: MedicalResult):
     worker_ref = db.collection("workers").document(worker_id)
-    if not worker_ref.get().exists:
+    worker_doc = worker_ref.get()
+
+    if not worker_doc.exists:
         raise HTTPException(status_code=404, detail="Worker not found")
 
-    worker_ref.update({
+    worker = worker_doc.to_dict()
+    now = datetime.now(timezone.utc).isoformat()
+
+    update_data = {
         "health_check_result": body.result,
-        "review_status": "reviewed",
-        "health_check_reviewed_at": datetime.now().isoformat(),
-    })
+        "health_check_reviewed_at": now,
+        "updated_at": now,
+    }
 
-    return {"worker_id": worker_id, "status": "complete" if body.result == "approve" else "rejected"}
+    if body.result == "approve":
+        # Medical is approved, but worker may still have other pending requirements.
+        update_data["workflow_status"] = worker.get("workflow_status", "vdr_pending")
 
+    elif body.result == "reject":
+        update_data["review_status"] = "rejected"
+        update_data["workflow_status"] = "medical_rejected"
+        update_data["health_check_rejected_at"] = now
+
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail="medical result must be approve or reject",
+        )
+
+    worker_ref.set(update_data, merge=True)
+
+    # Update local copy and recompute VDR checklist.
+    worker.update(update_data)
+    vdr_result = refresh_vdr_status(worker_ref, worker)
+
+    contract_result = None
+
+    if body.result == "approve":
+        contract_result = generate_contract_for_worker(worker_id)
+
+    return {
+        "worker_id": worker_id,
+        "medical_result": body.result,
+        "health_check_result": body.result,
+        "vdr_status": vdr_result["vdr_status"],
+        "vdr_requirements": vdr_result["vdr_requirements"],
+        "contract": contract_result,
+        "status": "complete" if body.result == "approve" else "rejected",
+    }
 
 @router.get("/interrupts")
 async def list_pending_interrupts(company_id: str | None = None):
