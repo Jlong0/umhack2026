@@ -4,6 +4,7 @@ from datetime import datetime, timezone, timedelta
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
+from typing import Optional, Dict, Any
 
 from app.schemas.document import ConfirmDocumentResponse, WorkerCreateRequest
 from app.schemas.worker import WorkerCreate
@@ -27,12 +28,38 @@ class JTKSMDecision(BaseModel):
     notes: str | None = None
 
 
+class VDRDecision(BaseModel):
+    decision: str  # approve | reject
+    notes: str | None = None
+
+
+class VDRCompleteRequest(BaseModel):
+    receipt_id: Optional[str] = None
+    receipt: Optional[Dict[str, Any]] = None
+
+
+class MockFomemaGovResult(BaseModel):
+    result: str  # fit | unfit
+    notes: str | None = None
+
 def _generate_login_code(name: str) -> str:
     first = name.split()[0].lower()
     first = "".join(c for c in first if c.isalnum())
     digits = "".join(random.choices(string.digits, k=4))
     return f"{first}{digits}"
 
+
+@router.get("/workers/{worker_id}")
+def get_worker(worker_id: str):
+    doc = db.collection("workers").document(worker_id).get()
+
+    if not doc.exists:
+        raise HTTPException(status_code=404, detail="Worker not found")
+
+    data = doc.to_dict()
+    data["worker_id"] = doc.id
+
+    return data
 
 @router.get("/workers")
 def list_workers_detail():
@@ -392,6 +419,215 @@ def update_jtksm_decision(worker_id: str, body: JTKSMDecision):
         "vdr_status": update_data.get("vdr_status"),
     }
 
+
+@router.patch("/workers/{worker_id}/vdr-decision")
+def update_vdr_decision(worker_id: str, body: VDRDecision):
+    worker_ref = db.collection("workers").document(worker_id)
+    worker_doc = worker_ref.get()
+
+    if not worker_doc.exists:
+        raise HTTPException(status_code=404, detail="Worker not found")
+
+    worker = worker_doc.to_dict()
+    now = datetime.now(timezone.utc).isoformat()
+
+    requirements = worker.get("vdr_requirements", {}) or {}
+
+    if body.decision == "approve":
+        if not requirements or not all(requirements.values()):
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "message": "VDR cannot be approved yet. Some requirements are still pending.",
+                    "requirements": requirements,
+                },
+            )
+
+        update_data = {
+            "vdr_status": "ready_for_gov_submission",
+            "current_gate": "VDR_PENDING",
+            "workflow_status": "vdr_gov_submission_pending",
+            "vdr_notes": body.notes,
+            "vdr_decided_at": now,
+            "updated_at": now,
+        }
+
+    elif body.decision == "reject":
+        update_data = {
+            "vdr_status": "rejected",
+            "current_gate": "VDR_PENDING",
+            "workflow_status": "vdr_rejected",
+            "vdr_notes": body.notes,
+            "vdr_decided_at": now,
+            "updated_at": now,
+        }
+
+    else:
+        raise HTTPException(status_code=400, detail="decision must be approve or reject")
+
+    worker_ref.set(update_data, merge=True)
+
+    return {
+        "worker_id": worker_id,
+        "current_gate": update_data["current_gate"],
+        "workflow_status": update_data["workflow_status"],
+        "vdr_status": update_data["vdr_status"],
+    }
+
+
+@router.patch("/workers/{worker_id}/vdr-complete")
+def complete_vdr_submission(worker_id: str, body: VDRCompleteRequest):
+    worker_ref = db.collection("workers").document(worker_id)
+    worker_doc = worker_ref.get()
+
+    if not worker_doc.exists:
+        raise HTTPException(status_code=404, detail="Worker not found")
+
+    now = datetime.now(timezone.utc).isoformat()
+
+    worker_ref.set({
+        "vdr_status": "complete",
+        "vdr_submission_status": "submitted",
+        "vdr_receipt_id": body.receipt_id,
+        "vdr_receipt": body.receipt,
+        "vdr_submitted_at": now,
+
+        "current_gate": "TRANSIT",
+        "workflow_status": "awaiting_transit",
+        "transit_status": "awaiting_arrival",
+
+        "updated_at": now,
+    }, merge=True)
+
+    return {
+        "worker_id": worker_id,
+        "vdr_status": "complete",
+        "current_gate": "TRANSIT",
+        "workflow_status": "awaiting_transit",
+        "transit_status": "awaiting_arrival",
+        "receipt_id": body.receipt_id,
+    }
+
+
+@router.patch("/workers/{worker_id}/transit-complete")
+def mark_transit_complete(worker_id: str):
+    worker_ref = db.collection("workers").document(worker_id)
+    worker_doc = worker_ref.get()
+
+    if not worker_doc.exists:
+        raise HTTPException(status_code=404, detail="Worker not found")
+
+    worker = worker_doc.to_dict()
+
+    if worker.get("current_gate") != "TRANSIT":
+        raise HTTPException(
+            status_code=400,
+            detail="Worker is not currently in transit stage.",
+        )
+
+    now = datetime.now(timezone.utc).isoformat()
+
+    update_data = {
+        "transit_status": "arrived",
+        "arrival_confirmed_at": now,
+
+        "current_gate": "FOMEMA",
+        "workflow_status": "fomema_pending",
+        "fomema_status": "pending",
+
+        "updated_at": now,
+    }
+
+    worker_ref.set(update_data, merge=True)
+
+    return {
+        "worker_id": worker_id,
+        "current_gate": "FOMEMA",
+        "workflow_status": "fomema_pending",
+        "transit_status": "arrived",
+        "fomema_status": "pending",
+    }
+
+
+@router.post("/workers/{worker_id}/simulate-fomema-gov-result")
+def simulate_fomema_gov_result(worker_id: str, body: MockFomemaGovResult):
+    worker_ref = db.collection("workers").document(worker_id)
+    worker_doc = worker_ref.get()
+
+    if not worker_doc.exists:
+        raise HTTPException(status_code=404, detail="Worker not found")
+
+    worker = worker_doc.to_dict()
+
+    if worker.get("current_gate") != "FOMEMA":
+        raise HTTPException(
+            status_code=400,
+            detail="Worker is not currently in FOMEMA stage.",
+        )
+
+    if body.result not in ["fit", "unfit"]:
+        raise HTTPException(status_code=400, detail="result must be fit or unfit")
+
+    passport = worker.get("passport", {}) or {}
+    now = datetime.now(timezone.utc).isoformat()
+
+    # 1. Simulate government/FOMEMA sending a result
+    gov_result = {
+        "worker_id": worker_id,
+        "passport_number": passport.get("passport_number"),
+        "result": body.result,
+        "notes": body.notes,
+        "source": "mock_fomema_government_api",
+        "received_at": now,
+    }
+
+    db.collection("mock_gov_fomema_results").document(worker_id).set(gov_result, merge=True)
+
+    # 2. Process/extract that gov result into worker workflow state
+    if body.result == "fit":
+        update_data = {
+            "fomema_status": "fit",
+            "fomema_result": "fit",
+            "fomema_result_source": "mock_gov_fomema_results",
+            "fomema_checked_at": now,
+            "fomema_notes": body.notes,
+
+            "current_gate": "PLKS_ENDORSE",
+            "workflow_status": "plks_pending",
+            "plks_status": "pending",
+
+            "updated_at": now,
+        }
+
+    else:
+        update_data = {
+            "fomema_status": "unfit",
+            "fomema_result": "unfit",
+            "fomema_result_source": "mock_gov_fomema_results",
+            "fomema_checked_at": now,
+            "fomema_notes": body.notes,
+
+            "current_gate": "FOMEMA",
+            "workflow_status": "fomema_rejected",
+            "review_status": "rejected",
+            "plks_status": "blocked",
+            "requires_hitl": True,
+            "halt_reason": "FOMEMA result unfit. Worker cannot proceed to PLKS endorsement.",
+
+            "updated_at": now,
+        }
+
+    worker_ref.set(update_data, merge=True)
+
+    return {
+        "worker_id": worker_id,
+        "gov_result": gov_result,
+        "current_gate": update_data["current_gate"],
+        "workflow_status": update_data["workflow_status"],
+        "fomema_status": update_data["fomema_status"],
+        "plks_status": update_data.get("plks_status"),
+        "halt_reason": update_data.get("halt_reason"),
+    }
 
 @router.get("/workers/{worker_id}/status")
 def get_worker_status(worker_id: str):

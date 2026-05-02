@@ -8,8 +8,12 @@
  */
 
 import { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Building2, Zap, Send, CheckCircle2, ChevronDown, User, FileText, Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
+import { completeVdrSubmission, getWorker } from "@/services/api";
+import { useAuthStore } from "@/store/useAuthStore";
+import {useQueryClient} from "@tanstack/react-query";
 
 const API = (import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8001").replace(/\/+$/, "");
 
@@ -22,7 +26,6 @@ const EMPTY_FORM = {
   imm47_permit_expiry: "",
   imm47_employer: "",
   imm47_roc_number: "",
-  imm47_fomema_status: "",
 };
 
 const FIELD_LABELS = {
@@ -34,7 +37,38 @@ const FIELD_LABELS = {
   imm47_permit_expiry: "Current Permit Expiry",
   imm47_employer: "Employer / Company Name",
   imm47_roc_number: "ROC Number",
-  imm47_fomema_status: "FOMEMA Status",
+};
+
+const EMPTY_PLKS_FORM = {
+  plks_worker_name: "",
+  plks_passport_no: "",
+  plks_nationality: "",
+  plks_sector: "",
+  plks_employer: "",
+  plks_roc_number: "",
+  plks_fomema_status: "",
+  plks_arrival_date: "",
+  plks_fomema_checked_at: "",
+  plks_levy_amount_rm: "",
+  plks_insurance_policy_no: "",
+  plks_security_bond_no: "",
+  plks_medical_exam_ref: "",
+};
+
+const PLKS_FIELD_LABELS = {
+  plks_worker_name: "Worker Full Name",
+  plks_passport_no: "Passport Number",
+  plks_nationality: "Nationality",
+  plks_sector: "Employment Sector",
+  plks_employer: "Employer / Company Name",
+  plks_roc_number: "ROC Number",
+  plks_fomema_status: "FOMEMA Status",
+  plks_arrival_date: "Arrival Date",
+  plks_fomema_checked_at: "FOMEMA Checked At",
+  plks_levy_amount_rm: "Levy Amount (RM)",
+  plks_insurance_policy_no: "Insurance Policy Number",
+  plks_security_bond_no: "Security Bond Number",
+  plks_medical_exam_ref: "Medical Exam Reference",
 };
 
 export default function MockGovPortalPage() {
@@ -48,20 +82,69 @@ export default function MockGovPortalPage() {
   const [receipt, setReceipt] = useState(null);
   const [loadingWorkers, setLoadingWorkers] = useState(true);
   const fieldRefs = useRef({});
+  const [searchParams] = useSearchParams();
+  const workerIdFromUrl = searchParams.get("workerId");
+  const mode = searchParams.get("mode");
+  const [activeTab, setActiveTab] = useState("vdr");
+  const [plksForm, setPlksForm] = useState({ ...EMPTY_PLKS_FORM });
+  const [plksData, setPlksData] = useState(null);
+  const [plksFilledFields, setPlksFilledFields] = useState(new Set());
+  const [selectedWorkerData, setSelectedWorkerData] = useState(null);
+  const user = useAuthStore((s) => s.user);
+  const companyId = user?.company_id || user?.companyId;
+  const qc = useQueryClient();
+  const selectedCompanyId = useAuthStore((s) => s.selectedCompanyId);
+
+  const fetchSelectedWorkerData = async () => {
+    if (!selectedWorker) return;
+
+    try {
+      const worker = await getWorker(selectedWorker);
+      setSelectedWorkerData(worker);
+
+      if (
+        worker?.vdr_status === "complete" ||
+        worker?.vdr_submission_status === "submitted"
+      ) {
+        setActiveTab("plks");
+      } else {
+        setActiveTab("vdr");
+      }
+    } catch (error) {
+      console.error("Failed to fetch worker detail:", error);
+      setSelectedWorkerData(null);
+    }
+  };
 
   // Fetch available workers
   useEffect(() => {
     fetch(`${API}/mock-gov/workers`)
       .then((r) => r.json())
-      .then((d) => { setWorkers(d.workers || []); setLoadingWorkers(false); })
-      .catch(() => setLoadingWorkers(false));
-  }, []);
+      .then((d) => {
+        const list = d.workers || [];
+        setWorkers(list);
 
-  // Reset when worker changes
+        if (workerIdFromUrl) {
+          const exists = list.some((w) => w.worker_id === workerIdFromUrl);
+          if (exists) {
+            setSelectedWorker(workerIdFromUrl);
+          }
+        }
+
+        setLoadingWorkers(false);
+      })
+      .catch(() => setLoadingWorkers(false));
+  }, [workerIdFromUrl]);
+
   useEffect(() => {
     setForm({ ...EMPTY_FORM });
     setAgentData(null);
     setFilledFields(new Set());
+
+    setPlksForm({ ...EMPTY_PLKS_FORM });
+    setPlksData(null);
+    setPlksFilledFields(new Set());
+
     setReceipt(null);
   }, [selectedWorker]);
 
@@ -76,10 +159,6 @@ export default function MockGovPortalPage() {
       setAgentData(null);
     }
   };
-
-  useEffect(() => {
-    if (selectedWorker) fetchAgentData();
-  }, [selectedWorker]);
 
   // Autofill animation
   const handleAutofill = async () => {
@@ -104,9 +183,9 @@ export default function MockGovPortalPage() {
     setFilling(false);
   };
 
-  // Submit form
   const handleSubmit = async () => {
     setSubmitting(true);
+
     try {
       const r = await fetch(`${API}/mock-gov/fwcms/submit-imm47`, {
         method: "POST",
@@ -117,20 +196,143 @@ export default function MockGovPortalPage() {
           nationality: form.imm47_nationality,
           sector: form.imm47_sector,
           permit_class: "PLKS",
-          salary_rm: parseFloat(form.imm47_salary_rm) || null,
+          salary_rm: parseFloat(form.imm47_salary_rm),
           employer_name: form.imm47_employer,
           permit_expiry: form.imm47_permit_expiry,
         }),
       });
+
       const data = await r.json();
       setReceipt(data);
+
+      if (data.status === "accepted" && selectedWorker) {
+        const completed = await completeVdrSubmission(selectedWorker, data);
+
+        setSelectedWorkerData((prev) => ({
+          ...(prev || {}),
+          vdr_status: completed.vdr_status || "complete",
+          vdr_submission_status: "submitted",
+          current_gate: completed.current_gate,
+          workflow_status: completed.workflow_status,
+        }));
+
+        setActiveTab("plks");
+      }
     } catch (e) {
       setReceipt({ status: "error", message: e.message });
     }
+
     setSubmitting(false);
   };
 
+  const fetchPlksData = async () => {
+    if (!selectedWorker) return;
+
+    try {
+      const r = await fetch(`${API}/mock-gov/plks/worker/${selectedWorker}`);
+      const data = await r.json();
+      setPlksData(data);
+    } catch {
+      setPlksData(null);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedWorker) {
+      fetchSelectedWorkerData();
+      fetchAgentData();
+      fetchPlksData();
+    }
+  }, [selectedWorker]);
+
+  const handlePlksAutofill = async () => {
+    if (!plksData?.form_fields) return;
+
+    setFilling(true);
+    setPlksFilledFields(new Set());
+
+    const fields = Object.entries(plksData.form_fields).filter(
+      ([, v]) => v != null && v !== ""
+    );
+
+    for (let i = 0; i < fields.length; i++) {
+      const [key, value] = fields[i];
+
+      await new Promise((resolve) => setTimeout(resolve, 200));
+
+      setPlksForm((prev) => ({
+        ...prev,
+        [key]: String(value),
+      }));
+
+      setPlksFilledFields((prev) => new Set([...prev, key]));
+    }
+
+    setFilling(false);
+  };
+
+  const handlePlksSubmit = async () => {
+    setSubmitting(true);
+
+    try {
+      const r = await fetch(`${API}/mock-gov/plks/submit`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          worker_id: selectedWorker,
+          worker_name: plksForm.plks_worker_name,
+          passport_number: plksForm.plks_passport_no,
+          nationality: plksForm.plks_nationality,
+          sector: plksForm.plks_sector,
+          employer_name: plksForm.plks_employer,
+          roc_number: plksForm.plks_roc_number,
+          fomema_status: plksForm.plks_fomema_status,
+          arrival_date: plksForm.plks_arrival_date,
+          levy_amount_rm: parseFloat(plksForm.plks_levy_amount_rm) || null,
+          insurance_policy_no: plksForm.plks_insurance_policy_no,
+          security_bond_no: plksForm.plks_security_bond_no,
+          medical_exam_ref: plksForm.plks_medical_exam_ref,
+        }),
+      });
+
+      const data = await r.json();
+      setReceipt(data);
+      if (data.status === "accepted") {
+        await qc.invalidateQueries({ queryKey: ["workflows", selectedCompanyId] });
+        await qc.invalidateQueries({ queryKey: ["workflows"] });
+
+        setSelectedWorkerData((prev) => ({
+          ...(prev || {}),
+          plks_status: "approved",
+          current_gate: "ACTIVE",
+          workflow_status: "active",
+          workflow_complete: true,
+          active_status: "active",
+        }));
+      }
+    } catch (e) {
+      setReceipt({
+        status: "error",
+        message: e.message,
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const allFilled = Object.values(form).every((v) => v !== "");
+  const isVdrCompleted =
+    selectedWorkerData?.vdr_status === "complete" ||
+    selectedWorkerData?.vdr_submission_status === "submitted";
+
+  const canAccessPlks = isVdrCompleted;
+
+  const companyWorkers = workers.filter((w) => {
+    if (!companyId) return true;
+    return w.company_id === companyId;
+  });
 
   return (
     <div className="space-y-6">
@@ -146,11 +348,13 @@ export default function MockGovPortalPage() {
         <div className="relative">
           <select
             value={selectedWorker}
-            onChange={(e) => setSelectedWorker(e.target.value)}
+            onChange={(e) => {
+              setSelectedWorker(e.target.value);
+            }}
             className="w-full rounded-lg border border-border bg-muted px-4 py-2.5 text-sm text-foreground appearance-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
           >
             <option value="">— Select a worker —</option>
-            {workers.map((w) => (
+            {companyWorkers.map((w) => (
               <option key={w.worker_id} value={w.worker_id}>
                 {w.full_name} ({w.passport_number}) — {w.nationality}
               </option>
@@ -158,6 +362,40 @@ export default function MockGovPortalPage() {
           </select>
           <ChevronDown className="absolute right-3 top-3 h-4 w-4 text-muted-foreground pointer-events-none" />
         </div>
+      </div>
+
+      <div className="flex gap-2 rounded-xl border border-border bg-card/50 p-2">
+        <button
+          type="button"
+          disabled={isVdrCompleted}
+          onClick={() => {
+            if (!isVdrCompleted) setActiveTab("vdr");
+          }}
+          className={`flex-1 rounded-lg px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+            activeTab === "vdr"
+              ? "bg-blue-600 text-white"
+              : isVdrCompleted
+                ? "bg-emerald-100 text-emerald-700"
+                : "bg-muted text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          {isVdrCompleted ? "VDR / IMM.47 (Completed)" : "VDR / IMM.47"}
+        </button>
+
+        <button
+          type="button"
+          disabled={!canAccessPlks}
+          onClick={() => {
+            if (canAccessPlks) setActiveTab("plks");
+          }}
+          className={`flex-1 rounded-lg px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${
+            activeTab === "plks"
+              ? "bg-emerald-600 text-white"
+              : "bg-muted text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          {canAccessPlks ? "PLKS Application" : "PLKS Application (Locked)"}
+        </button>
       </div>
 
       {/* Receipt Modal */}
@@ -209,56 +447,111 @@ export default function MockGovPortalPage() {
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-800 text-lg">🏛️</div>
                 <div>
                   <div className="text-xs text-blue-300 font-medium tracking-wide">JABATAN IMIGRESEN MALAYSIA</div>
-                  <div className="text-sm font-bold text-blue-100">FWCMS — IMM.47 Visa Application</div>
+                  <div className="text-sm font-bold text-blue-100">
+                    {activeTab === "vdr"
+                      ? "FWCMS — IMM.47 Visa Application"
+                      : "MyEG / JIM — PLKS Application"}
+                  </div>
                 </div>
               </div>
             </div>
 
             {/* Form Fields */}
             <div className="p-6 space-y-4">
-              {Object.entries(FIELD_LABELS).map(([key, label]) => (
-                <div
-                  key={key}
-                  ref={(el) => (fieldRefs.current[key] = el)}
-                  className={`transition-all duration-500 ${
-                    filledFields.has(key)
-                      ? "ring-2 ring-emerald-500/50 rounded-lg bg-emerald-500/5"
-                      : ""
-                  }`}
-                >
-                  <label className="block text-xs font-medium text-muted-foreground mb-1">
-                    {label}
-                    {filledFields.has(key) && (
-                      <span className="ml-2 text-emerald-400 text-[10px]">✓ AI-filled</span>
-                    )}
-                  </label>
-                  <input
-                    type="text"
-                    value={form[key]}
-                    onChange={(e) => setForm((prev) => ({ ...prev, [key]: e.target.value }))}
-                    placeholder={`Enter ${label.toLowerCase()}`}
-                    className={`w-full rounded-lg border px-3 py-2 text-sm transition-all ${
-                      filledFields.has(key)
-                        ? "border-emerald-600 bg-emerald-900/20 text-emerald-200"
-                        : "border-border bg-muted text-foreground"
-                    } focus:outline-none focus:ring-1 focus:ring-blue-500`}
-                  />
-                </div>
-              ))}
+              {activeTab === "vdr" ? (
+                <>
+                  {Object.entries(FIELD_LABELS).map(([key, label]) => (
+                    <div
+                      key={key}
+                      ref={(el) => (fieldRefs.current[key] = el)}
+                      className={`transition-all duration-500 ${
+                        filledFields.has(key)
+                          ? "ring-2 ring-emerald-500/50 rounded-lg bg-emerald-500/5"
+                          : ""
+                      }`}
+                    >
+                      <label className="block text-xs font-medium text-muted-foreground mb-1">
+                        {label}
+                        {filledFields.has(key) && (
+                          <span className="ml-2 text-emerald-400 text-[10px]">✓ AI-filled</span>
+                        )}
+                      </label>
 
-              {/* Submit */}
-              <button
-                onClick={handleSubmit}
-                disabled={!allFilled || submitting}
-                className="w-full rounded-lg bg-blue-600 py-3 text-sm font-semibold text-white transition hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-2"
-              >
-                {submitting ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Send className="h-4 w-4" />
-                )}
-                {submitting ? "Submitting to FWCMS..." : "Submit IMM.47 Application"}
-              </button>
+                      <input
+                        type="text"
+                        value={form[key]}
+                        onChange={(e) =>
+                          setForm((prev) => ({
+                            ...prev,
+                            [key]: e.target.value,
+                          }))
+                        }
+                        placeholder={`Enter ${label.toLowerCase()}`}
+                        className={`w-full rounded-lg border px-3 py-2 text-sm transition-all ${
+                          filledFields.has(key)
+                            ? "border-emerald-600 bg-emerald-900/20 text-emerald-200"
+                            : "border-border bg-muted text-foreground"
+                        } focus:outline-none focus:ring-1 focus:ring-blue-500`}
+                      />
+                    </div>
+                  ))}
+
+                  <button
+                    onClick={handleSubmit}
+                    disabled={!allFilled || submitting}
+                    className="w-full rounded-lg bg-blue-600 py-3 text-sm font-semibold text-white transition hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-2"
+                  >
+                    {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                    {submitting ? "Submitting to FWCMS..." : "Submit IMM.47 Application"}
+                  </button>
+                </>
+              ) : (
+                <>
+                  {Object.entries(PLKS_FIELD_LABELS).map(([key, label]) => (
+                    <div
+                      key={key}
+                      className={`transition-all duration-500 ${
+                        plksFilledFields.has(key)
+                          ? "ring-2 ring-emerald-500/50 rounded-lg bg-emerald-500/5"
+                          : ""
+                      }`}
+                    >
+                      <label className="block text-xs font-medium text-muted-foreground mb-1">
+                        {label}
+                        {plksFilledFields.has(key) && (
+                          <span className="ml-2 text-emerald-400 text-[10px]">✓ AI-filled</span>
+                        )}
+                      </label>
+
+                      <input
+                        type="text"
+                        value={plksForm[key]}
+                        onChange={(e) =>
+                          setPlksForm((prev) => ({
+                            ...prev,
+                            [key]: e.target.value,
+                          }))
+                        }
+                        placeholder={`Enter ${label.toLowerCase()}`}
+                        className={`w-full rounded-lg border px-3 py-2 text-sm transition-all ${
+                          plksFilledFields.has(key)
+                            ? "border-emerald-600 bg-emerald-900/20 text-emerald-200"
+                            : "border-border bg-muted text-foreground"
+                        } focus:outline-none focus:ring-1 focus:ring-emerald-500`}
+                      />
+                    </div>
+                  ))}
+
+                  <button
+                    onClick={handlePlksSubmit}
+                    disabled={submitting}
+                    className="w-full rounded-lg bg-emerald-600 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-2"
+                  >
+                    {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                    {submitting ? "Submitting PLKS..." : "Submit PLKS Application"}
+                  </button>
+                </>
+              )}
             </div>
           </div>
 
@@ -271,33 +564,57 @@ export default function MockGovPortalPage() {
                 Agent-Extracted Data
               </h3>
 
-              {agentData ? (
-                <div className="space-y-3">
-                  {Object.entries(agentData.form_fields || {}).map(([key, value]) => (
-                    <div key={key} className="flex items-center justify-between rounded-lg bg-muted/60 px-3 py-2">
-                      <span className="text-xs text-muted-foreground">{FIELD_LABELS[key] || key}</span>
-                      <span className={`text-xs font-mono ${value ? "text-indigo-300" : "text-muted-foreground"}`}>
-                        {value != null ? String(value) : "—"}
-                      </span>
-                    </div>
-                  ))}
+              {activeTab === "vdr" ? (
+                agentData ? (
+                  <div className="space-y-3">
+                    {Object.entries(agentData.form_fields || {}).map(([key, value]) => (
+                      <div key={key} className="flex items-center justify-between rounded-lg bg-muted/60 px-3 py-2">
+                        <span className="text-xs text-muted-foreground">{FIELD_LABELS[key] || key}</span>
+                        <span className={`text-xs font-mono ${value ? "text-indigo-300" : "text-muted-foreground"}`}>
+                          {value != null ? String(value) : "—"}
+                        </span>
+                      </div>
+                    ))}
 
-                  <div className="flex items-center gap-1 rounded-full bg-indigo-500/10 px-3 py-1 text-[10px] text-indigo-400 w-fit">
-                    <FileText className="h-3 w-3" />
-                    Source: PermitIQ Agent Pipeline
+                    <div className="flex items-center gap-1 rounded-full bg-indigo-500/10 px-3 py-1 text-[10px] text-indigo-400 w-fit">
+                      <FileText className="h-3 w-3" />
+                      Source: PermitIQ Agent Pipeline
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="flex items-center justify-center h-32 text-sm text-muted-foreground">
+                    Loading agent data...
+                  </div>
+                )
               ) : (
-                <div className="flex items-center justify-center h-32 text-sm text-muted-foreground">
-                  Loading agent data...
-                </div>
+                plksData ? (
+                  <div className="space-y-3">
+                    {Object.entries(plksData.form_fields || {}).map(([key, value]) => (
+                      <div key={key} className="flex items-center justify-between rounded-lg bg-muted/60 px-3 py-2">
+                        <span className="text-xs text-muted-foreground">{PLKS_FIELD_LABELS[key] || key}</span>
+                        <span className={`text-xs font-mono ${value ? "text-emerald-300" : "text-muted-foreground"}`}>
+                          {value != null ? String(value) : "—"}
+                        </span>
+                      </div>
+                    ))}
+
+                    <div className="flex items-center gap-1 rounded-full bg-emerald-500/10 px-3 py-1 text-[10px] text-emerald-400 w-fit">
+                      <FileText className="h-3 w-3" />
+                      Source: PLKS Agent Payload
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center h-32 text-sm text-muted-foreground">
+                    Loading PLKS data...
+                  </div>
+                )
               )}
             </div>
 
             {/* Autofill Button */}
             <button
-              onClick={handleAutofill}
-              disabled={!agentData || filling}
+              onClick={activeTab === "vdr" ? handleAutofill : handlePlksAutofill}
+              disabled={activeTab === "vdr" ? !agentData || filling : !plksData || filling}
               className="w-full rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 py-4 text-sm font-bold text-white transition-all hover:from-indigo-500 hover:to-violet-500 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20"
             >
               {filling ? (
@@ -308,7 +625,7 @@ export default function MockGovPortalPage() {
               ) : (
                 <>
                   <Zap className="h-5 w-5" />
-                  ⚡ Autofill from Agent Data
+                  ⚡ Autofill {activeTab === "vdr" ? "IMM.47" : "PLKS"} Data
                 </>
               )}
             </button>

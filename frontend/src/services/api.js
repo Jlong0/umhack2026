@@ -344,7 +344,40 @@ export async function updateJtksmDecision(workerId, decision, notes = "") {
   });
 }
 
+export async function updateVdrDecision(workerId, decision, notes = "") {
+  return apiRequest(`/workers/${workerId}/vdr-decision`, {
+    method: "PATCH",
+    body: JSON.stringify({ decision, notes }),
+  });
+}
+
+export async function completeVdrSubmission(workerId, receipt) {
+  return apiRequest(`/workers/${workerId}/vdr-complete`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      receipt_id: receipt?.receipt_id,
+      receipt,
+    }),
+  });
+}
+
+export async function markTransitComplete(workerId) {
+  return apiRequest(`/workers/${workerId}/transit-complete`, {
+    method: "PATCH",
+  });
+}
+
+export async function simulateFomemaGovResult(workerId, result, notes = "") {
+  return apiRequest(`/workers/${workerId}/simulate-fomema-gov-result`, {
+    method: "POST",
+    body: JSON.stringify({ result, notes }),
+  });
+}
 
 export async function getWorkerStatus(workerId) {
   return apiRequest(`/workers/${workerId}/status`);
+}
+
+export async function getWorker(workerId) {
+  return apiRequest(`/workers/${workerId}`);
 }

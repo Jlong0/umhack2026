@@ -9,7 +9,8 @@
  */
 
 import { useMemo } from "react";
-import { useAllWorkflows, useJtksmDecision } from "@/hooks/queries/useWorkflowQueries";
+import { useNavigate } from "react-router-dom";
+import { useAllWorkflows, useJtksmDecision, useVdrDecision, useTransitComplete, useSimulateFomemaGovResult } from "@/hooks/queries/useWorkflowQueries";
 import { useCriticalAlerts } from "@/hooks/queries/useAlertQueries";
 import { useUIStore } from "@/store/useUIStore";
 import { GATE_ORDER, GATE_LABELS, NATIONALITY_FLAGS } from "@/types/worker";
@@ -27,15 +28,33 @@ const GATE_COLORS = {
 };
 
 function WorkerCard({ worker, isBlocked }) {
+  const navigate = useNavigate();
   const openHITLDrawer = useUIStore((s) => s.openHITLDrawer);
   const jtksmMutation = useJtksmDecision();
   const isVdrPending = worker.current_gate === "VDR_PENDING";
   const vdrRequirements = worker.vdr_requirements || {};
+  const vdrMutation = useVdrDecision();
+  const transitMutation = useTransitComplete();
+  const fomemaGovMutation = useSimulateFomemaGovResult();
 
   const vdrReady =
     isVdrPending &&
     Object.keys(vdrRequirements).length > 0 &&
     Object.values(vdrRequirements).every(Boolean);
+
+  const isTransit = worker.current_gate === "TRANSIT";
+
+  const isFomema = worker.current_gate === "FOMEMA";
+  const fomemaRejected =
+    worker.fomema_status === "unfit" ||
+    worker.workflow_status === "fomema_rejected";
+
+  const isPlksEndorse = worker.current_gate === "PLKS_ENDORSE";
+  const isPlksPending =
+    isPlksEndorse &&
+    worker.fomema_status === "fit" &&
+    worker.plks_status !== "approved" &&
+    worker.workflow_status !== "active";
 
   const flag = NATIONALITY_FLAGS[worker.nationality] || "🏳️";
   const daysInGate = worker.days_in_gate || 0;
@@ -44,6 +63,19 @@ function WorkerCard({ worker, isBlocked }) {
     worker.current_gate === "JTKSM" &&
     worker.jtksm_status !== "approved" &&
     worker.jtksm_status !== "rejected";
+
+  const stageStatus =
+    worker.current_gate === "JTKSM"
+      ? worker.jtksm_status || "pending"
+      : worker.current_gate === "VDR_PENDING"
+        ? worker.vdr_status || "pending"
+        : worker.current_gate === "TRANSIT"
+          ? worker.transit_status || "awaiting_arrival"
+          : worker.current_gate === "FOMEMA"
+            ? worker.fomema_status || "pending"
+            : worker.current_gate === "PLKS_ENDORSE"
+              ? worker.plks_status || "pending"
+              : worker.workflow_status || "pending";
 
   return (
     <div
@@ -73,9 +105,7 @@ function WorkerCard({ worker, isBlocked }) {
         </span>
 
         <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700">
-          {isVdrPending
-            ? worker.vdr_status || "pending"
-            : worker.jtksm_status || "pending"}
+          {stageStatus}
         </span>
       </div>
 
@@ -128,9 +158,23 @@ function WorkerCard({ worker, isBlocked }) {
       {isVdrPending && vdrReady && (
         <button
           type="button"
-          className="mt-3 w-full rounded-lg bg-blue-600 py-1.5 text-xs font-semibold text-white hover:bg-blue-500"
+          disabled={vdrMutation.isPending}
+          onClick={() =>
+            vdrMutation.mutate(
+              {
+                workerId: worker.worker_id,
+                decision: "approve",
+              },
+              {
+                onSuccess: () => {
+                  navigate(`/gov-portal?workerId=${worker.worker_id}&mode=vdr`);
+                },
+              }
+            )
+          }
+          className="mt-3 w-full rounded-lg bg-blue-600 py-1.5 text-xs font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
         >
-          Approve VDR
+          {vdrMutation.isPending ? "Approving..." : "Approve VDR"}
         </button>
       )}
 
@@ -140,14 +184,83 @@ function WorkerCard({ worker, isBlocked }) {
         </p>
       )}
 
-      {isBlocked && (
-        <button
-          onClick={() => openHITLDrawer(worker.worker_id, null)}
-          className="mt-2 w-full rounded-lg bg-red-600/80 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-red-500"
-        >
-          Resolve — HITL Required
-        </button>
+      {isTransit && (
+        <div className="mt-3 rounded-lg bg-cyan-50 p-2 text-[11px] text-cyan-800">
+          <p className="font-semibold">Awaiting worker transit to Malaysia</p>
+          <p className="mt-1">
+            Click below for arrival confirmation
+          </p>
+
+          <button
+            type="button"
+            disabled={transitMutation.isPending}
+            onClick={() => transitMutation.mutate(worker.worker_id)}
+            className="mt-2 w-full rounded-lg bg-cyan-600 py-1.5 text-xs font-semibold text-white hover:bg-cyan-500 disabled:opacity-50"
+          >
+            {transitMutation.isPending ? "Updating..." : "Transit Complete"}
+          </button>
+        </div>
       )}
+
+      {isFomema && !fomemaRejected && (
+        <div className="mt-3 rounded-lg bg-amber-50 p-2 text-[11px] text-amber-800">
+          <p className="font-semibold">Waiting for FOMEMA government result</p>
+          <p className="mt-1">
+            Ping the government
+          </p>
+          <button
+            type="button"
+            disabled={fomemaGovMutation.isPending}
+            onClick={() =>
+              fomemaGovMutation.mutate({
+                workerId: worker.worker_id,
+                result: "fit",
+                notes: "Mock FOMEMA result returned as FIT.",
+              })
+            }
+            className="mt-2 w-full rounded-lg bg-emerald-600 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"
+          >
+            Sync
+          </button>
+        </div>
+      )}
+
+      {isFomema && fomemaRejected && (
+        <div className="mt-3 rounded-lg bg-rose-50 p-2 text-[11px] text-rose-700">
+          <p className="font-semibold">FOMEMA result: Unfit</p>
+          <p className="mt-1">
+            Result was returned by mock government source. Workflow stopped.
+          </p>
+        </div>
+      )}
+
+      {isPlksPending && (
+        <div className="mt-3 rounded-lg bg-orange-50 p-2 text-[11px] text-orange-800">
+          <p className="font-semibold">PLKS endorsement pending</p>
+          <p className="mt-1">
+            Submit the PLKS application through the simulated government portal.
+          </p>
+
+          <button
+            type="button"
+            onClick={() =>
+              navigate(`/gov-portal?workerId=${worker.worker_id}&mode=plks`)
+            }
+            className="mt-2 w-full rounded-lg bg-orange-600 py-1.5 text-xs font-semibold text-white hover:bg-orange-500"
+          >
+            Apply PLKS
+          </button>
+        </div>
+      )}
+
+      {/*{isBlocked && (*/}
+      {/*  <button*/}
+      {/*    onClick={() => openHITLDrawer(worker.worker_id, null)}*/}
+      {/*    className="mt-2 w-full rounded-lg bg-red-600/80 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-red-500"*/}
+      {/*  >*/}
+      {/*    Resolve — HITL Required*/}
+      {/*  </button>*/}
+      {/*)}*/}
     </div>
   );
 }

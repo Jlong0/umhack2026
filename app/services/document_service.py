@@ -2,6 +2,9 @@ import os
 from pathlib import Path
 from uuid import uuid4
 from datetime import datetime, timezone, date
+
+from fastapi import HTTPException
+
 from app.config import REQUIRED_WORKER_FIELDS
 from app.firebase_config import db, bucket
 from app.schemas.document import WorkerCreateRequest

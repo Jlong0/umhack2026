@@ -44,7 +44,7 @@ def _flatten_worker(worker: dict) -> dict:
     passport = worker.get("passport") or {}
     general = worker.get("general_information") or {}
     return {
-        "full_name": worker.get("full_name") or passport.get("full_name") or passport.get("name") or worker.get("name", ""),
+        "full_name": passport.get("full_name") or passport.get("name") or worker.get("name", ""),
         "passport_number": worker.get("passport_number") or passport.get("passport_number", ""),
         "nationality": worker.get("nationality") or passport.get("nationality", ""),
         "sector": worker.get("sector") or general.get("sector", ""),
@@ -168,3 +168,103 @@ def generate_contracts_for_all_workers(template_bytes: bytes, job_id: str):
         "done": done,
         "errors": errors,
     })
+
+
+def generate_contract_for_worker(worker_id: str, template_bytes: bytes | None = None):
+    """
+    Generate one contract PDF for one worker.
+    Used after admin approves health check.
+    """
+    worker_ref = db.collection("workers").document(worker_id)
+    worker_doc = worker_ref.get()
+
+    if not worker_doc.exists:
+        return {
+            "success": False,
+            "error": "Worker not found",
+        }
+
+    worker = worker_doc.to_dict()
+
+    # Avoid duplicate generated contract for same worker
+    existing = (
+        db.collection("contracts")
+        .where("worker_id", "==", worker_id)
+        .where("status", "in", ["generated", "signed", "reviewed"])
+        .limit(1)
+        .stream()
+    )
+
+    existing_doc = next(existing, None)
+    if existing_doc:
+        data = existing_doc.to_dict()
+        return {
+            "success": True,
+            "contract_id": existing_doc.id,
+            "status": "already_exists",
+            "generated_pdf_path": data.get("generated_pdf_path"),
+        }
+
+    # If no template bytes passed, load latest template
+    if template_bytes is None:
+        latest_template_doc = db.collection("contract_templates").document("latest").get()
+
+        if not latest_template_doc.exists:
+            return {
+                "success": False,
+                "error": "No contract template found. Please upload a template first.",
+            }
+
+        latest_template = latest_template_doc.to_dict()
+        template_path = latest_template.get("storage_path")
+
+        if not template_path:
+            return {
+                "success": False,
+                "error": "Latest contract template has no storage_path.",
+            }
+
+        if bucket is None:
+            local_name = template_path.split("/")[-1]
+            template_bytes = (LOCAL_UPLOAD_DIR / local_name).read_bytes()
+        else:
+            blob = bucket.blob(template_path)
+            template_bytes = blob.download_as_bytes()
+
+    flat = _flatten_worker(worker)
+    pdf_bytes = fill_contract_for_worker(template_bytes, worker)
+
+    filename = f"{uuid4()}.pdf"
+    storage_path = f"contracts/{filename}"
+    _save_pdf_bytes(pdf_bytes, storage_path)
+
+    now = datetime.now(timezone.utc).isoformat()
+    contract_ref = db.collection("contracts").document()
+
+    contract_ref.set({
+        "contract_id": contract_ref.id,
+        "worker_id": worker_id,
+        "company_id": worker.get("company_id"),
+        "worker_name": flat["full_name"] or "Unknown",
+        "generated_pdf_path": storage_path,
+        "signed_pdf_path": None,
+        "status": "generated",
+        "source": "auto_generated_after_medical_approval",
+        "created_at": now,
+        "updated_at": now,
+        "reviewed_at": None,
+    })
+
+    worker_ref.set({
+        "contract_generated": True,
+        "contract_id": contract_ref.id,
+        "contract_generated_at": now,
+        "updated_at": now,
+    }, merge=True)
+
+    return {
+        "success": True,
+        "contract_id": contract_ref.id,
+        "status": "generated",
+        "generated_pdf_path": storage_path,
+    }
