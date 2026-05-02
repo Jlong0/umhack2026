@@ -36,9 +36,16 @@ async def generate_contracts(background_tasks: BackgroundTasks, template: Upload
 
 
 @router.get("")
-async def list_contracts(status: str = None, worker_id: str = None):
+async def list_contracts(status: str = None, worker_id: str = None, company_id: str = None):
     ref = db.collection("contracts")
     docs = ref.stream()
+
+    # Build worker allowlist when company_id is given
+    allowed_workers = None
+    if company_id:
+        worker_docs = db.collection("workers").where("company_id", "==", company_id).stream()
+        allowed_workers = {doc.id for doc in worker_docs}
+
     contracts = []
     for doc in docs:
         data = doc.to_dict()
@@ -46,6 +53,8 @@ async def list_contracts(status: str = None, worker_id: str = None):
         if status and data.get("status") != status:
             continue
         if worker_id and data.get("worker_id") != worker_id:
+            continue
+        if allowed_workers is not None and data.get("worker_id") not in allowed_workers:
             continue
         contracts.append(data)
     return {"contracts": contracts, "total": len(contracts)}

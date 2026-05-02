@@ -399,10 +399,11 @@ def _build_preview(tool_name: str, args: dict) -> str:
     if tool_name == "start_compliance_workflow":
         worker_id = args.get("worker_id", "")
         doc = db.collection("workers").document(worker_id).get()
-        name = worker_id
         if doc.exists:
-            name = _worker_name(doc.to_dict() or {}, worker_id)
-        return f"Start compliance workflow for **{name}** ({worker_id})"
+            resolved_name = _worker_name(doc.to_dict() or {}, "")
+            if resolved_name:
+                return f"Start compliance workflow for **{resolved_name}** ({worker_id})"
+        return f"Start compliance workflow for **{worker_id}**"
     if tool_name == "scan_all_alerts":
         return "Scan all workers for compliance alerts"
     return f"Execute {tool_name}"

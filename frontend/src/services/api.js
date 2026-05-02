@@ -270,10 +270,11 @@ export async function generateContracts(templateFile) {
 	return apiRequest("/contracts/generate", { method: "POST", body });
 }
 
-export async function listContracts(status, workerId) {
+export async function listContracts(status, workerId, companyId = null) {
 	const params = new URLSearchParams();
 	if (status) params.set("status", status);
 	if (workerId) params.set("worker_id", workerId);
+	if (companyId) params.set("company_id", companyId);
 	const qs = params.toString() ? `?${params}` : "";
 	return apiRequest(`/contracts${qs}`, { method: "GET" });
 }
