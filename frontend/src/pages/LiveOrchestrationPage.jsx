@@ -39,15 +39,14 @@ const NODES = [
 ];
 
 // ── Edges — one solid line per connection ─────────────────────────────
-// Matches: supervisor routes to all 7 agents; all agents return to supervisor
 const EDGES = [
   { from: "supervisor", to: "auditor" },
   { from: "supervisor", to: "strategist" },
   { from: "supervisor", to: "plks_monitor" },
-  { from: "supervisor", to: "company_audit" },
-  { from: "supervisor", to: "vdr_filing" },
-  { from: "supervisor", to: "filing" },
-  { from: "supervisor", to: "hitl" },
+  { from: "auditor", to: "company_audit" },
+  { from: "strategist", to: "vdr_filing" },
+  { from: "plks_monitor", to: "filing" },
+  { from: "vdr_filing", to: "hitl" },
 ];
 
 const NODE_W = 130, NODE_H = 44, NODE_RX = 12;
