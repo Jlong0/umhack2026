@@ -28,6 +28,15 @@ const PASSPORT_FIELDS = [
   { key: "expiry_date", label: "Passport Expiry Date", type: "date" },
 ];
 
+const INITIAL_PERSONAL = {
+  full_name: "", date_of_birth: "", gender: "", nationality: "",
+  height_cm: "", weight_kg: "", marital_status: "",
+  father_name: "", mother_name: "", spouse_name: "",
+  permanent_address: "", emergency_contact_name: "", emergency_contact_phone: "",
+  education_history: "", has_travel_history: "", travel_history_details: "",
+  sector: "Manufacturing", permit_class: "PLKS", employment_date: "",
+};
+
 const STEP_DEFS = [
   { label: "Passport", icon: IdCard },
   { label: "Documents", icon: FolderUp },
@@ -283,28 +292,46 @@ export default function UploadPage() {
     }
   };
 
-  const handleConfirm = async () => {
+  const handleSubmit = async () => {
     const workerPayload = {
       worker_id: workerId,
-      passport: formValuesByType.passport,
-      medical_information: formValuesByType.health_checkup,
-      general_information: formValuesByType.personal_demographic,
+
+      passport: passportData || {},
+
+      medical_information: supportingDocs.biometric_health
+        ? {
+            ...supportingDocs.biometric_health,
+            document_type: "medical_record",
+            source: "raw_file",
+          }
+        : {},
+
+      general_information: {
+        ...personalDetails,
+        employment_history: employmentHistory,
+        children: childrenList,
+      },
     };
 
     console.log("Worker payload:", workerPayload);
 
-    setIsConfirming(true);
+    setIsSubmitting(true);
 
     try {
-      // 🔥 NEW API
       const response = await createWorkerProfile(workerPayload);
 
       setWorkerId(response.worker_id);
+      setIsSubmitted(true);
 
       toast({
-        title: "Submitted for admin review",
+        title:
+          response.data_status === "complete"
+            ? "Submitted for admin review"
+            : "Progress saved",
         description:
-          "Worker information has been saved and is waiting for admin confirmation",
+          response.data_status === "complete"
+            ? "Worker information has been saved and is waiting for admin confirmation."
+            : "Some required information is still missing. Please complete the remaining sections.",
         variant: "success",
       });
     } catch (error) {
@@ -312,11 +339,12 @@ export default function UploadPage() {
 
       toast({
         title: "Submission failed",
-        description: error.message || "Unable to submit worker for review.",
+        description:
+          error.message || "Unable to submit worker for review.",
         variant: "destructive",
       });
     } finally {
-      setIsConfirming(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -328,22 +356,6 @@ export default function UploadPage() {
         </div>
       );
     }
-
-    if (isSubmitted) {
-    return (
-      <div className="permit-surface">
-        <SuccessScreen
-          title="Application Submitted!"
-          description="Your documents and personal details have been sent to your employer for review. You can check the status in the 'My Status' tab."
-          action={
-            <a href="/worker/status" className="inline-flex rounded-xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-indigo-500">
-              Check My Status →
-            </a>
-          }
-        />
-      </div>
-    );
-  }
 
     if (selectedFile?.type === "application/pdf") {
       return (
@@ -363,6 +375,22 @@ export default function UploadPage() {
       />
     );
   })();
+
+  if (isSubmitted) {
+    return (
+      <div className="permit-surface">
+        <SuccessScreen
+          title="Application Submitted!"
+          description="Your documents and personal details have been sent to your employer for review. You can check the status in the 'My Status' tab."
+          action={
+            <a href="/worker/status" className="inline-flex rounded-xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-indigo-500">
+              Check My Status →
+            </a>
+          }
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-0">
