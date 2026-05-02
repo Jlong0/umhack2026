@@ -51,6 +51,9 @@ httpx
 aiofiles
 anyio
 
+# ── Browser Automation ─────────────────────────────────────
+selenium                    # WhatsApp Web bot for automated notifications
+
 # ── Utilities ─────────────────────────────────────────────
 python-dateutil
 pytz

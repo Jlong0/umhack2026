@@ -375,3 +375,18 @@ export async function getVisaLetter(workerId) {
 export async function acknowledgeVisa(workerId) {
   return apiRequest(`/gates/${workerId}/acknowledge-visa`, { method: "POST" });
 }
+
+export async function triggerNotify(workerId = null) {
+  return apiRequest("/notify/trigger", {
+    method: "POST",
+    body: JSON.stringify(workerId ? { worker_id: workerId } : {}),
+  });
+}
+
+export async function getNotifyBotStatus() {
+  return apiRequest("/notify/bot-status");
+}
+
+export async function setupNotifyBot() {
+  return apiRequest("/notify/bot-setup", { method: "POST" });
+}

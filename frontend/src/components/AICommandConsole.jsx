@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { Sparkles, X, Send, ChevronDown, CheckCircle, XCircle, Loader2, Bot, User } from "lucide-react";
+import { Sparkles, X, Send, ChevronDown, CheckCircle, XCircle, Loader2, Bot, User, Bell, QrCode } from "lucide-react";
 import { useChatStore } from "@/store/useChatStore";
-import { sendChatMessage, executeToolCall } from "@/services/api";
+import { sendChatMessage, executeToolCall, triggerNotify, setupNotifyBot } from "@/services/api";
 
 const SUGGESTIONS = [
   "Show critical alerts",
@@ -111,6 +111,8 @@ export default function AICommandConsole() {
   const { isOpen, isThinking, messages, toggleOpen, appendMessage, updateLastAssistant, setThinking, getHistory } =
     useChatStore();
   const [input, setInput] = useState("");
+  const [notifyLoading, setNotifyLoading] = useState(false);
+  const [setupLoading, setSetupLoading] = useState(false);
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -189,6 +191,39 @@ export default function AICommandConsole() {
         ?.toolCalls?.map((tc) => (tc.id === toolId ? { ...tc, cancelled: true } : tc)),
     });
     appendMessage({ role: "assistant", content: "Cancelled. Let me know if there's anything else." });
+  };
+
+  const handleSetup = async () => {
+    setSetupLoading(true);
+    appendMessage({ role: "user", content: "Setup WhatsApp QR scan" });
+    setThinking(true);
+    try {
+      const res = await setupNotifyBot();
+      appendMessage({ role: "assistant", content: res.success ? "WhatsApp QR scanned successfully! The bot will now run headless automatically." : `Setup failed: ${res.message}` });
+    } catch {
+      appendMessage({ role: "assistant", content: "Setup failed. Make sure the backend server has a display available." });
+    } finally {
+      setThinking(false);
+      setSetupLoading(false);
+    }
+  };
+
+  const handleNotify = async () => {
+    setNotifyLoading(true);
+    appendMessage({ role: "user", content: "Notify workers via WhatsApp" });
+    setThinking(true);
+    try {
+      const res = await triggerNotify();
+      appendMessage({
+        role: "assistant",
+        content: `Notification agent queued messages for **${res.queued}** worker(s). The WhatsApp bot is sending them now in the background.`,
+      });
+    } catch {
+      appendMessage({ role: "assistant", content: "Failed to trigger notifications. Please try again." });
+    } finally {
+      setThinking(false);
+      setNotifyLoading(false);
+    }
   };
 
   const handleKey = (e) => {
@@ -284,6 +319,24 @@ export default function AICommandConsole() {
                   e.target.style.height = `${Math.min(e.target.scrollHeight, 96)}px`;
                 }}
               />
+              <button
+                onClick={handleSetup}
+                disabled={setupLoading || isThinking}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white hover:bg-emerald-500 disabled:opacity-40 transition"
+                aria-label="Setup WhatsApp"
+                title="One-time WhatsApp QR scan setup"
+              >
+                {setupLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <QrCode className="h-4 w-4" />}
+              </button>
+              <button
+                onClick={handleNotify}
+                disabled={notifyLoading || isThinking}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-600 text-white hover:bg-violet-500 disabled:opacity-40 transition"
+                aria-label="Notify workers"
+                title="Notify workers via WhatsApp"
+              >
+                {notifyLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Bell className="h-4 w-4" />}
+              </button>
               <button
                 onClick={() => sendMessage()}
                 disabled={!input.trim() || isThinking}

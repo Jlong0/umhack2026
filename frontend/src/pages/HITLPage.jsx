@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useHITLWorkers, useResolveWorkerFields } from "@/hooks/queries/useHITLQueries";
 import { AlertCircle, CheckCircle, Shield, FileText, Eye, Send, Plane, Stethoscope } from "lucide-react";
 import { useContracts, useReviewContract, useContractPdfUrl } from "@/hooks/queries/useContractQueries";
-import { approveJTKSM, confirmArrival, approveFOMEMA, issuePermit } from "@/services/api";
+import { approveJTKSM, confirmArrival, approveFOMEMA, issuePermit, triggerNotify } from "@/services/api";
 import { PageHeader } from "@/components/ui/page-header";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -132,34 +132,6 @@ function ContractReviewTab() {
 }
 
 
-function buildMissingInfoReminderUrl(worker) {
-	if (!worker?.whatsapp) return null;
-
-	const phone = worker.whatsapp.replace(/[^0-9]/g, "");
-
-	const missingText = (worker.missing_fields || [])
-		.map((section) => {
-			const sectionName = section.label || section.section || "Missing Section";
-
-			const items = section.items?.length
-				? section.items.map((item) => `   - ${item.label || item.field}`).join("\n")
-				: `   - ${section.reason || "Information required"}`;
-
-			return `• ${sectionName}\n${items}`;
-		})
-		.join("\n\n");
-
-	const message =
-		`Hello ${worker.full_name || "there"},\n\n` +
-		`This is a reminder from PermitIQ. Please update the missing information in your Worker Portal:\n\n` +
-		`${missingText || "• Missing worker information"}\n\n` +
-		`Log in here: ${window.location.origin}/login/worker\n\n` +
-		`Worker ID: ${worker.worker_id}\n` +
-		(worker.login_code ? `Login Code: ${worker.login_code}\n\n` : "\n") +
-		`Please complete this as soon as possible. Thank you.`;
-
-	return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
-}
 
 
 export default function HITLPage() {
@@ -193,6 +165,7 @@ export default function HITLPage() {
 
 	const queryClient = useQueryClient();
 	const [gateLoading, setGateLoading] = useState(false);
+	const [remindLoading, setRemindLoading] = useState(false);
 
 	async function handleGateAction(actionFn, ...args) {
 		setGateLoading(true);
@@ -533,16 +506,21 @@ export default function HITLPage() {
 									{resolveMutation.isPending ? "Updating..." : "Update"}
 								</button>
 
-								{buildMissingInfoReminderUrl(selectedWorker) ? (
-									<a
-										href={buildMissingInfoReminderUrl(selectedWorker)}
-										target="_blank"
-										rel="noopener noreferrer"
-										className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 py-2.5 text-sm font-semibold text-white hover:bg-emerald-500"
+								{selectedWorker?.whatsapp ? (
+									<button
+										type="button"
+										disabled={remindLoading}
+										onClick={async () => {
+											setRemindLoading(true);
+											try { await triggerNotify(selectedWorker.worker_id); }
+											catch {}
+											finally { setRemindLoading(false); }
+										}}
+										className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 py-2.5 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"
 									>
 										<Send className="h-4 w-4" />
-										Remind Worker
-									</a>
+										{remindLoading ? "Sending..." : "Remind Worker"}
+									</button>
 								) : (
 									<button
 										type="button"

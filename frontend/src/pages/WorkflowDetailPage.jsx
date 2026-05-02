@@ -162,6 +162,7 @@ export default function WorkflowDetailPage() {
   }
 
   if (isLoading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" /></div>;
+  if (!workflow && !isLoading) return <div className="p-6 text-muted-foreground">No workflow data found for worker <code>{workerId}</code>.</div>;
   if (statusError) return (
     <div className="space-y-4">
       <button onClick={() => navigate("/workflows")} className="flex items-center text-blue-600 hover:text-blue-800"><ArrowLeft className="w-4 h-4 mr-2" />Back</button>
