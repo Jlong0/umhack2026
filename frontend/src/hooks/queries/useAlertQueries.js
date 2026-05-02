@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useAuthStore } from "@/store/useAuthStore";
 import {
   scanAllWorkers,
   getWorkerAlerts,
@@ -8,27 +9,30 @@ import {
 } from "@/services/api";
 
 export function useAlertDashboard() {
+  const selectedCompanyId = useAuthStore((s) => s.selectedCompanyId);
   return useQuery({
-    queryKey: ["alertDashboard"],
-    queryFn: getAlertDashboard,
+    queryKey: ["alertDashboard", selectedCompanyId],
+    queryFn: () => getAlertDashboard(selectedCompanyId),
     staleTime: 15 * 1000,
     refetchInterval: 30 * 1000,
   });
 }
 
 export function useCriticalAlerts() {
+  const selectedCompanyId = useAuthStore((s) => s.selectedCompanyId);
   return useQuery({
-    queryKey: ["criticalAlerts"],
-    queryFn: getCriticalAlerts,
+    queryKey: ["criticalAlerts", selectedCompanyId],
+    queryFn: () => getCriticalAlerts(selectedCompanyId),
     staleTime: 5 * 1000,
     refetchInterval: 15 * 1000,
   });
 }
 
 export function useExpiringPermits(days = 30) {
+  const selectedCompanyId = useAuthStore((s) => s.selectedCompanyId);
   return useQuery({
-    queryKey: ["expiringPermits", days],
-    queryFn: () => getExpiringPermits(days),
+    queryKey: ["expiringPermits", days, selectedCompanyId],
+    queryFn: () => getExpiringPermits(days, selectedCompanyId),
     staleTime: 30 * 1000,
   });
 }
@@ -43,9 +47,10 @@ export function useWorkerAlerts(workerId) {
 }
 
 export function useScanAllWorkers() {
+  const selectedCompanyId = useAuthStore((s) => s.selectedCompanyId);
   return useQuery({
-    queryKey: ["scanWorkers"],
-    queryFn: scanAllWorkers,
+    queryKey: ["scanWorkers", selectedCompanyId],
+    queryFn: () => scanAllWorkers(selectedCompanyId),
     staleTime: 60 * 1000,
     enabled: false, // Only runs when manually triggered
   });

@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAuthStore } from "@/store/useAuthStore";
 import {
   listHITLWorkers,
   resolveWorkerFields,
@@ -10,9 +11,10 @@ import {
 } from "@/services/api";
 
 export function useHITLWorkers() {
+  const selectedCompanyId = useAuthStore((s) => s.selectedCompanyId);
   return useQuery({
-    queryKey: ["hitlWorkers"],
-    queryFn: listHITLWorkers,
+    queryKey: ["hitlWorkers", selectedCompanyId],
+    queryFn: () => listHITLWorkers(selectedCompanyId),
     refetchInterval: 10 * 1000,
     retry: false,
   });
@@ -36,9 +38,10 @@ export function useResolveWorkerFields(workerId) {
 import { useAuditLogStore } from "@/store/useAuditLogStore";
 
 export function usePendingInterrupts() {
+  const selectedCompanyId = useAuthStore((s) => s.selectedCompanyId);
   return useQuery({
-    queryKey: ["pendingInterrupts"],
-    queryFn: listPendingInterrupts,
+    queryKey: ["pendingInterrupts", selectedCompanyId],
+    queryFn: () => listPendingInterrupts(selectedCompanyId),
     staleTime: 5 * 1000,
     refetchInterval: 10 * 1000,
   });
@@ -54,9 +57,10 @@ export function useInterruptDetails(workerId) {
 }
 
 export function useInterruptStats() {
+  const selectedCompanyId = useAuthStore((s) => s.selectedCompanyId);
   return useQuery({
-    queryKey: ["interruptStats"],
-    queryFn: getInterruptStatistics,
+    queryKey: ["interruptStats", selectedCompanyId],
+    queryFn: () => getInterruptStatistics(selectedCompanyId),
     staleTime: 30 * 1000,
   });
 }

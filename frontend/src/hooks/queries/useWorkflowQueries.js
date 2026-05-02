@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAuthStore } from "@/store/useAuthStore";
 import {
   listAllWorkflows,
   getWorkflowStatus,
@@ -8,9 +9,10 @@ import {
 } from "@/services/api";
 
 export function useAllWorkflows() {
+  const selectedCompanyId = useAuthStore((s) => s.selectedCompanyId);
   return useQuery({
-    queryKey: ["workflows"],
-    queryFn: listAllWorkflows,
+    queryKey: ["workflows", selectedCompanyId],
+    queryFn: () => listAllWorkflows(selectedCompanyId),
     staleTime: 15 * 1000,
   });
 }

@@ -326,7 +326,7 @@ async def get_compliance_graph(worker_id: str):
 
 
 @router.get("/workflows")
-async def list_all_workflows():
+async def list_all_workflows(company_id: Optional[str] = None):
     """
     List all active workflows.
     """
@@ -334,8 +334,16 @@ async def list_all_workflows():
         workflows_ref = db.collection("workflows")
         workflows = workflows_ref.stream()
 
+        worker_cache = {}
+        if company_id:
+            worker_docs = db.collection("workers").where("company_id", "==", company_id).stream()
+            worker_cache = {doc.id: True for doc in worker_docs}
+
         result = []
         for workflow in workflows:
+            if company_id and workflow.id not in worker_cache:
+                continue
+
             data = workflow.to_dict()
             current_state = data.get("current_state", {})
 
