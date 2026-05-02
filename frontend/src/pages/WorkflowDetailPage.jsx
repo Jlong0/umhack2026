@@ -4,9 +4,22 @@ import { useWorkflowStatus, useResumeWorkflow } from "@/hooks/queries/useWorkflo
 import { ArrowLeft, AlertCircle, CheckCircle, XCircle, Loader, Circle } from "lucide-react";
 import AgentDetailModal from "@/components/AgentDetailModal";
 import { useChatStore } from "@/store/useChatStore";
+import { GATE_LABELS } from "@/types/worker";
 
 const WS_BASE = (import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8001")
   .replace(/^http/, "ws").replace(/\/+$/, "");
+
+const normalizeGate = (raw) => {
+  if (!raw) return "JTKSM";
+  const upper = raw.toUpperCase().replace(/\s+/g, "_");
+  if (upper.includes("JTKSM") || upper === "GATE_1_JTKSM") return "JTKSM";
+  if (upper.includes("VDR")) return "VDR_PENDING";
+  if (upper.includes("TRANSIT")) return "TRANSIT";
+  if (upper.includes("FOMEMA")) return "FOMEMA";
+  if (upper.includes("PLKS")) return "PLKS_ENDORSE";
+  if (upper.includes("ACTIVE")) return "ACTIVE";
+  return upper;
+};
 
 // ── DAG layout ──────────────────────────────────────────────────────────────
 const NODES = [
@@ -166,7 +179,7 @@ export default function WorkflowDetailPage() {
       <div className="bg-white border border-gray-200 rounded-lg p-6">
         <h1 className="text-2xl font-bold text-gray-900 mb-4">Workflow: {workerId}</h1>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          {[["Status", workflow.status], ["Current Agent", workflow.current_agent],
+          {[["Status", GATE_LABELS[normalizeGate(workflow.current_gate)] || workflow.status], ["Current Agent", workflow.current_agent],
             ["Compliance", workflow.compliance_status], ["Complete", workflow.workflow_complete ? "Yes" : "No"]
           ].map(([label, val]) => (
             <div key={label}><div className="text-sm text-gray-600">{label}</div><div className="font-semibold text-gray-900">{val}</div></div>

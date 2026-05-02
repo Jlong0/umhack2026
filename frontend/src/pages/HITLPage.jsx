@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useHITLWorkers, useResolveWorkerFields } from "@/hooks/queries/useHITLQueries";
-import { AlertCircle, CheckCircle, Shield, FileText, Eye, Send} from "lucide-react";
+import { AlertCircle, CheckCircle, Shield, FileText, Eye, Send, Plane, Stethoscope } from "lucide-react";
 import { useContracts, useReviewContract, useContractPdfUrl } from "@/hooks/queries/useContractQueries";
+import { approveJTKSM, confirmArrival, approveFOMEMA, issuePermit } from "@/services/api";
 import { PageHeader } from "@/components/ui/page-header";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -10,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { PageSkeleton } from "@/components/ui/page-skeleton";
 import { ErrorState } from "@/components/ui/error-state";
 import { useAuthStore } from "@/store/useAuthStore";
+import { useQueryClient } from "@tanstack/react-query";
 
 function ContractReviewTab() {
 	const [selectedContract, setSelectedContract] = useState(null);
@@ -189,6 +191,24 @@ export default function HITLPage() {
 		});
 	}
 
+	const queryClient = useQueryClient();
+	const [gateLoading, setGateLoading] = useState(false);
+
+	async function handleGateAction(actionFn, ...args) {
+		setGateLoading(true);
+		try {
+			await actionFn(...args);
+			queryClient.invalidateQueries({ queryKey: ["hitlWorkers"] });
+			queryClient.invalidateQueries({ queryKey: ["allWorkflows"] });
+			queryClient.invalidateQueries({ queryKey: ["pendingInterrupts"] });
+			setSelectedWorker(null);
+		} catch (err) {
+			console.error("Gate action failed:", err);
+		} finally {
+			setGateLoading(false);
+		}
+	}
+
 	if (isLoading) return <PageSkeleton variant="detail" />;
 	if (isError) return <ErrorState title="Failed to load workers" message="Unable to connect to the backend. Please check that the server is running." />;
 
@@ -264,7 +284,80 @@ export default function HITLPage() {
 						<div className="flex h-64 items-center justify-center text-muted-foreground text-sm">
 							Select a pending worker to review
 						</div>
-					) : selectedWorker.interrupt_type === "health_check" ? (
+					) : selectedWorker.interrupt_type === "jtksm_review" || selectedWorker.current_gate === "JTKSM" || selectedWorker.current_gate === "gate_1_jtksm" ? (
+					<div className="space-y-5 p-5">
+						<div>
+							<p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Worker</p>
+							<p className="font-medium text-foreground">{selectedWorker.full_name}</p>
+						</div>
+						<div className="rounded-lg bg-violet-50 border border-violet-200 p-3 text-sm text-violet-900 dark:bg-violet-950/40 dark:border-violet-800 dark:text-violet-300">
+							<strong>JTKSM Gate Review</strong> — Worker data has been uploaded. Review completeness and approve to advance to VDR submission.
+						</div>
+						{selectedWorker.reason && (
+							<div className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-900 dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-300">
+								{selectedWorker.reason}
+							</div>
+						)}
+						<button
+							onClick={() => handleGateAction(approveJTKSM, selectedWorker.worker_id)}
+							disabled={gateLoading}
+							className="w-full flex items-center justify-center gap-2 rounded-lg bg-violet-600 py-2.5 text-sm font-semibold text-white hover:bg-violet-500 disabled:opacity-50 transition"
+						>
+							<CheckCircle className="w-4 h-4" />
+							{gateLoading ? "Processing..." : "Approve JTKSM → Advance to VDR"}
+						</button>
+					</div>
+				) : selectedWorker.interrupt_type === "arrival_confirmation" || selectedWorker.current_gate === "TRANSIT" ? (
+					<div className="space-y-5 p-5">
+						<div>
+							<p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Worker</p>
+							<p className="font-medium text-foreground">{selectedWorker.full_name}</p>
+						</div>
+						<div className="rounded-lg bg-cyan-50 border border-cyan-200 p-3 text-sm text-cyan-900 dark:bg-cyan-950/40 dark:border-cyan-800 dark:text-cyan-300">
+							<strong>Arrival Confirmation</strong> — This worker has acknowledged their visa letter and is now in transit. Please confirm you have met and picked up this worker.
+						</div>
+						<div className="flex items-center gap-3 rounded-lg bg-muted/60 p-3">
+							<Plane className="h-8 w-8 text-cyan-500" />
+							<div>
+								<p className="text-sm font-medium text-foreground">Worker is in transit</p>
+								<p className="text-xs text-muted-foreground">Confirm arrival to advance to FOMEMA</p>
+							</div>
+						</div>
+						<button
+							onClick={() => handleGateAction(confirmArrival, selectedWorker.worker_id)}
+							disabled={gateLoading}
+							className="w-full flex items-center justify-center gap-2 rounded-lg bg-cyan-600 py-2.5 text-sm font-semibold text-white hover:bg-cyan-500 disabled:opacity-50 transition"
+						>
+							<Plane className="w-4 h-4" />
+							{gateLoading ? "Processing..." : "Confirm Arrival → Advance to FOMEMA"}
+						</button>
+					</div>
+				) : selectedWorker.interrupt_type === "fomema_medical_pending" || selectedWorker.current_gate === "FOMEMA" ? (
+					<div className="space-y-5 p-5">
+						<div>
+							<p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Worker</p>
+							<p className="font-medium text-foreground">{selectedWorker.full_name}</p>
+						</div>
+						<div className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-900 dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-300">
+							<strong>FOMEMA Medical Review</strong> — Worker has completed their FOMEMA medical checkup. Review the results and approve to advance to PLKS Endorse.
+						</div>
+						<div className="flex items-center gap-3 rounded-lg bg-muted/60 p-3">
+							<Stethoscope className="h-8 w-8 text-amber-500" />
+							<div>
+								<p className="text-sm font-medium text-foreground">Medical checkup completed</p>
+								<p className="text-xs text-muted-foreground">Review FOMEMA result and approve to proceed</p>
+							</div>
+						</div>
+						<button
+							onClick={() => handleGateAction(approveFOMEMA, selectedWorker.worker_id, "suitable")}
+							disabled={gateLoading}
+							className="w-full flex items-center justify-center gap-2 rounded-lg bg-amber-600 py-2.5 text-sm font-semibold text-white hover:bg-amber-500 disabled:opacity-50 transition"
+						>
+							<Stethoscope className="w-4 h-4" />
+							{gateLoading ? "Processing..." : "Approve FOMEMA → Advance to PLKS Endorse"}
+						</button>
+					</div>
+				) : selectedWorker.interrupt_type === "health_check" ? (
 						<div className="space-y-5 p-5">
 							<div>
 								<p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Worker</p>

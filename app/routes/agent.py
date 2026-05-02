@@ -347,18 +347,33 @@ async def list_all_workflows(company_id: Optional[str] = None):
             data = workflow.to_dict()
             current_state = data.get("current_state", {})
 
+            # Fall back to worker document for name/nationality/sector
+            full_name = current_state.get("full_name") or current_state.get("master_name", "")
+            if not full_name:
+                w_doc = db.collection("workers").document(workflow.id).get()
+                w = w_doc.to_dict() if w_doc.exists else {}
+                full_name = w.get("full_name", "")
+                nationality = w.get("nationality") or current_state.get("nationality")
+                sector = w.get("sector") or current_state.get("sector")
+            else:
+                nationality = current_state.get("nationality")
+                sector = current_state.get("sector")
+
+            parts = full_name.split() if full_name else []
+
             result.append({
                 "worker_id": workflow.id,
                 "status": data.get("status"),
                 "compliance_status": current_state.get("compliance_status"),
                 "hitl_required": current_state.get("hitl_required", False),
+                "requires_hitl": current_state.get("hitl_required", False),
                 "workflow_complete": current_state.get("workflow_complete", False),
                 "started_at": data.get("started_at"),
                 "last_updated": data.get("last_updated"),
-                "first_name": current_state.get("full_name", "").split()[0] if current_state.get("full_name") else "",
-                "last_name": " ".join(current_state.get("full_name", "").split()[1:]) if current_state.get("full_name") else "",
-                "nationality": current_state.get("nationality"),
-                "sector": current_state.get("sector"),
+                "first_name": parts[0] if parts else "",
+                "last_name": " ".join(parts[1:]) if len(parts) > 1 else "",
+                "nationality": nationality,
+                "sector": sector,
                 "current_gate": current_state.get("current_gate"),
                 "days_in_gate": current_state.get("days_to_expiry"),
             })

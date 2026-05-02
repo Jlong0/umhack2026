@@ -333,3 +333,41 @@ export async function confirmHandoff(handoffId) {
 export async function rejectHandoff(handoffId, notes = "") {
 	return apiRequest(`/agents/handoffs/${handoffId}/reject?notes=${encodeURIComponent(notes)}`, { method: "POST" });
 }
+
+// Gate Transition APIs
+export async function approveJTKSM(workerId, notes = null) {
+	return apiRequest(`/gates/${workerId}/approve-jtksm`, {
+		method: "POST",
+		body: JSON.stringify({ notes }),
+	});
+}
+
+export async function getVisaLetter(workerId) {
+	return apiRequest(`/gates/${workerId}/visa-letter`, { method: "GET" });
+}
+
+export async function acknowledgeVisa(workerId) {
+	return apiRequest(`/gates/${workerId}/acknowledge-visa`, { method: "POST" });
+}
+
+export async function confirmArrival(workerId, notes = null) {
+	return apiRequest(`/gates/${workerId}/confirm-arrival`, {
+		method: "POST",
+		body: JSON.stringify({ notes }),
+	});
+}
+
+export async function approveFOMEMA(workerId, fomemaResult = "suitable", notes = null) {
+	return apiRequest(`/gates/${workerId}/approve-fomema`, {
+		method: "POST",
+		body: JSON.stringify({ fomema_result: fomemaResult, notes }),
+	});
+}
+
+export async function issuePermit(workerId) {
+	return apiRequest(`/gates/${workerId}/issue-permit`, { method: "POST" });
+}
+
+export async function getGateStatus(workerId) {
+	return apiRequest(`/gates/${workerId}/status`, { method: "GET" });
+}

@@ -213,6 +213,14 @@ async def list_workers(company_id: str | None = None):
             health_result = data.get("health_check_result")
             review_status = data.get("review_status", "")
 
+            # Get current gate from workflow
+            wf_doc = db.collection("workflows").document(worker_id).get()
+            wf_data = wf_doc.to_dict() if wf_doc.exists else {}
+            current_state = wf_data.get("current_state", {})
+            current_gate = current_state.get("current_gate") or data.get("current_gate", "")
+            hitl_reason = current_state.get("hitl_reason", "")
+            hitl_required = current_state.get("hitl_required", False)
+
             med_url = None
 
             storage_path = medical_info.get("storage_path")
@@ -232,7 +240,46 @@ async def list_workers(company_id: str | None = None):
                     med_url = _signed_url(md.to_dict().get("storage_path"))
                     break
 
-            if missing_fields:
+            # Determine interrupt type based on gate and hitl_reason
+            if hitl_required and hitl_reason == "arrival_confirmation":
+                workers.append({
+                    "worker_id": worker_id,
+                    "company_id": data.get("company_id"),
+                    "full_name": full_name,
+                    "whatsapp": data.get("whatsapp"),
+                    "login_code": data.get("login_code"),
+                    "email": data.get("email"),
+                    "status": "pending",
+                    "interrupt_type": "arrival_confirmation",
+                    "current_gate": current_gate,
+                    "fomema_status": data.get("fomema_status"),
+                    "reason": "Worker is in transit. Please confirm you have met and picked up this worker.",
+                    "missing_fields": [],
+                    "passport_image_url": None,
+                    "medical_form_url": med_url,
+                    "medical_result": None,
+                })
+
+            elif hitl_required and hitl_reason == "fomema_medical_pending":
+                workers.append({
+                    "worker_id": worker_id,
+                    "company_id": data.get("company_id"),
+                    "full_name": full_name,
+                    "whatsapp": data.get("whatsapp"),
+                    "login_code": data.get("login_code"),
+                    "email": data.get("email"),
+                    "status": "pending",
+                    "interrupt_type": "fomema_medical_pending",
+                    "current_gate": current_gate,
+                    "fomema_status": data.get("fomema_status"),
+                    "reason": "Worker has completed FOMEMA medical checkup. Review results and approve.",
+                    "missing_fields": [],
+                    "passport_image_url": None,
+                    "medical_form_url": med_url,
+                    "medical_result": None,
+                })
+
+            elif missing_fields:
                 workers.append({
                     "worker_id": worker_id,
                     "company_id": data.get("company_id"),
@@ -242,6 +289,8 @@ async def list_workers(company_id: str | None = None):
                     "email": data.get("email"),
                     "status": "pending",
                     "interrupt_type": "missing_field",
+                    "current_gate": current_gate,
+                    "fomema_status": data.get("fomema_status"),
                     "reason": f"Missing required sections: {', '.join(f['label'] for f in missing_fields)}",
                     "missing_fields": missing_fields,
                     "passport_image_url": None,
@@ -259,6 +308,8 @@ async def list_workers(company_id: str | None = None):
                     "email": data.get("email"),
                     "status": "pending",
                     "interrupt_type": "health_check",
+                    "current_gate": current_gate,
+                    "fomema_status": data.get("fomema_status"),
                     "reason": "Health status has not been reviewed by admin.",
                     "missing_fields": [],
                     "passport_image_url": None,
@@ -276,6 +327,8 @@ async def list_workers(company_id: str | None = None):
                     "email": data.get("email"),
                     "status": "complete",
                     "interrupt_type": None,
+                    "current_gate": current_gate,
+                    "fomema_status": data.get("fomema_status"),
                     "reason": None,
                     "missing_fields": [],
                     "passport_image_url": None,

@@ -8,11 +8,14 @@
  * Blocked workers highlighted with red border + HITL resolution button.
  */
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAllWorkflows } from "@/hooks/queries/useWorkflowQueries";
 import { useCriticalAlerts } from "@/hooks/queries/useAlertQueries";
 import { useUIStore } from "@/store/useUIStore";
 import { GATE_ORDER, GATE_LABELS, NATIONALITY_FLAGS } from "@/types/worker";
+import { issuePermit } from "@/services/api";
 import ConfidenceBadge from "@/components/ConfidenceBadge";
 import { PageHeader } from "@/components/ui/page-header";
 import { ErrorState } from "@/components/ui/error-state";
@@ -28,17 +31,34 @@ const GATE_COLORS = {
 
 function WorkerCard({ worker, isBlocked }) {
   const openHITLDrawer = useUIStore((s) => s.openHITLDrawer);
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [issuing, setIssuing] = useState(false);
 
   const flag = NATIONALITY_FLAGS[worker.nationality] || "🏳️";
   const daysInGate = worker.days_in_gate || 0;
 
+  const handleIssuePermit = async (e) => {
+    e.stopPropagation();
+    setIssuing(true);
+    try {
+      await issuePermit(worker.worker_id);
+      queryClient.invalidateQueries({ queryKey: ["allWorkflows"] });
+    } catch (err) {
+      console.error("Issue permit failed:", err);
+    } finally {
+      setIssuing(false);
+    }
+  };
+
   return (
     <div
-      className={`group rounded-xl border-t-2 bg-card/60 p-3 transition-all hover:bg-card ${
+      className={`group cursor-pointer rounded-xl border-t-2 bg-card/60 p-3 transition-all hover:bg-card ${
         isBlocked
           ? "border border-red-500/40 shadow-lg shadow-red-500/5 " + "border-t-red-500"
           : "border border-border " + (GATE_COLORS[worker.current_gate] || "border-t-gray-500/60")
       }`}
+      onClick={() => navigate(`/orchestration/${worker.worker_id}`)}
     >
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-2">
@@ -75,10 +95,20 @@ function WorkerCard({ worker, isBlocked }) {
 
       {isBlocked && (
         <button
-          onClick={() => openHITLDrawer(worker.worker_id, null)}
+          onClick={(e) => { e.stopPropagation(); openHITLDrawer(worker.worker_id, null); }}
           className="mt-2 w-full rounded-lg bg-red-600/80 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-red-500"
         >
           Resolve — HITL Required
+        </button>
+      )}
+
+      {worker.current_gate === "PLKS_ENDORSE" && !isBlocked && (
+        <button
+          onClick={handleIssuePermit}
+          disabled={issuing}
+          className="mt-2 w-full rounded-lg bg-emerald-600/80 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-emerald-500 disabled:opacity-50"
+        >
+          {issuing ? "Issuing..." : "🎫 Issue Permit → Active"}
         </button>
       )}
     </div>
@@ -139,6 +169,19 @@ export default function PipelinePage() {
     const map = {};
     GATE_ORDER.forEach((gate) => (map[gate] = []));
 
+    // Normalize various backend gate names to our pipeline column keys
+    const normalizeGate = (raw) => {
+      if (!raw) return "JTKSM";
+      const upper = raw.toUpperCase().replace(/\s+/g, "_");
+      if (upper.includes("JTKSM") || upper === "GATE_1_JTKSM") return "JTKSM";
+      if (upper.includes("VDR")) return "VDR_PENDING";
+      if (upper.includes("TRANSIT")) return "TRANSIT";
+      if (upper.includes("FOMEMA")) return "FOMEMA";
+      if (upper.includes("PLKS")) return "PLKS_ENDORSE";
+      if (upper.includes("ACTIVE")) return "ACTIVE";
+      return map[upper] ? upper : "JTKSM";
+    };
+
     const blocked = new Set();
     if (criticalAlerts?.alerts) {
       criticalAlerts.alerts.forEach((a) => {
@@ -149,15 +192,10 @@ export default function PipelinePage() {
     const workers = workflows?.workflows || workflows || [];
     if (Array.isArray(workers)) {
       workers.forEach((w) => {
-        const gate = w.current_gate || w.current_state || "JTKSM";
-        const normalizedGate = gate.toUpperCase().replace(/\s+/g, "_");
-        if (map[normalizedGate]) {
-          map[normalizedGate].push(w);
-        } else {
-          map.JTKSM.push(w);
-        }
+        const gate = normalizeGate(w.current_gate || w.current_state);
+        map[gate].push({ ...w, current_gate: gate });
 
-        if (w.status === "BLOCKED_HITL" || w.requires_hitl) {
+        if (w.status === "BLOCKED_HITL" || w.requires_hitl || w.hitl_required) {
           blocked.add(w.worker_id);
         }
       });

@@ -1,5 +1,5 @@
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
-import { LogOut, Upload, ClipboardList, FileSignature, Sun, Moon } from "lucide-react";
+import { LogOut, Upload, ClipboardList, FileSignature, Sun, Moon, Mail } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useThemeStore } from "@/store/useThemeStore";
 import { cn } from "@/lib/utils";
@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 const TABS = [
   { path: "/worker/upload", label: "Upload", fullLabel: "Upload Documents", icon: Upload },
   { path: "/worker/status", label: "Status", fullLabel: "My Status", icon: ClipboardList },
+  { path: "/worker/visa-letter", label: "Visa", fullLabel: "Visa Letter", icon: Mail },
   { path: "/worker/contracts", label: "Contracts", fullLabel: "My Contracts", icon: FileSignature },
 ];
 

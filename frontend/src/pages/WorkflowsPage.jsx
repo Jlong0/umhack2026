@@ -3,6 +3,7 @@ import { useAllWorkflows } from "@/hooks/queries/useWorkflowQueries";
 import { AlertCircle, CheckCircle, Clock, PlayCircle, Radio } from "lucide-react";
 import { StatusBadge } from "@/components/ui/status-badge";
 import {PageSkeleton} from "@/components/ui/index.js";
+import { GATE_LABELS } from "@/types/worker";
 
 export default function WorkflowsPage() {
 	const { data, isLoading: loading, error: queryError } = useAllWorkflows();
@@ -11,6 +12,18 @@ export default function WorkflowsPage() {
 	const navigate = useNavigate();
 
 	const statusVariant = { active: "info", completed: "success", failed: "danger" };
+
+	const normalizeGate = (raw) => {
+		if (!raw) return "JTKSM";
+		const upper = raw.toUpperCase().replace(/\s+/g, "_");
+		if (upper.includes("JTKSM") || upper === "GATE_1_JTKSM") return "JTKSM";
+		if (upper.includes("VDR")) return "VDR_PENDING";
+		if (upper.includes("TRANSIT")) return "TRANSIT";
+		if (upper.includes("FOMEMA")) return "FOMEMA";
+		if (upper.includes("PLKS")) return "PLKS_ENDORSE";
+		if (upper.includes("ACTIVE")) return "ACTIVE";
+		return upper;
+	};
 
 	function getComplianceIcon(status) {
 		switch (status) {
@@ -38,7 +51,11 @@ export default function WorkflowsPage() {
 			)}
 
 			<div className="grid gap-4">
-				{workflows.map((workflow) => (
+				{workflows.map((workflow) => {
+					const gateKey = normalizeGate(workflow.current_gate);
+					const gateLabel = GATE_LABELS[gateKey] || gateKey;
+					
+					return (
 					<div
 						key={workflow.worker_id}
 						onClick={() => navigate(`/workflows/${workflow.worker_id}`)}
@@ -50,7 +67,7 @@ export default function WorkflowsPage() {
 								<div>
 									<h3 className="font-semibold text-foreground">Worker ID: {workflow.worker_id}</h3>
 								<div className="flex items-center space-x-3 mt-2">
-										<StatusBadge variant={statusVariant[workflow.status] || "neutral"}>{workflow.status}</StatusBadge>
+										<StatusBadge variant="info">{gateLabel}</StatusBadge>
 										<span className="text-sm text-muted-foreground">
 											Compliance: <span className="font-medium">{workflow.compliance_status}</span>
 										</span>
@@ -83,7 +100,8 @@ export default function WorkflowsPage() {
 							</div>
 						)}
 					</div>
-				))}
+					);
+				})}
 
 				{workflows.length === 0 && !loading && (
 					<div className="text-center py-12 text-gray-500">No active workflows found</div>
